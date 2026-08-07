@@ -6,9 +6,10 @@ import { Bell, Search, Plus } from "lucide-react";
 import { ModalNovo } from "@/components/modals/modal-novo";
 import { ModalBusca } from "@/components/modals/modal-busca";
 import { PopoverNotificacoes } from "@/components/modals/popover-notificacoes";
+import { BarraCapturaIA } from "@/components/dashboard/barra-captura-ia";
 
 const PAGE_TITLES: Record<string, string> = {
-  "/": "Bom dia, Ruan",
+  "/": "Hoje",
   "/pipeline": "Pipeline",
   "/tarefas": "Tarefas",
   "/agenda": "Agenda",
@@ -27,39 +28,32 @@ export function Header() {
   const title = PAGE_TITLES[pathname] ??
     (pathname.startsWith("/pipeline/") ? "Vídeo" : "Meu Assessor");
 
-  const today = new Date();
-  const dateStr = today.toLocaleDateString("pt-BR", {
-    weekday: "long",
-    day: "numeric",
-    month: "long",
-  });
-
   return (
     <>
       <header
-        className="sticky top-0 z-20 h-[64px] flex items-center justify-between px-4 md:px-8 relative"
+        className="sticky top-0 z-20 h-[72px] flex items-center justify-between px-4 md:px-8 gap-4 relative"
         style={{
-          background: "rgba(236, 236, 234, 0.85)",
+          background: "rgba(236, 236, 234, 0.9)",
           backdropFilter: "blur(20px)",
           WebkitBackdropFilter: "blur(20px)",
           borderBottom: "1px solid var(--border)",
         }}
       >
-        <div>
+        <div className="flex-shrink-0 min-w-[120px]">
           <h1
-            className="font-heading text-xl font-bold"
-            style={{ color: "var(--text-primary)", letterSpacing: "-0.03em" }}
+            className="font-heading text-xl font-bold tracking-tight"
+            style={{ color: "var(--text-primary)" }}
           >
             {title}
           </h1>
-          {pathname === "/" && (
-            <p className="text-[12px] capitalize -mt-0.5" style={{ color: "var(--text-muted)" }}>
-              {dateStr}
-            </p>
-          )}
         </div>
 
-        <div className="flex items-center gap-2">
+        {/* Barra de Captura Inteligente por IA sempre visível no Topo */}
+        <div className="flex-1 max-w-xl mx-2">
+          <BarraCapturaIA />
+        </div>
+
+        <div className="flex items-center gap-2 flex-shrink-0">
           {/* Botão Pesquisar */}
           <button
             onClick={() => setModalBuscaOpen(true)}
