@@ -1,7 +1,7 @@
 "use server";
 
 import prisma from "@/lib/db";
-import type { Prioridade, StatusTarefa } from "@meu-assessor/db";
+import type { Prioridade, StatusTarefa } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 
 export async function alternarStatusTarefa(tarefaId: string, statusAtual: StatusTarefa) {

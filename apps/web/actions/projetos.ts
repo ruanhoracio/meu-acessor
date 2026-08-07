@@ -1,7 +1,7 @@
 "use server";
 
-import prisma from "@meu-assessor/db";
-import type { TipoProjeto } from "@meu-assessor/db";
+import prisma from "@/lib/db";
+import type { TipoProjeto } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 
 export async function criarProjeto(data: {

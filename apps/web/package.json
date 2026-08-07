@@ -9,15 +9,16 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@prisma/client": "^6.19.3",
     "clsx": "^2.1.1",
     "date-fns": "^4.4.0",
     "framer-motion": "^13.0.0",
     "lucide-react": "^1.29.0",
     "next": "16.3.0",
+    "openai": "^4.86.1",
+    "prisma": "^6.19.3",
     "react": "19.2.8",
-    "react-dom": "19.2.8",
-    "@meu-assessor/db": "*",
-    "@meu-assessor/core": "*"
+    "react-dom": "19.2.8"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",

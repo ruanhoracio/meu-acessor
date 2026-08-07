@@ -1,7 +1,7 @@
 "use server";
 
 import prisma from "@/lib/db";
-import type { EstagioVideo, FormatoVideo, AguardandoQuem } from "@meu-assessor/db";
+import type { EstagioVideo, FormatoVideo, AguardandoQuem } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 
 export async function moverEstagioVideo(videoId: string, novoEstagio: EstagioVideo) {
