@@ -9,6 +9,7 @@ import {
   Filter,
   Loader2,
   Trash2,
+  RefreshCw,
 } from "lucide-react";
 import { getTarefas, alternarStatusTarefa, excluirTarefa } from "@/actions/tarefas";
 import { getProjetos } from "@/actions/projetos";
@@ -30,26 +31,50 @@ export default function TarefasPage() {
   const [filtroProjeto, setFiltroProjeto] = useState<string | null>(null);
 
   const carregarDados = async () => {
-    setLoading(true);
     try {
-      const [tList, pList] = await Promise.all([
-        getTarefas(),
-        getProjetos(),
+      // 1. Tentar via API REST ao vivo (super rápido e atualizado)
+      const [resT, resP] = await Promise.all([
+        fetch("/api/tarefas", { cache: "no-store" }).then((r) => r.json()).catch(() => null),
+        fetch("/api/projetos", { cache: "no-store" }).then((r) => r.json()).catch(() => null),
       ]);
-      setTarefas(tList);
-      setProjetos(pList);
+
+      if (Array.isArray(resT)) {
+        setTarefas(resT);
+      } else {
+        const tList = await getTarefas();
+        setTarefas(tList);
+      }
+
+      if (Array.isArray(resP)) {
+        setProjetos(resP);
+      } else {
+        const pList = await getProjetos();
+        setProjetos(pList);
+      }
     } catch (e) {
       console.error("Erro ao carregar tarefas:", e);
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   useEffect(() => {
     carregarDados();
+
+    // Polling a cada 4 segundos para refletir mensagens enviadas no Telegram instantaneamente
+    const interval = setInterval(carregarDados, 4000);
+
+    // Recarregar quando focar na janela
+    const onFocus = () => carregarDados();
+    window.addEventListener("focus", onFocus);
+
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener("focus", onFocus);
+    };
   }, []);
 
   const handleToggleStatus = async (id: string, statusAtual: string) => {
-    // Atualização otimista
     const novoStatus = statusAtual === "concluida" ? "aberta" : "concluida";
     setTarefas((prev) =>
       prev.map((t) => (t.id === id ? { ...t, status: novoStatus } : t))
@@ -114,13 +139,23 @@ export default function TarefasPage() {
     <div className="animate-fade-in-up max-w-3xl space-y-6 pb-12">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="font-heading text-2xl font-bold tracking-tight text-gray-900">
+          <h1 className="font-heading text-2xl font-bold tracking-tight text-gray-900 flex items-center gap-2">
             Minhas Tarefas
           </h1>
           <p className="text-xs text-gray-500">
-            Tarefas sincronizadas do seu assistente no Telegram e do Web App.
+            Sincronização em tempo real com seu Bot do Telegram.
           </p>
         </div>
+
+        <button
+          type="button"
+          onClick={carregarDados}
+          className="p-2 rounded-xl border border-gray-200 hover:bg-gray-100 text-gray-600 transition-all cursor-pointer flex items-center gap-1 text-xs font-semibold"
+          title="Atualizar tarefas"
+        >
+          <RefreshCw className={`w-3.5 h-3.5 ${loading ? "animate-spin text-accent" : ""}`} />
+          <span>Atualizar</span>
+        </button>
       </div>
 
       {/* Visões */}
@@ -159,10 +194,10 @@ export default function TarefasPage() {
       </div>
 
       {/* Lista */}
-      {loading ? (
+      {loading && tarefas.length === 0 ? (
         <div className="card p-12 text-center flex flex-col items-center justify-center gap-2">
           <Loader2 className="w-6 h-6 animate-spin text-accent" />
-          <p className="text-xs text-gray-500">Carregando tarefas do Supabase...</p>
+          <p className="text-xs text-gray-500">Buscando tarefas do Supabase Cloud...</p>
         </div>
       ) : (
         <div className="space-y-2.5">
@@ -266,7 +301,7 @@ export default function TarefasPage() {
 
           {sorted.length === 0 && (
             <div className="card p-12 text-center space-y-1">
-              <p className="text-sm font-semibold text-gray-700">Nenhuma tarefa por aqui</p>
+              <p className="text-sm font-semibold text-gray-700">Nenhuma tarefa encontrada</p>
               <p className="text-xs text-gray-400">
                 Envie suas tarefas para o Telegram ou clique em + Novo para cadastrar!
               </p>
