@@ -16,18 +16,45 @@ export function ModalNovo({ isOpen, onClose }: { isOpen: boolean; onClose: () =>
   const [projetos, setProjetos] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
 
+  // Novo cliente no fly
+  const [criandoCliente, setCriandoCliente] = useState(false);
+  const [novoClienteNome, setNovoClienteNome] = useState("");
+
+  const carregarProjetos = () => {
+    fetch("/api/projetos")
+      .then((r) => r.json())
+      .then((data) => {
+        if (Array.isArray(data)) setProjetos(data);
+      })
+      .catch(() => {});
+  };
+
   useEffect(() => {
-    if (isOpen) {
-      fetch("/api/projetos")
-        .then((r) => r.json())
-        .then((data) => {
-          if (Array.isArray(data)) setProjetos(data);
-        })
-        .catch(() => {});
-    }
+    if (isOpen) carregarProjetos();
   }, [isOpen]);
 
   if (!isOpen) return null;
+
+  const handleCriarClienteRapido = async () => {
+    if (!novoClienteNome.trim()) return;
+
+    try {
+      const res = await fetch("/api/projetos", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ nome: novoClienteNome.trim(), tipo: "cliente" }),
+      }).then((r) => r.json());
+
+      if (res && res.id) {
+        setProjetos([...projetos, res]);
+        setProjetoId(res.id);
+        setNovoClienteNome("");
+        setCriandoCliente(false);
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -62,7 +89,7 @@ export function ModalNovo({ isOpen, onClose }: { isOpen: boolean; onClose: () =>
       <div className="card w-full max-w-lg p-6 relative bg-white shadow-elevated">
         <button
           onClick={onClose}
-          className="absolute top-4 right-4 p-2 rounded-full hover:bg-black/5 text-gray-500"
+          className="absolute top-4 right-4 p-2 rounded-full hover:bg-black/5 text-gray-500 cursor-pointer"
         >
           <X className="w-5 h-5" />
         </button>
@@ -76,7 +103,7 @@ export function ModalNovo({ isOpen, onClose }: { isOpen: boolean; onClose: () =>
           <button
             type="button"
             onClick={() => setTipo("video")}
-            className={`flex-1 py-2 px-4 rounded-xl text-sm font-bold flex items-center justify-center gap-2 transition-all ${
+            className={`flex-1 py-2 px-4 rounded-xl text-sm font-bold flex items-center justify-center gap-2 transition-all cursor-pointer ${
               tipo === "video" ? "bg-white shadow-xs text-black" : "text-gray-500"
             }`}
           >
@@ -86,7 +113,7 @@ export function ModalNovo({ isOpen, onClose }: { isOpen: boolean; onClose: () =>
           <button
             type="button"
             onClick={() => setTipo("tarefa")}
-            className={`flex-1 py-2 px-4 rounded-xl text-sm font-bold flex items-center justify-center gap-2 transition-all ${
+            className={`flex-1 py-2 px-4 rounded-xl text-sm font-bold flex items-center justify-center gap-2 transition-all cursor-pointer ${
               tipo === "tarefa" ? "bg-white shadow-xs text-black" : "text-gray-500"
             }`}
           >
@@ -110,19 +137,49 @@ export function ModalNovo({ isOpen, onClose }: { isOpen: boolean; onClose: () =>
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="text-xs font-bold text-gray-500 block mb-1">Cliente / Projeto</label>
-              <select
-                value={projetoId}
-                onChange={(e) => setProjetoId(e.target.value)}
-                className="input"
-              >
-                <option value="">Nenhum (Sem cliente)</option>
-                {projetos.map((p) => (
-                  <option key={p.id} value={p.id}>
-                    {p.nome}
-                  </option>
-                ))}
-              </select>
+              <div className="flex items-center justify-between mb-1">
+                <label className="text-xs font-bold text-gray-500">Cliente / Projeto</label>
+                <button
+                  type="button"
+                  onClick={() => setCriandoCliente(!criandoCliente)}
+                  className="text-[10px] text-accent hover:underline font-bold flex items-center gap-0.5 cursor-pointer"
+                >
+                  <Plus className="w-3 h-3" />
+                  Novo
+                </button>
+              </div>
+
+              {criandoCliente ? (
+                <div className="flex gap-1">
+                  <input
+                    type="text"
+                    placeholder="Nome do cliente"
+                    value={novoClienteNome}
+                    onChange={(e) => setNovoClienteNome(e.target.value)}
+                    className="input text-xs py-1.5 px-2"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleCriarClienteRapido}
+                    className="btn-primary px-2 text-xs"
+                  >
+                    OK
+                  </button>
+                </div>
+              ) : (
+                <select
+                  value={projetoId}
+                  onChange={(e) => setProjetoId(e.target.value)}
+                  className="input"
+                >
+                  <option value="">Nenhum (Sem cliente)</option>
+                  {projetos.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.nome}
+                    </option>
+                  ))}
+                </select>
+              )}
             </div>
 
             {tipo === "video" ? (
@@ -185,10 +242,10 @@ export function ModalNovo({ isOpen, onClose }: { isOpen: boolean; onClose: () =>
           </div>
 
           <div className="pt-2 flex justify-end gap-2">
-            <button type="button" onClick={onClose} className="btn-ghost text-xs py-2.5 px-4">
+            <button type="button" onClick={onClose} className="btn-ghost text-xs py-2.5 px-4 cursor-pointer">
               Cancelar
             </button>
-            <button type="submit" disabled={loading} className="btn-primary text-xs py-2.5 px-5 flex items-center gap-1.5">
+            <button type="submit" disabled={loading} className="btn-primary text-xs py-2.5 px-5 flex items-center gap-1.5 cursor-pointer">
               <Plus className="w-4 h-4" />
               {loading ? "Criando..." : `Criar ${tipo === "video" ? "Vídeo" : "Tarefa"}`}
             </button>
