@@ -25,6 +25,7 @@ import { horasParaTexto } from "@/lib/utils";
 import { getDashboardData } from "@/actions/dashboard";
 import { alternarStatusTarefa } from "@/actions/tarefas";
 import { BannerAvisos } from "@/components/dashboard/banner-avisos";
+import { BarraCapturaIA } from "@/components/dashboard/barra-captura-ia";
 
 export default function HojePage() {
   const [data, setData] = useState<{
@@ -74,6 +75,9 @@ export default function HojePage() {
 
   return (
     <div className="space-y-6 animate-fade-in-up">
+      {/* ── Captura Inteligente com IA ─────────────────── */}
+      <BarraCapturaIA onSucesso={carregarData} />
+
       {/* ── Carrossel de Avisos em Looping ──────────── */}
       <BannerAvisos />
 

@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
@@ -30,6 +30,7 @@ export function Sidebar() {
   const pathname = usePathname();
   const [inboxCount, setInboxCount] = useState(0);
   const [userAvatar, setUserAvatar] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
     const avatarSalvo = localStorage.getItem("ruan_user_avatar");
@@ -47,16 +48,18 @@ export function Sidebar() {
     return () => clearInterval(interval);
   }, []);
 
-  const handleTrocarAvatar = () => {
-    const url = prompt("Cole a URL da sua foto de perfil:", userAvatar || "");
-    if (url !== null) {
-      if (url.trim()) {
-        localStorage.setItem("ruan_user_avatar", url.trim());
-        setUserAvatar(url.trim());
-      } else {
-        localStorage.removeItem("ruan_user_avatar");
-        setUserAvatar(null);
-      }
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (evt) => {
+        const base64 = evt.target?.result as string;
+        if (base64) {
+          localStorage.setItem("ruan_user_avatar", base64);
+          setUserAvatar(base64);
+        }
+      };
+      reader.readAsDataURL(file);
     }
   };
 
@@ -123,13 +126,22 @@ export function Sidebar() {
           Configurações
         </Link>
 
-        {/* User avatar com opção de trocar foto */}
+        {/* User avatar com upload de foto do computador */}
         <div className="mt-5 mx-3 flex items-center gap-3">
+          <input
+            type="file"
+            ref={fileInputRef}
+            onChange={handleFileChange}
+            accept="image/*"
+            className="hidden"
+          />
+
           <button
-            onClick={handleTrocarAvatar}
+            type="button"
+            onClick={() => fileInputRef.current?.click()}
             className="relative group w-9 h-9 rounded-full overflow-hidden flex-shrink-0 cursor-pointer border hover:opacity-90 transition-all"
             style={{ borderColor: "var(--border)" }}
-            title="Clique para trocar foto de perfil"
+            title="Clique para escolher foto do seu computador"
           >
             {userAvatar ? (
               <Image src={userAvatar} alt="Foto de perfil" fill className="object-cover" />
@@ -144,7 +156,7 @@ export function Sidebar() {
                 R
               </div>
             )}
-            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
+            <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
               <Camera className="w-3.5 h-3.5 text-white" />
             </div>
           </button>
