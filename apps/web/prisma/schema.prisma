@@ -1,0 +1,249 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+// ── Inbox ───────────────────────────────────────────────────
+
+enum OrigemInbox {
+  telegram
+  web
+}
+
+enum TipoMidia {
+  texto
+  audio
+  foto
+  link
+  documento
+}
+
+enum StatusInbox {
+  pendente
+  processado
+  erro
+  ignorado
+}
+
+model InboxItem {
+  id                  String      @id @default(cuid())
+  origem              OrigemInbox
+  tipoMidia           TipoMidia   @map("tipo_midia")
+  conteudoBruto       String      @map("conteudo_bruto") @db.Text
+  transcricao         String?     @db.Text
+  arquivoUrl          String?     @map("arquivo_url")
+  telegramMessageId   String?     @unique @map("telegram_message_id")
+  status              StatusInbox @default(pendente)
+  erroDetalhes        String?     @map("erro_detalhes") @db.Text
+  criadoEm            DateTime    @default(now()) @map("criado_em")
+
+  tarefas             Tarefa[]
+  notas               Nota[]
+
+  @@map("inbox_items")
+}
+
+// ── Projetos ────────────────────────────────────────────────
+
+enum TipoProjeto {
+  cliente
+  interno
+  pessoal
+}
+
+model Projeto {
+  id     String      @id @default(cuid())
+  nome   String
+  tipo   TipoProjeto @default(cliente)
+  cor    String      @default("#ff5a3d")
+  ativo  Boolean     @default(true)
+
+  tarefas   Tarefa[]
+  videos    Video[]
+  eventos   Evento[]
+  notas     Nota[]
+
+  @@map("projetos")
+}
+
+// ── Tarefas ─────────────────────────────────────────────────
+
+enum StatusTarefa {
+  aberta
+  fazendo
+  concluida
+  cancelada
+}
+
+enum Prioridade {
+  baixa
+  media
+  alta
+  urgente
+}
+
+model Tarefa {
+  id            String        @id @default(cuid())
+  titulo        String
+  descricao     String?       @db.Text
+  projetoId     String?       @map("projeto_id")
+  prazo         DateTime?
+  prioridade    Prioridade    @default(media)
+  status        StatusTarefa  @default(aberta)
+  recorrencia   String?       // "diaria", "semanal", "seg,qua,sex"
+  origemInboxId String?       @map("origem_inbox_id")
+  todoistId     String?       @map("todoist_id")
+  criadoEm      DateTime      @default(now()) @map("criado_em")
+  atualizadoEm  DateTime      @updatedAt @map("atualizado_em")
+
+  projeto       Projeto?      @relation(fields: [projetoId], references: [id])
+  origemInbox   InboxItem?    @relation(fields: [origemInboxId], references: [id])
+
+  @@map("tarefas")
+}
+
+// ── Vídeos ──────────────────────────────────────────────────
+
+enum FormatoVideo {
+  reels
+  vsl
+  criativo
+  aula
+  institucional
+  outro
+}
+
+enum EstagioVideo {
+  briefing
+  material_recebido
+  cortando
+  primeiro_corte
+  revisao
+  ajustes
+  aprovado
+  entregue
+}
+
+enum AguardandoQuem {
+  eu
+  cliente
+  gravacao
+  aprovacao
+}
+
+model Video {
+  id                String        @id @default(cuid())
+  titulo            String
+  projetoId         String?       @map("projeto_id")
+  formato           FormatoVideo  @default(outro)
+  estagio           EstagioVideo  @default(briefing)
+  prazoEntrega      DateTime?     @map("prazo_entrega")
+  estimativaHoras   Float?        @map("estimativa_horas")
+  horasReais        Float?        @map("horas_reais")
+  aguardando        AguardandoQuem? @default(eu)
+  linkBruto         String?       @map("link_bruto")
+  linkEntrega       String?       @map("link_entrega")
+  rodadasAlteracao  Int           @default(0) @map("rodadas_alteracao")
+  criadoEm          DateTime      @default(now()) @map("criado_em")
+  entregueEm        DateTime?     @map("entregue_em")
+
+  projeto           Projeto?      @relation(fields: [projetoId], references: [id])
+  videoEventos      VideoEvento[]
+  sessoesFoco       SessaoFoco[]
+  notas             Nota[]
+
+  @@map("videos")
+}
+
+model VideoEvento {
+  id          String       @id @default(cuid())
+  videoId     String       @map("video_id")
+  deEstagio   EstagioVideo @map("de_estagio")
+  paraEstagio EstagioVideo @map("para_estagio")
+  criadoEm    DateTime     @default(now()) @map("criado_em")
+
+  video       Video        @relation(fields: [videoId], references: [id], onDelete: Cascade)
+
+  @@map("video_eventos")
+}
+
+model SessaoFoco {
+  id              String    @id @default(cuid())
+  videoId         String    @map("video_id")
+  inicio          DateTime  @default(now())
+  fim             DateTime?
+  duracaoMinutos  Int?      @map("duracao_minutos")
+
+  video           Video     @relation(fields: [videoId], references: [id], onDelete: Cascade)
+
+  @@map("sessoes_foco")
+}
+
+// ── Eventos (Agenda) ────────────────────────────────────────
+
+model Evento {
+  id             String    @id @default(cuid())
+  titulo         String
+  inicio         DateTime
+  fim            DateTime?
+  local          String?
+  projetoId      String?   @map("projeto_id")
+  googleEventId  String?   @unique @map("google_event_id")
+  origem         String?   // "telegram", "web", "google"
+  criadoEm       DateTime  @default(now()) @map("criado_em")
+
+  projeto        Projeto?  @relation(fields: [projetoId], references: [id])
+
+  @@map("eventos")
+}
+
+// ── Notas ───────────────────────────────────────────────────
+
+model Nota {
+  id            String    @id @default(cuid())
+  titulo        String?
+  conteudo      String    @db.Text
+  tags          String[]  @default([])
+  projetoId     String?   @map("projeto_id")
+  videoId       String?   @map("video_id")
+  origemInboxId String?   @map("origem_inbox_id")
+  criadoEm      DateTime  @default(now()) @map("criado_em")
+  atualizadoEm  DateTime  @updatedAt @map("atualizado_em")
+
+  projeto       Projeto?   @relation(fields: [projetoId], references: [id])
+  video         Video?     @relation(fields: [videoId], references: [id])
+  origemInbox   InboxItem? @relation(fields: [origemInboxId], references: [id])
+
+  @@map("notas")
+}
+
+// ── Referências ─────────────────────────────────────────────
+
+model Referencia {
+  id         String   @id @default(cuid())
+  url        String
+  titulo     String?
+  tags       String[] @default([])
+  observacao String?  @db.Text
+  thumbnail  String?
+  criadoEm   DateTime @default(now()) @map("criado_em")
+
+  @@map("referencias")
+}
+
+// ── Lembretes ───────────────────────────────────────────────
+
+model LembreteEnviado {
+  id         String   @id @default(cuid())
+  tipo       String   // "prazo_24h", "video_travado", "resumo_diario"
+  entidadeId String   @map("entidade_id")
+  enviadoEm  DateTime @default(now()) @map("enviado_em")
+
+  @@unique([tipo, entidadeId, enviadoEm])
+  @@map("lembretes_enviados")
+}
