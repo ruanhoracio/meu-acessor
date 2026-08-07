@@ -85,48 +85,49 @@ export default function ConfigPage() {
     if (!nomeLimpo || salvandoProjeto) return;
 
     setSalvandoProjeto(true);
+    let novoItem = null;
 
-    let sucesso = false;
-
-    // 1. Tentar via Server Action
+    // 1. Tenta via REST API (Super rápido e sem dependência de RSC Server Action)
     try {
-      const res = await criarProjeto({
-        nome: nomeLimpo,
-        tipo: novoTipo,
-        cor: novaCor,
+      const apiRes = await fetch("/api/projetos", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ nome: nomeLimpo, tipo: novoTipo, cor: novaCor }),
       });
-      if (res && res.success) {
-        sucesso = true;
+
+      if (apiRes.ok) {
+        novoItem = await apiRes.json();
       }
     } catch (err) {
-      console.warn("Server action falhou, usando fallback de API:", err);
+      console.warn("REST API call falhou, tentando Server Action:", err);
     }
 
-    // 2. Fallback via API REST
-    if (!sucesso) {
+    // 2. Fallback via Server Action
+    if (!novoItem) {
       try {
-        const apiRes = await fetch("/api/projetos", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ nome: nomeLimpo, tipo: novoTipo, cor: novaCor }),
-        }).then(r => r.json());
-
-        if (apiRes && apiRes.id) {
-          sucesso = true;
+        const res = await criarProjeto({
+          nome: nomeLimpo,
+          tipo: novoTipo,
+          cor: novaCor,
+        });
+        if (res && res.success && res.projeto) {
+          novoItem = res.projeto;
         }
       } catch (err) {
-        console.error("Erro no fallback da API:", err);
+        console.error("Server action também falhou:", err);
       }
     }
 
     setSalvandoProjeto(false);
 
-    if (sucesso) {
+    if (novoItem) {
       setNovoNome("");
-      await carregarProjetos();
+      setProjetos((prev) => [...prev.filter((p) => p.id !== novoItem.id), novoItem]);
       exibirSucesso(`Cliente "${nomeLimpo}" adicionado com sucesso!`);
+      // Recarrega a lista em segundo plano para sincronizar com Supabase
+      carregarProjetos();
     } else {
-      exibirErro("Não foi possível salvar o cliente. Verifique sua conexão e tente novamente.");
+      exibirErro("Não foi possível salvar o cliente. Tente novamente.");
     }
   };
 
