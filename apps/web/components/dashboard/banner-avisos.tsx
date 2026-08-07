@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Sparkles, ChevronLeft, ChevronRight, Bell, Zap, Flame, ShieldAlert } from "lucide-react";
+import { Sparkles, ChevronLeft, ChevronRight, Zap, Flame, ShieldAlert, Inbox, Calendar } from "lucide-react";
 
 export interface AvisoItem {
   id: string;
@@ -12,9 +12,9 @@ export interface AvisoItem {
   icon: React.ReactNode;
 }
 
-const AVISOS_PADRAO: AvisoItem[] = [
+const AVISOS_DICAS: AvisoItem[] = [
   {
-    id: "1",
+    id: "dica-1",
     badge: "Assessor Proativo",
     titulo: "Captura Ultra-Rápida pelo Telegram",
     descricao: "Mande qualquer texto, áudio de voz ou link de referência para o seu robô no Telegram. Ele organiza tudo automaticamente no seu painel em 2 segundos!",
@@ -22,7 +22,7 @@ const AVISOS_PADRAO: AvisoItem[] = [
     icon: <Sparkles className="w-4 h-4 text-white" />,
   },
   {
-    id: "2",
+    id: "dica-2",
     badge: "Dica de Produtividade",
     titulo: "Mantenha o Foco no Pipeline",
     descricao: "Inicie uma sessão de foco cronometrada nos seus vídeos para registrar automaticamente as horas reais dedicadas à edição de cada cliente.",
@@ -30,38 +30,80 @@ const AVISOS_PADRAO: AvisoItem[] = [
     icon: <Zap className="w-4 h-4 text-white" />,
   },
   {
-    id: "3",
-    badge: "Rotinas Inteligentes",
-    titulo: "Resumos às 7h e Checagem às 14h",
-    descricao: "Seu Assessor te envia relatórios diários no Telegram para garantir que nenhum prazo de vídeo ou tarefa passe despercebido.",
+    id: "dica-3",
+    badge: "Lembrete Matinal 08:00",
+    titulo: "Resumo Diário Automático no Telegram",
+    descricao: "Todo dia às 08:00 o seu robô te envia no Telegram a lista de compromissos da agenda, tarefas do dia e vídeos prioritários.",
     cor: "#10b981",
     icon: <Flame className="w-4 h-4 text-white" />,
   },
-  {
-    id: "4",
-    badge: "Anti-Gargalo",
-    titulo: "Alerta de Vídeos Travados",
-    descricao: "Vídeos parados há mais de 3 dias no mesmo estágio recebem destaque em vermelho e notificações automáticas.",
-    cor: "#f59e0b",
-    icon: <ShieldAlert className="w-4 h-4 text-white" />,
-  },
 ];
 
-export function BannerAvisos({ avisosAdicionais = [] }: { avisosAdicionais?: AvisoItem[] }) {
-  const listaAvisos = [...avisosAdicionais, ...AVISOS_PADRAO];
+export function BannerAvisos() {
+  const [avisosReais, setAvisosReais] = useState<AvisoItem[]>([]);
   const [index, setIndex] = useState(0);
 
   useEffect(() => {
+    async function carregarAlertasReais() {
+      const novosAvisos: AvisoItem[] = [];
+
+      try {
+        const [resInbox, resDash] = await Promise.all([
+          fetch("/api/inbox/count").then((r) => r.json()).catch(() => ({ count: 0 })),
+          fetch("/api/videos").then((r) => r.json()).catch(() => []),
+        ]);
+
+        if (resInbox.count > 0) {
+          novosAvisos.push({
+            id: "inbox-pendente",
+            badge: "Atenção no Inbox",
+            titulo: `${resInbox.count} ${resInbox.count === 1 ? "mensagem pendente" : "mensagens pendentes"} no Inbox`,
+            descricao: "Você recebeu novas mensagens ou áudios do Telegram aguardando revisão. Acesse a aba Inbox para concluir.",
+            cor: "#f59e0b",
+            icon: <Inbox className="w-4 h-4 text-white" />,
+          });
+        }
+
+        if (Array.isArray(resDash)) {
+          const travados = resDash.filter((v: any) => {
+            const ev = v.ultimoEvento ? new Date(v.ultimoEvento) : new Date(v.criadoEm);
+            return Math.floor((Date.now() - ev.getTime()) / (1000 * 60 * 60 * 24)) >= 3;
+          });
+
+          if (travados.length > 0) {
+            novosAvisos.push({
+              id: "videos-travados",
+              badge: "Alerta de Estagnação",
+              titulo: `${travados.length} ${travados.length === 1 ? "vídeo travado" : "vídeos travados"} no Pipeline`,
+              descricao: `O vídeo "${travados[0].titulo}" está parado há mais de 3 dias no mesmo estágio. Vale a pena verificar!`,
+              cor: "#ef4444",
+              icon: <ShieldAlert className="w-4 h-4 text-white" />,
+            });
+          }
+        }
+      } catch (e) {
+        console.error(e);
+      }
+
+      setAvisosReais(novosAvisos);
+    }
+
+    carregarAlertasReais();
+  }, []);
+
+  const listaCompleta = [...avisosReais, ...AVISOS_DICAS];
+
+  useEffect(() => {
     const timer = setInterval(() => {
-      setIndex((prev) => (prev + 1) % listaAvisos.length);
+      setIndex((prev) => (prev + 1) % listaCompleta.length);
     }, 5000);
     return () => clearInterval(timer);
-  }, [listaAvisos.length]);
+  }, [listaCompleta.length]);
 
-  const proximo = () => setIndex((prev) => (prev + 1) % listaAvisos.length);
-  const anterior = () => setIndex((prev) => (prev - 1 + listaAvisos.length) % listaAvisos.length);
+  const proximo = () => setIndex((prev) => (prev + 1) % listaCompleta.length);
+  const anterior = () => setIndex((prev) => (prev - 1 + listaCompleta.length) % listaCompleta.length);
 
-  const atual = listaAvisos[index];
+  const atual = listaCompleta[index] || AVISOS_DICAS[0];
 
   return (
     <div
@@ -91,7 +133,7 @@ export function BannerAvisos({ avisosAdicionais = [] }: { avisosAdicionais?: Avi
                 {atual.badge}
               </span>
               <span className="text-[11px] font-medium" style={{ color: "var(--text-muted)" }}>
-                Aviso {index + 1} de {listaAvisos.length}
+                Aviso {index + 1} de {listaCompleta.length}
               </span>
             </div>
             <h3 className="font-heading text-base font-bold" style={{ color: "var(--text-primary)" }}>
@@ -124,7 +166,7 @@ export function BannerAvisos({ avisosAdicionais = [] }: { avisosAdicionais?: Avi
 
       {/* Indicadores de bolinhas */}
       <div className="flex justify-center gap-1.5 mt-3">
-        {listaAvisos.map((_, i) => (
+        {listaCompleta.map((_, i) => (
           <button
             key={i}
             onClick={() => setIndex(i)}

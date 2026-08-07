@@ -13,6 +13,7 @@ import {
   Bookmark,
   Inbox,
   Settings,
+  Camera,
 } from "lucide-react";
 
 const NAV_ITEMS = [
@@ -28,8 +29,12 @@ const NAV_ITEMS = [
 export function Sidebar() {
   const pathname = usePathname();
   const [inboxCount, setInboxCount] = useState(0);
+  const [userAvatar, setUserAvatar] = useState<string | null>(null);
 
   useEffect(() => {
+    const avatarSalvo = localStorage.getItem("ruan_user_avatar");
+    if (avatarSalvo) setUserAvatar(avatarSalvo);
+
     const buscarInbox = () => {
       fetch("/api/inbox/count")
         .then((r) => r.json())
@@ -42,6 +47,19 @@ export function Sidebar() {
     return () => clearInterval(interval);
   }, []);
 
+  const handleTrocarAvatar = () => {
+    const url = prompt("Cole a URL da sua foto de perfil:", userAvatar || "");
+    if (url !== null) {
+      if (url.trim()) {
+        localStorage.setItem("ruan_user_avatar", url.trim());
+        setUserAvatar(url.trim());
+      } else {
+        localStorage.removeItem("ruan_user_avatar");
+        setUserAvatar(null);
+      }
+    }
+  };
+
   return (
     <aside
       className="fixed top-0 left-0 h-screen w-[260px] border-r flex flex-col z-30 hide-mobile"
@@ -50,7 +68,7 @@ export function Sidebar() {
         borderColor: "var(--border)",
       }}
     >
-      {/* Logo única meuacessor.svg em tamanho mais compacto e elegante */}
+      {/* Logo única meuacessor.svg */}
       <div
         className="px-6 h-[72px] flex items-center border-b"
         style={{ borderColor: "var(--border)" }}
@@ -105,21 +123,34 @@ export function Sidebar() {
           Configurações
         </Link>
 
-        {/* User avatar */}
+        {/* User avatar com opção de trocar foto */}
         <div className="mt-5 mx-3 flex items-center gap-3">
-          <div
-            className="w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold"
-            style={{
-              background: "linear-gradient(135deg, var(--accent), #c22f16)",
-              color: "#fff",
-              boxShadow: "0 3px 10px rgba(255, 90, 61, 0.25)",
-            }}
+          <button
+            onClick={handleTrocarAvatar}
+            className="relative group w-9 h-9 rounded-full overflow-hidden flex-shrink-0 cursor-pointer border hover:opacity-90 transition-all"
+            style={{ borderColor: "var(--border)" }}
+            title="Clique para trocar foto de perfil"
           >
-            R
-          </div>
-          <div>
-            <p className="text-[13px] font-semibold" style={{ color: "var(--text-primary)" }}>Ruan</p>
-            <p className="text-[11px]" style={{ color: "var(--text-muted)" }}>Editor de Vídeo</p>
+            {userAvatar ? (
+              <Image src={userAvatar} alt="Foto de perfil" fill className="object-cover" />
+            ) : (
+              <div
+                className="w-full h-full flex items-center justify-center text-sm font-bold text-white"
+                style={{
+                  background: "linear-gradient(135deg, var(--accent), #c22f16)",
+                  boxShadow: "0 3px 10px rgba(255, 90, 61, 0.25)",
+                }}
+              >
+                R
+              </div>
+            )}
+            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
+              <Camera className="w-3.5 h-3.5 text-white" />
+            </div>
+          </button>
+          <div className="min-w-0">
+            <p className="text-[13px] font-semibold truncate" style={{ color: "var(--text-primary)" }}>Ruan</p>
+            <p className="text-[11px] truncate" style={{ color: "var(--text-muted)" }}>Editor de Vídeo</p>
           </div>
         </div>
       </div>
