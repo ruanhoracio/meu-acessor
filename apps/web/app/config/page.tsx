@@ -1,8 +1,9 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { Plus, Trash2, Check, Clock, Bot, Sliders, User, Camera, CheckCircle2, Loader2, AlertCircle } from "lucide-react";
+import { Plus, Trash2, Check, Clock, Bot, Sliders, User, Camera, CheckCircle2, Loader2, AlertCircle, Crop } from "lucide-react";
 import { getProjetos, criarProjeto, excluirProjeto } from "@/actions/projetos";
+import { ModalCropper } from "@/components/modals/modal-cropper";
 
 export default function ConfigPage() {
   const [projetos, setProjetos] = useState<any[]>([]);
@@ -12,6 +13,10 @@ export default function ConfigPage() {
   const [nomeUsuario, setNomeUsuario] = useState("Ruan");
   const [userAvatar, setUserAvatar] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+  // Cropper Modal
+  const [cropperOpen, setCropperOpen] = useState(false);
+  const [rawImageSrc, setRawImageSrc] = useState<string | null>(null);
 
   // Configurações de Horas e Telegram
   const [horasDia, setHorasDia] = useState("6");
@@ -30,7 +35,7 @@ export default function ConfigPage() {
   const [mensagemErro, setMensagemErro] = useState<string | null>(null);
 
   useEffect(() => {
-    // Carregar configurações salvas
+    // Carregar configurações salvas do localStorage
     try {
       const avatar = localStorage.getItem("ruan_user_avatar");
       if (avatar) setUserAvatar(avatar);
@@ -50,7 +55,7 @@ export default function ConfigPage() {
       const hFechamento = localStorage.getItem("ruan_horario_fechamento");
       if (hFechamento) setHorarioFechamento(hFechamento);
     } catch (e) {
-      console.error("Erro ao carregar configurações do localStorage:", e);
+      console.error("Erro ao ler localStorage:", e);
     }
 
     // Carregar projetos do Supabase DB
@@ -60,39 +65,69 @@ export default function ConfigPage() {
   const carregarProjetos = async () => {
     setLoadingProjetos(true);
     try {
-      const data = await getProjetos();
-      setProjetos(data);
+      // Tenta via API REST primeiro (100% confiável no Vercel)
+      const dataApi = await fetch("/api/projetos").then(r => r.json()).catch(() => null);
+      if (Array.isArray(dataApi)) {
+        setProjetos(dataApi);
+      } else {
+        const dataActions = await getProjetos();
+        setProjetos(dataActions);
+      }
     } catch (error) {
       console.error("Erro ao carregar projetos:", error);
-      exibirErro("Erro ao carregar projetos do banco de dados.");
     }
     setLoadingProjetos(false);
   };
 
   const handleAddProjeto = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!novoNome.trim() || salvandoProjeto) return;
+    const nomeLimpo = novoNome.trim();
+    if (!nomeLimpo || salvandoProjeto) return;
 
     setSalvandoProjeto(true);
+
+    let sucesso = false;
+
+    // 1. Tentar via Server Action
     try {
       const res = await criarProjeto({
-        nome: novoNome.trim(),
+        nome: nomeLimpo,
         tipo: novoTipo,
         cor: novaCor,
       });
-
-      if (res.success) {
-        setNovoNome("");
-        await carregarProjetos();
-        exibirSucesso("Projeto/Cliente adicionado com sucesso!");
-      } else {
-        exibirErro("Erro ao criar projeto. Tente novamente.");
+      if (res && res.success) {
+        sucesso = true;
       }
-    } catch (error) {
-      console.error("Erro ao adicionar projeto:", error);
-      exibirErro("Erro ao criar projeto. Verifique sua conexão.");
+    } catch (err) {
+      console.warn("Server action falhou, usando fallback de API:", err);
     }
+
+    // 2. Fallback via API REST
+    if (!sucesso) {
+      try {
+        const apiRes = await fetch("/api/projetos", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ nome: nomeLimpo, tipo: novoTipo, cor: novaCor }),
+        }).then(r => r.json());
+
+        if (apiRes && apiRes.id) {
+          sucesso = true;
+        }
+      } catch (err) {
+        console.error("Erro no fallback da API:", err);
+      }
+    }
+
     setSalvandoProjeto(false);
+
+    if (sucesso) {
+      setNovoNome("");
+      await carregarProjetos();
+      exibirSucesso(`Cliente "${nomeLimpo}" adicionado com sucesso!`);
+    } else {
+      exibirErro("Não foi possível salvar o cliente. Verifique sua conexão e tente novamente.");
+    }
   };
 
   const handleExcluirProjeto = async (id: string, nome: string) => {
@@ -112,43 +147,51 @@ export default function ConfigPage() {
     }
   };
 
+  // Ao selecionar um arquivo do computador
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
       const reader = new FileReader();
       reader.onload = (evt) => {
-        const img = document.createElement("img");
-        img.onload = () => {
-          const canvas = document.createElement("canvas");
-          const size = 300;
-          canvas.width = size;
-          canvas.height = size;
-          const ctx = canvas.getContext("2d");
-          if (ctx) {
-            const minDim = Math.min(img.width, img.height);
-            const sx = (img.width - minDim) / 2;
-            const sy = (img.height - minDim) / 2;
-            ctx.drawImage(img, sx, sy, minDim, minDim, 0, 0, size, size);
-            const croppedBase64 = canvas.toDataURL("image/jpeg", 0.9);
-            localStorage.setItem("ruan_user_avatar", croppedBase64);
-            setUserAvatar(croppedBase64);
-            exibirSucesso("Foto de perfil redimensionada e salva com sucesso!");
-          }
-        };
-        img.src = evt.target?.result as string;
+        const result = evt.target?.result as string;
+        if (result) {
+          setRawImageSrc(result);
+          setCropperOpen(true);
+        }
       };
       reader.readAsDataURL(file);
+    }
+    // Resetar input para permitir selecionar o mesmo arquivo se quiser
+    e.target.value = "";
+  };
+
+  // Ao salvar o recorte do modal cropper
+  const handleCropSave = (croppedBase64: string) => {
+    try {
+      localStorage.setItem("ruan_user_avatar", croppedBase64);
+      setUserAvatar(croppedBase64);
+      window.dispatchEvent(new Event("storage_user_updated"));
+      exibirSucesso("Foto de perfil enquadrada e salva com sucesso!");
+    } catch (e) {
+      exibirErro("Erro ao salvar foto de perfil.");
     }
   };
 
   const handleSalvarTudo = () => {
-    localStorage.setItem("ruan_user_name", nomeUsuario);
-    localStorage.setItem("ruan_horas_dia", horasDia);
-    localStorage.setItem("ruan_horario_resumo", horarioResumo);
-    localStorage.setItem("ruan_horario_checagem", horarioChecagem);
-    localStorage.setItem("ruan_horario_fechamento", horarioFechamento);
+    try {
+      localStorage.setItem("ruan_user_name", nomeUsuario);
+      localStorage.setItem("ruan_horas_dia", horasDia);
+      localStorage.setItem("ruan_horario_resumo", horarioResumo);
+      localStorage.setItem("ruan_horario_checagem", horarioChecagem);
+      localStorage.setItem("ruan_horario_fechamento", horarioFechamento);
 
-    exibirSucesso("✅ Todas as configurações salvas com sucesso!");
+      // Notificar outros componentes (Sidebar, Header, etc)
+      window.dispatchEvent(new Event("storage_user_updated"));
+
+      exibirSucesso("✅ Configurações salvas com sucesso!");
+    } catch (e) {
+      exibirErro("Erro ao salvar configurações.");
+    }
   };
 
   const exibirSucesso = (msg: string) => {
@@ -165,6 +208,14 @@ export default function ConfigPage() {
 
   return (
     <div className="animate-fade-in-up max-w-3xl space-y-8 pb-12">
+      {/* Modal Interativo de Recorte/Enquadramento de Foto */}
+      <ModalCropper
+        isOpen={cropperOpen}
+        imageSrc={rawImageSrc}
+        onClose={() => setCropperOpen(false)}
+        onCropSave={handleCropSave}
+      />
+
       {mensagemSucesso && (
         <div className="p-4 rounded-xl bg-green-50 border border-green-200 text-green-800 flex items-center gap-3 font-semibold text-sm shadow-xs animate-fade-in-up">
           <CheckCircle2 className="w-5 h-5 text-green-600 flex-shrink-0" />
@@ -185,10 +236,10 @@ export default function ConfigPage() {
           Seu Perfil
         </h2>
         <p className="text-xs mb-6" style={{ color: "var(--text-muted)" }}>
-          Personalize sua foto de perfil e nome de exibição no app.
+          Escolha e enquadre sua foto de perfil do computador e personalize seu nome.
         </p>
 
-        <div className="flex items-center gap-6">
+        <div className="flex flex-col sm:flex-row items-center sm:items-start gap-6">
           <input
             type="file"
             ref={fileInputRef}
@@ -197,30 +248,41 @@ export default function ConfigPage() {
             className="hidden"
           />
 
-          <button
-            type="button"
-            onClick={() => fileInputRef.current?.click()}
-            className="relative group w-20 h-20 rounded-full overflow-hidden flex-shrink-0 cursor-pointer border-2 hover:opacity-95 transition-all"
-            style={{ borderColor: "var(--accent)" }}
-            title="Clique para escolher foto do seu computador"
-          >
-            {userAvatar ? (
-              <img src={userAvatar} alt="Foto de perfil" className="w-full h-full object-cover" />
-            ) : (
-              <div
-                className="w-full h-full flex items-center justify-center text-2xl font-bold text-white"
-                style={{ background: "linear-gradient(135deg, var(--accent), #c22f16)" }}
-              >
-                R
+          <div className="flex flex-col items-center gap-2">
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              className="relative group w-24 h-24 rounded-full overflow-hidden flex-shrink-0 cursor-pointer border-3 hover:opacity-95 transition-all shadow-md"
+              style={{ borderColor: "var(--accent)" }}
+              title="Clique para escolher foto do seu computador"
+            >
+              {userAvatar ? (
+                <img src={userAvatar} alt="Foto de perfil" className="w-full h-full object-cover" />
+              ) : (
+                <div
+                  className="w-full h-full flex items-center justify-center text-3xl font-bold text-white"
+                  style={{ background: "linear-gradient(135deg, var(--accent), #c22f16)" }}
+                >
+                  {nomeUsuario.charAt(0).toUpperCase()}
+                </div>
+              )}
+              <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex flex-col items-center justify-center text-white text-xs gap-1 transition-opacity">
+                <Camera className="w-5 h-5" />
+                <span className="font-bold">Trocar</span>
               </div>
-            )}
-            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex flex-col items-center justify-center text-white text-xs gap-1 transition-opacity">
-              <Camera className="w-5 h-5" />
-              <span>Trocar</span>
-            </div>
-          </button>
+            </button>
 
-          <div className="flex-1 space-y-3">
+            <button
+              type="button"
+              onClick={() => fileInputRef.current?.click()}
+              className="text-xs text-accent font-semibold flex items-center gap-1 hover:underline cursor-pointer"
+            >
+              <Crop className="w-3.5 h-3.5" />
+              Enquadrar foto
+            </button>
+          </div>
+
+          <div className="flex-1 w-full space-y-3">
             <div>
               <label className="text-xs font-semibold block mb-1" style={{ color: "var(--text-secondary)" }}>
                 Nome de Exibição:
@@ -229,7 +291,8 @@ export default function ConfigPage() {
                 type="text"
                 value={nomeUsuario}
                 onChange={(e) => setNomeUsuario(e.target.value)}
-                className="input w-full max-w-sm"
+                className="input w-full max-w-md"
+                placeholder="Ex: Ruan Horácio"
               />
             </div>
           </div>
@@ -257,12 +320,12 @@ export default function ConfigPage() {
             {projetos.map((p) => (
               <div
                 key={p.id}
-                className="flex items-center justify-between p-3.5 rounded-xl transition-colors"
-                style={{ background: "var(--bg-surface)" }}
+                className="flex items-center justify-between p-3.5 rounded-xl transition-colors border"
+                style={{ background: "var(--bg-surface)", borderColor: "var(--border)" }}
               >
                 <div className="flex items-center gap-3">
-                  <span className="w-3.5 h-3.5 rounded-full" style={{ background: p.cor || "#ff5a3d" }} />
-                  <span className="text-sm font-semibold">{p.nome}</span>
+                  <span className="w-3.5 h-3.5 rounded-full flex-shrink-0 shadow-xs" style={{ background: p.cor || "#ff5a3d" }} />
+                  <span className="text-sm font-semibold text-gray-900">{p.nome}</span>
                   <span className="badge badge-neutral text-[10px] capitalize">{p.tipo}</span>
                 </div>
                 <button
@@ -279,35 +342,50 @@ export default function ConfigPage() {
           </div>
         )}
 
-        {/* Form novo projeto */}
-        <form onSubmit={handleAddProjeto} className="flex flex-col sm:flex-row gap-3 pt-4 border-t" style={{ borderColor: "var(--border)" }}>
-          <input
-            type="text"
-            placeholder="Nome do cliente/projeto"
-            value={novoNome}
-            onChange={(e) => setNovoNome(e.target.value)}
-            className="input flex-1"
-          />
-          <select
-            value={novoTipo}
-            onChange={(e) => setNovoTipo(e.target.value as any)}
-            className="input sm:w-32"
-          >
-            <option value="cliente">Cliente</option>
-            <option value="interno">Interno</option>
-            <option value="pessoal">Pessoal</option>
-          </select>
-          <input
-            type="color"
-            value={novaCor}
-            onChange={(e) => setNovaCor(e.target.value)}
-            className="w-10 h-10 rounded-xl cursor-pointer bg-transparent border-0 p-1"
-            title="Escolher cor"
-          />
-          <button type="submit" disabled={salvandoProjeto} className="btn-primary flex items-center justify-center gap-1.5 whitespace-nowrap cursor-pointer">
-            {salvandoProjeto ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
-            Adicionar
-          </button>
+        {/* Form novo projeto - LAYOUT EXPLÍCITO E SEM COLAPSO */}
+        <form onSubmit={handleAddProjeto} className="pt-4 border-t space-y-3" style={{ borderColor: "var(--border)" }}>
+          <label className="text-xs font-bold text-gray-600 block">Adicionar Novo Cliente / Projeto:</label>
+          <div className="flex flex-col sm:flex-row gap-3">
+            <div className="flex-1 min-w-[200px]">
+              <input
+                type="text"
+                placeholder="Nome do cliente (ex: João Silva)"
+                value={novoNome}
+                onChange={(e) => setNovoNome(e.target.value)}
+                className="input w-full"
+                required
+              />
+            </div>
+
+            <div className="flex items-center gap-2">
+              <select
+                value={novoTipo}
+                onChange={(e) => setNovoTipo(e.target.value as any)}
+                className="input w-32"
+              >
+                <option value="cliente">Cliente</option>
+                <option value="interno">Interno</option>
+                <option value="pessoal">Pessoal</option>
+              </select>
+
+              <input
+                type="color"
+                value={novaCor}
+                onChange={(e) => setNovaCor(e.target.value)}
+                className="w-10 h-10 rounded-xl cursor-pointer bg-transparent border border-gray-200 p-1 flex-shrink-0"
+                title="Escolher cor da etiqueta"
+              />
+
+              <button
+                type="submit"
+                disabled={salvandoProjeto}
+                className="btn-primary flex items-center justify-center gap-1.5 px-6 whitespace-nowrap cursor-pointer"
+              >
+                {salvandoProjeto ? <Loader2 className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
+                Adicionar
+              </button>
+            </div>
+          </div>
         </form>
       </section>
 
@@ -350,7 +428,7 @@ export default function ConfigPage() {
         </p>
 
         <div className="space-y-4">
-          <div className="flex items-center justify-between p-3.5 rounded-xl" style={{ background: "var(--bg-surface)" }}>
+          <div className="flex items-center justify-between p-3.5 rounded-xl border" style={{ background: "var(--bg-surface)", borderColor: "var(--border)" }}>
             <div>
               <p className="text-sm font-semibold">Resumo Matinal</p>
               <p className="text-xs" style={{ color: "var(--text-muted)" }}>Agenda, tarefas e vídeos do dia</p>
@@ -363,7 +441,7 @@ export default function ConfigPage() {
             />
           </div>
 
-          <div className="flex items-center justify-between p-3.5 rounded-xl" style={{ background: "var(--bg-surface)" }}>
+          <div className="flex items-center justify-between p-3.5 rounded-xl border" style={{ background: "var(--bg-surface)", borderColor: "var(--border)" }}>
             <div>
               <p className="text-sm font-semibold">Checagem da Tarde</p>
               <p className="text-xs" style={{ color: "var(--text-muted)" }}>Status do que ainda falta concluir</p>
@@ -376,7 +454,7 @@ export default function ConfigPage() {
             />
           </div>
 
-          <div className="flex items-center justify-between p-3.5 rounded-xl" style={{ background: "var(--bg-surface)" }}>
+          <div className="flex items-center justify-between p-3.5 rounded-xl border" style={{ background: "var(--bg-surface)", borderColor: "var(--border)" }}>
             <div>
               <p className="text-sm font-semibold">Fechamento de Sexta</p>
               <p className="text-xs" style={{ color: "var(--text-muted)" }}>Resumo semanal e projeção da próxima semana</p>
@@ -393,7 +471,7 @@ export default function ConfigPage() {
 
       {/* Botão Salvar */}
       <div className="flex justify-end">
-        <button onClick={handleSalvarTudo} className="btn-primary flex items-center gap-2 px-8 py-3 text-sm cursor-pointer shadow-lg">
+        <button onClick={handleSalvarTudo} className="btn-primary flex items-center gap-2 px-8 py-3.5 text-sm cursor-pointer shadow-lg">
           <Check className="w-4 h-4" />
           Salvar Configurações
         </button>

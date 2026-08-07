@@ -34,11 +34,15 @@ export function Sidebar() {
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
-    const avatarSalvo = localStorage.getItem("ruan_user_avatar");
-    if (avatarSalvo) setUserAvatar(avatarSalvo);
+    const syncUser = () => {
+      const avatarSalvo = localStorage.getItem("ruan_user_avatar");
+      if (avatarSalvo) setUserAvatar(avatarSalvo);
 
-    const nomeSalvo = localStorage.getItem("ruan_user_name");
-    if (nomeSalvo) setNomeUsuario(nomeSalvo);
+      const nomeSalvo = localStorage.getItem("ruan_user_name");
+      if (nomeSalvo) setNomeUsuario(nomeSalvo);
+    };
+
+    syncUser();
 
     const buscarInbox = () => {
       fetch("/api/inbox/count")
@@ -49,7 +53,13 @@ export function Sidebar() {
 
     buscarInbox();
     const interval = setInterval(buscarInbox, 5000);
-    return () => clearInterval(interval);
+
+    window.addEventListener("storage_user_updated", syncUser);
+
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener("storage_user_updated", syncUser);
+    };
   }, []);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
