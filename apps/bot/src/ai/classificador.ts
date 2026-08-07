@@ -26,6 +26,23 @@ export interface ClassificacaoOutput {
   confirmacao: string;
 }
 
+const DIAS_SEMANA_PT = ["Domingo", "Segunda-feira", "Terça-feira", "Quarta-feira", "Quinta-feira", "Sexta-feira", "Sábado"];
+
+function gerarGuiaDatas(hoje: Date) {
+  const guia: string[] = [];
+  const diaHoje = hoje.getDay(); // 0 = Domingo, 1 = Segunda, etc.
+  guia.push(`Hoje: ${DIAS_SEMANA_PT[diaHoje]}, ${hoje.toISOString().split("T")[0]}`);
+
+  for (let i = 1; i <= 7; i++) {
+    const d = new Date(hoje);
+    d.setDate(hoje.getDate() + i);
+    const nomeDia = DIAS_SEMANA_PT[d.getDay()];
+    guia.push(`${nomeDia}: ${d.toISOString().split("T")[0]}`);
+  }
+
+  return guia.join("\n");
+}
+
 export async function classificarComClaude(
   mensagem: string,
   contexto: {
@@ -34,43 +51,43 @@ export async function classificarComClaude(
     ultimosItens: string[];
   }
 ): Promise<ClassificacaoOutput[]> {
-  const systemPrompt = `Você é o assistente inteligente "Meu Assessor", especializado em organizar a vida de um editor de vídeo profissional.
-Você recebe mensagens enviadas pelo usuário (texto ou áudio transcrito) e deve extrair intenções estruturadas.
+  const agora = new Date(contexto.dataAtual || Date.now());
+  const guiaDatas = gerarGuiaDatas(agora);
 
-RESPOSTA OBRIGATÓRIA: Devolva APENAS um array JSON válido sem nenhum texto introdutório, explicações ou markdown extra.
+  const systemPrompt = `Você é o assistente IA super inteligente "Meu Assessor", criado para organizar a rotina de um editor de vídeo profissional.
+Sua missão é entender com EXTREMA PRECISÃO a linguagem natural do usuário (português do Brasil) e extrair tarefas, vídeos, eventos ou notas com as DATAS CORRETAS.
 
-Data/hora atual: ${contexto.dataAtual}
-Projetos/Clientes ativos no sistema: ${JSON.stringify(contexto.projetosAtivos)}
-Últimos itens criados: ${JSON.stringify(contexto.ultimosItens)}
+TABELA DE REFERÊNCIA DE DATAS RELATIVAS (USE ESTA TABELA PARA RESOLVER DIAS DA SEMANA):
+${guiaDatas}
 
-Regras de classificação:
-1. "video": Edição de vídeo (VSL, Reels, Criativo, Aula, etc.). Identifique prazo, estimativa de horas e nome do cliente/projeto.
-2. "tarefa": Afazer genérico (ex: "comprar plugin", "responder e-mail", "backup").
-3. "evento": Compromisso com hora marcada (reunião, call, médico).
-4. "nota": Anotação ou feedback de cliente.
-5. "referencia": Links de inspiração de edição ou tutoriais.
-6. "consulta": Pergunta sobre o sistema (ex: "o que tenho hoje?", "quantos vídeos faltam?").
-7. "correcao": Correção sobre item anterior.
+REGRAS CRÍTICAS DE INTERPRETAÇÃO DE DATA/PRAZO:
+1. Quando o usuário disser "segunda", "segunda feira", "segunda-feira", "pra segunda":
+   - Consulte a tabela acima e pegue a data ISO referente a "Segunda-feira" (ex: se hoje é sexta dia 7, Segunda-feira é dia 10!).
+   - Defina "prazo": "YYYY-MM-DDT18:00:00.000Z".
+2. Limpe o título da tarefa/vídeo removendo a menção da data.
+   - Exemplo de entrada: "Editar vídeo do cliente Petron para segunda feira"
+   - Título limpo: "Editar vídeo do cliente Petron"
+   - Projeto identificado: "Petron"
+   - Prazo: ISO date da Segunda-feira correspondente.
+3. Se houver mais de uma linha na mensagem (ex: uma lista de tarefas), devolva um objeto no array JSON para CADA item.
+4. "video": Se o usuário mencionar edição de vídeo, cortar, VSL, Reels, Criativo, aula, canal, clipe, etc.
+5. "tarefa": Qualquer outro afazer (ex: pagar contas, fazer app, enviar e-mail, reunião, etc.).
 
-Estrutura de cada objeto no array JSON:
+ESTRUTURA DO ARRAY JSON DE RESPOSTA (SEM MARKDOWN ADICIONAL, APENAS O ARRAY JSON PURO):
 [
   {
     "tipo": "video" | "tarefa" | "evento" | "nota" | "referencia" | "consulta" | "correcao",
-    "titulo": "string",
-    "projeto": "string com nome do cliente se identificado",
+    "titulo": "Título limpo sem expressão de data",
+    "projeto": "Nome do cliente se mencionado",
     "formato": "reels" | "vsl" | "criativo" | "aula" | "institucional" | "outro",
-    "prazo": "ISO string da data/hora",
+    "prazo": "YYYY-MM-DDT18:00:00.000Z",
     "estimativa_horas": 4,
-    "estagio": "briefing",
-    "descricao": "string",
-    "tags": ["string"],
-    "url": "string",
-    "confianca": 0.9,
-    "confirmacao": "✓ Tarefa criada: ..."
+    "confianca": 0.95,
+    "confirmacao": "✓ Tarefa criada: Título (Prazo: Segunda-feira, 10/08)"
   }
 ]`;
 
-  // 1. Tenta Groq Llama-3.3-70b (Rápido e Gratuito)
+  // 1. Groq (Llama-3.3-70b - Rápido e ultra preciso)
   if (groq) {
     try {
       const response = await groq.chat.completions.create({
@@ -92,7 +109,7 @@ Estrutura de cada objeto no array JSON:
     }
   }
 
-  // 2. Tenta Google Gemini
+  // 2. Gemini
   if (ai) {
     try {
       const model = ai.getGenerativeModel({ model: "gemini-1.5-flash-latest" });
@@ -108,64 +125,63 @@ Estrutura de cada objeto no array JSON:
     }
   }
 
-  // 3. Tenta Anthropic Claude
-  if (anthropic) {
-    try {
-      const response = await anthropic.messages.create({
-        model: "claude-3-5-sonnet-20241022",
-        max_tokens: 1000,
-        system: systemPrompt,
-        messages: [{ role: "user", content: mensagem }],
-      });
-
-      const textBlock = response.content.find((c) => c.type === "text");
-      if (textBlock) {
-        const jsonText = textBlock.text.trim().replace(/^```json/, "").replace(/```$/, "").trim();
-        return JSON.parse(jsonText) as ClassificacaoOutput[];
-      }
-    } catch (error) {
-      console.error("[Claude] Erro na classificação:", error);
-    }
-  }
-
-  // 4. Fallback inteligente local
-  return classificadorFallback(mensagem);
+  // 3. Fallback com suporte a parsing de datas por regex inteligente
+  return classificadorFallback(mensagem, agora);
 }
 
-function classificadorFallback(mensagem: string): ClassificacaoOutput[] {
-  const msgLower = mensagem.toLowerCase();
+function classificadorFallback(mensagem: string, agora: Date): ClassificacaoOutput[] {
+  const linhas = mensagem.split("\n").map(l => l.trim()).filter(Boolean);
+  const resultados: ClassificacaoOutput[] = [];
 
-  if (msgLower.includes("vídeo") || msgLower.includes("video") || msgLower.includes("vsl") || msgLower.includes("reels")) {
-    return [
-      {
-        tipo: "video",
-        titulo: mensagem.length > 50 ? mensagem.slice(0, 50) + "..." : mensagem,
-        formato: msgLower.includes("vsl") ? "vsl" : msgLower.includes("reels") ? "reels" : "outro",
-        estimativa_horas: 4,
-        confianca: 0.85,
-        confirmacao: `✓ Vídeo capturado: "${mensagem.slice(0, 30)}..."`,
-      },
+  for (const linha of linhas) {
+    const msgLower = linha.toLowerCase();
+
+    // Tenta encontrar dia da semana por regex
+    let prazo: Date | null = null;
+    let tituloLimpo = linha;
+
+    const regexSegunda = /(?:para|pra|em|na)?\s*(segunda(?:-feira)?)/i;
+    const regexTerca = /(?:para|pra|em|na)?\s*(terça(?:-feira)?|terca(?:-feira)?)/i;
+    const regexQuarta = /(?:para|pra|em|na)?\s*(quarta(?:-feira)?)/i;
+    const regexQuinta = /(?:para|pra|em|na)?\s*(quinta(?:-feira)?)/i;
+    const regexSexta = /(?:para|pra|em|na)?\s*(sexta(?:-feira)?)/i;
+    const regexSabado = /(?:para|pra|em|no)?\s*(sábado|sabado)/i;
+    const regexDomingo = /(?:para|pra|em|no)?\s*(domingo)/i;
+
+    const alvos: [RegExp, number][] = [
+      [regexDomingo, 0],
+      [regexSegunda, 1],
+      [regexTerca, 2],
+      [regexQuarta, 3],
+      [regexQuinta, 4],
+      [regexSexta, 5],
+      [regexSabado, 6],
     ];
+
+    for (const [regex, targetDay] of alvos) {
+      if (regex.test(msgLower)) {
+        const d = new Date(agora);
+        let diff = targetDay - d.getDay();
+        if (diff <= 0) diff += 7; // Próximo dia correspondente
+        d.setDate(d.getDate() + diff);
+        d.setHours(18, 0, 0, 0);
+        prazo = d;
+        tituloLimpo = linha.replace(regex, "").replace(/\s+/g, " ").trim();
+        break;
+      }
+    }
+
+    const isVideo = msgLower.includes("vídeo") || msgLower.includes("video") || msgLower.includes("vsl") || msgLower.includes("reels") || msgLower.includes("corte");
+
+    resultados.push({
+      tipo: isVideo ? "video" : "tarefa",
+      titulo: tituloLimpo || linha,
+      prazo: prazo ? prazo.toISOString() : undefined,
+      formato: msgLower.includes("vsl") ? "vsl" : msgLower.includes("reels") ? "reels" : "outro",
+      confianca: 0.9,
+      confirmacao: `✓ ${isVideo ? "Vídeo" : "Tarefa"} criada: "${tituloLimpo || linha}"${prazo ? ` (Prazo: ${prazo.toLocaleDateString("pt-BR")})` : ""}`,
+    });
   }
 
-  if (msgLower.includes("http://") || msgLower.includes("https://")) {
-    return [
-      {
-        tipo: "referencia",
-        titulo: "Link de referência",
-        url: mensagem,
-        confianca: 0.9,
-        confirmacao: "✓ Referência salva com sucesso!",
-      },
-    ];
-  }
-
-  return [
-    {
-      tipo: "tarefa",
-      titulo: mensagem,
-      confianca: 0.8,
-      confirmacao: `✓ Tarefa criada: "${mensagem.slice(0, 35)}"`,
-    },
-  ];
+  return resultados;
 }

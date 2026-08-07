@@ -161,9 +161,13 @@ export async function handleMensagem(ctx: Context) {
       keyboard.url("🌐 Abrir App", config.appUrl);
     }
 
-    const confirmacaoMsg = classificacoes.map((c) => c.confirmacao).join("\n");
+    const msgLinhas = classificacoes
+      .map((c) => c.confirmacao || `✓ ${c.tipo === "video" ? "Vídeo" : "Tarefa"} criada: ${c.titulo}`)
+      .filter((t) => t && t.trim().length > 0);
 
-    await ctx.reply(confirmacaoMsg || "✓ Registrado com sucesso!", {
+    const confirmacaoMsg = msgLinhas.length > 0 ? msgLinhas.join("\n") : "✓ Registrado com sucesso!";
+
+    await ctx.reply(confirmacaoMsg, {
       reply_markup: keyboard,
     });
   } catch (error: any) {
