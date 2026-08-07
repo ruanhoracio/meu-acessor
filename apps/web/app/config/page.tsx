@@ -1,8 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { Plus, Trash2, Check, Clock, Bot, Sliders, User, Camera, CheckCircle2, Loader2 } from "lucide-react";
-import Image from "next/image";
+import { Plus, Trash2, Check, Clock, Bot, Sliders, User, Camera, CheckCircle2, Loader2, AlertCircle } from "lucide-react";
 import { getProjetos, criarProjeto, excluirProjeto } from "@/actions/projetos";
 
 export default function ConfigPage() {
@@ -28,26 +27,31 @@ export default function ConfigPage() {
 
   // Feedback
   const [mensagemSucesso, setMensagemSucesso] = useState<string | null>(null);
+  const [mensagemErro, setMensagemErro] = useState<string | null>(null);
 
   useEffect(() => {
     // Carregar configurações salvas
-    const avatar = localStorage.getItem("ruan_user_avatar");
-    if (avatar) setUserAvatar(avatar);
+    try {
+      const avatar = localStorage.getItem("ruan_user_avatar");
+      if (avatar) setUserAvatar(avatar);
 
-    const nome = localStorage.getItem("ruan_user_name");
-    if (nome) setNomeUsuario(nome);
+      const nome = localStorage.getItem("ruan_user_name");
+      if (nome) setNomeUsuario(nome);
 
-    const hDia = localStorage.getItem("ruan_horas_dia");
-    if (hDia) setHorasDia(hDia);
+      const hDia = localStorage.getItem("ruan_horas_dia");
+      if (hDia) setHorasDia(hDia);
 
-    const hResumo = localStorage.getItem("ruan_horario_resumo");
-    if (hResumo) setHorarioResumo(hResumo);
+      const hResumo = localStorage.getItem("ruan_horario_resumo");
+      if (hResumo) setHorarioResumo(hResumo);
 
-    const hChecagem = localStorage.getItem("ruan_horario_checagem");
-    if (hChecagem) setHorarioChecagem(hChecagem);
+      const hChecagem = localStorage.getItem("ruan_horario_checagem");
+      if (hChecagem) setHorarioChecagem(hChecagem);
 
-    const hFechamento = localStorage.getItem("ruan_horario_fechamento");
-    if (hFechamento) setHorarioFechamento(hFechamento);
+      const hFechamento = localStorage.getItem("ruan_horario_fechamento");
+      if (hFechamento) setHorarioFechamento(hFechamento);
+    } catch (e) {
+      console.error("Erro ao carregar configurações do localStorage:", e);
+    }
 
     // Carregar projetos do Supabase DB
     carregarProjetos();
@@ -55,8 +59,13 @@ export default function ConfigPage() {
 
   const carregarProjetos = async () => {
     setLoadingProjetos(true);
-    const data = await getProjetos();
-    setProjetos(data);
+    try {
+      const data = await getProjetos();
+      setProjetos(data);
+    } catch (error) {
+      console.error("Erro ao carregar projetos:", error);
+      exibirErro("Erro ao carregar projetos do banco de dados.");
+    }
     setLoadingProjetos(false);
   };
 
@@ -65,26 +74,40 @@ export default function ConfigPage() {
     if (!novoNome.trim() || salvandoProjeto) return;
 
     setSalvandoProjeto(true);
-    const res = await criarProjeto({
-      nome: novoNome.trim(),
-      tipo: novoTipo,
-      cor: novaCor,
-    });
-    setSalvandoProjeto(false);
+    try {
+      const res = await criarProjeto({
+        nome: novoNome.trim(),
+        tipo: novoTipo,
+        cor: novaCor,
+      });
 
-    if (res.success) {
-      setNovoNome("");
-      carregarProjetos();
-      exibirSucesso("Projeto/Cliente adicionado com sucesso!");
+      if (res.success) {
+        setNovoNome("");
+        await carregarProjetos();
+        exibirSucesso("Projeto/Cliente adicionado com sucesso!");
+      } else {
+        exibirErro("Erro ao criar projeto. Tente novamente.");
+      }
+    } catch (error) {
+      console.error("Erro ao adicionar projeto:", error);
+      exibirErro("Erro ao criar projeto. Verifique sua conexão.");
     }
+    setSalvandoProjeto(false);
   };
 
   const handleExcluirProjeto = async (id: string, nome: string) => {
     if (confirm(`Tem certeza que deseja remover o cliente/projeto "${nome}"?`)) {
-      const res = await excluirProjeto(id);
-      if (res.success) {
-        carregarProjetos();
-        exibirSucesso(`Projeto "${nome}" removido!`);
+      try {
+        const res = await excluirProjeto(id);
+        if (res.success) {
+          await carregarProjetos();
+          exibirSucesso(`Projeto "${nome}" removido!`);
+        } else {
+          exibirErro("Erro ao excluir projeto.");
+        }
+      } catch (error) {
+        console.error("Erro ao excluir projeto:", error);
+        exibirErro("Erro ao excluir projeto.");
       }
     }
   };
@@ -129,8 +152,15 @@ export default function ConfigPage() {
   };
 
   const exibirSucesso = (msg: string) => {
+    setMensagemErro(null);
     setMensagemSucesso(msg);
     setTimeout(() => setMensagemSucesso(null), 5000);
+  };
+
+  const exibirErro = (msg: string) => {
+    setMensagemSucesso(null);
+    setMensagemErro(msg);
+    setTimeout(() => setMensagemErro(null), 8000);
   };
 
   return (
@@ -139,6 +169,12 @@ export default function ConfigPage() {
         <div className="p-4 rounded-xl bg-green-50 border border-green-200 text-green-800 flex items-center gap-3 font-semibold text-sm shadow-xs animate-fade-in-up">
           <CheckCircle2 className="w-5 h-5 text-green-600 flex-shrink-0" />
           <span>{mensagemSucesso}</span>
+        </div>
+      )}
+      {mensagemErro && (
+        <div className="p-4 rounded-xl bg-red-50 border border-red-200 text-red-800 flex items-center gap-3 font-semibold text-sm shadow-xs animate-fade-in-up">
+          <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0" />
+          <span>{mensagemErro}</span>
         </div>
       )}
 
@@ -169,7 +205,7 @@ export default function ConfigPage() {
             title="Clique para escolher foto do seu computador"
           >
             {userAvatar ? (
-              <Image src={userAvatar} alt="Foto de perfil" fill className="object-cover" />
+              <img src={userAvatar} alt="Foto de perfil" className="w-full h-full object-cover" />
             ) : (
               <div
                 className="w-full h-full flex items-center justify-center text-2xl font-bold text-white"

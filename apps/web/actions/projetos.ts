@@ -1,7 +1,6 @@
 "use server";
 
 import prisma from "@/lib/db";
-import type { TipoProjeto } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 
 export async function getProjetos() {
@@ -18,14 +17,14 @@ export async function getProjetos() {
 
 export async function criarProjeto(data: {
   nome: string;
-  tipo: TipoProjeto;
+  tipo: string;
   cor?: string;
 }) {
   try {
     const novoProjeto = await prisma.projeto.create({
       data: {
         nome: data.nome,
-        tipo: data.tipo,
+        tipo: data.tipo as any,
         cor: data.cor || "#ff5a3d",
       },
     });

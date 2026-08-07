@@ -161,7 +161,7 @@ export function Sidebar() {
             title="Clique para escolher e redimensionar foto do seu computador"
           >
             {userAvatar ? (
-              <Image src={userAvatar} alt="Foto de perfil" fill className="object-cover" />
+              <img src={userAvatar} alt="Foto de perfil" className="w-full h-full object-cover" />
             ) : (
               <div
                 className="w-full h-full flex items-center justify-center text-sm font-bold text-white"
