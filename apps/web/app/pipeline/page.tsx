@@ -9,72 +9,161 @@ import {
   AlertTriangle,
   Clock,
   RotateCcw,
+  Plus,
+  RefreshCw,
+  Edit3,
+  Trash2,
+  ExternalLink,
 } from "lucide-react";
 import Link from "next/link";
-import {
-  ESTAGIOS_KANBAN,
-  ESTAGIO_LABELS,
-  FORMATO_LABELS,
-  AGUARDANDO_LABELS,
-} from "@/lib/mock-data";
 import { horasParaTexto } from "@/lib/utils";
+import { ModalEditarVideo } from "@/components/modals/modal-editar-video";
+import { ModalNovo } from "@/components/modals/modal-novo";
 
-const AGUARDANDO_ICONS: Record<string, React.ReactNode> = {
-  eu: <User className="w-3 h-3" />,
-  cliente: <Users className="w-3 h-3" />,
-  gravacao: <Camera className="w-3 h-3" />,
-  aprovacao: <ShieldCheck className="w-3 h-3" />,
+const KANBAN_COLUNAS = [
+  { key: "briefing", titulo: "📋 BRIEFING", cor: "#6366f1", match: ["briefing"] },
+  { key: "cortando", titulo: "✂️ EDITANDO", cor: "#ff5a3d", match: ["material_recebido", "cortando"] },
+  { key: "revisao", titulo: "🔍 EDITADO", cor: "#f59e0b", match: ["primeiro_corte", "revisao", "ajustes"] },
+  { key: "entregue", titulo: "🚀 ENVIADO", cor: "#10b981", match: ["aprovado", "entregue"] },
+];
+
+const FORMATO_LABELS: Record<string, string> = {
+  reels: "Reels",
+  vsl: "VSL",
+  criativo: "Criativo",
+  aula: "Aula",
+  institucional: "Institucional",
+  outro: "Outro",
 };
 
-export default function PipelinePage() {
+export default function PipelineKanbanPage() {
   const [videos, setVideos] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [videoParaEditar, setVideoParaEditar] = useState<any | null>(null);
+  const [modalNovoOpen, setModalNovoOpen] = useState(false);
 
-  const carregar = async () => {
+  const carregarVideos = async () => {
     try {
-      const resVideos = await fetch("/api/videos").then((r) => r.json()).catch(() => []);
-      if (Array.isArray(resVideos)) setVideos(resVideos);
+      const res = await fetch("/api/videos", { cache: "no-store" }).then((r) => r.json()).catch(() => []);
+      if (Array.isArray(res)) setVideos(res);
     } catch (e) {
       console.error(e);
+    } finally {
+      setLoading(false);
     }
   };
 
   useEffect(() => {
-    carregar();
+    carregarVideos();
+    const interval = setInterval(carregarVideos, 4000);
+    const onFocus = () => carregarVideos();
+    window.addEventListener("focus", onFocus);
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener("focus", onFocus);
+    };
   }, []);
 
+  const handleMoverEstagio = async (videoId: string, novoEstagio: string, e: React.ChangeEvent<HTMLSelectElement>) => {
+    e.stopPropagation();
+    const estagioVal = e.target.value;
+
+    setVideos((prev) =>
+      prev.map((v) => (v.id === videoId ? { ...v, estagio: estagioVal } : v))
+    );
+
+    try {
+      await fetch(`/api/videos/${videoId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ estagio: estagioVal }),
+      });
+      carregarVideos();
+    } catch (err) {
+      console.error("Erro ao mover vídeo:", err);
+    }
+  };
+
+  const handleExcluirVideo = async (videoId: string, titulo: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (confirm(`Tem certeza que deseja APAGAR o vídeo "${titulo}"?`)) {
+      setVideos((prev) => prev.filter((v) => v.id !== videoId));
+      await fetch(`/api/videos/${videoId}`, { method: "DELETE" });
+      carregarVideos();
+    }
+  };
+
   return (
-    <div className="animate-fade-in-up">
-      {/* Kanban board */}
-      <div className="flex gap-4 overflow-x-auto pb-6" style={{ scrollSnapType: "x mandatory" }}>
-        {ESTAGIOS_KANBAN.map((estagio) => {
-          const videosCol = videos.filter((v) => v.estagio === estagio);
+    <div className="animate-fade-in-up space-y-6 pb-12">
+      {/* Modais */}
+      <ModalEditarVideo
+        isOpen={!!videoParaEditar}
+        video={videoParaEditar}
+        onClose={() => setVideoParaEditar(null)}
+        onSaved={carregarVideos}
+        onDeleted={carregarVideos}
+      />
+
+      <ModalNovo
+        isOpen={modalNovoOpen}
+        onClose={() => setModalNovoOpen(false)}
+      />
+
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h1 className="font-heading text-2xl font-bold tracking-tight text-gray-900 flex items-center gap-2">
+            Pipeline de Edição
+          </h1>
+          <p className="text-xs text-gray-500">
+            Acompanhe a esteira de vídeos nos estágios: BRIEFING, EDITANDO, EDITADO e ENVIADO.
+          </p>
+        </div>
+
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={carregarVideos}
+            className="p-2 rounded-xl border border-gray-200 hover:bg-gray-100 text-gray-600 transition-all cursor-pointer flex items-center gap-1.5 text-xs font-semibold"
+            title="Atualizar vídeos"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${loading ? "animate-spin text-accent" : ""}`} />
+            <span>Atualizar</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => setModalNovoOpen(true)}
+            className="btn-primary flex items-center gap-1.5 text-xs py-2 px-4 cursor-pointer shadow-xs"
+          >
+            <Plus className="w-4 h-4" />
+            Novo Vídeo
+          </button>
+        </div>
+      </div>
+
+      {/* Kanban board — 4 Colunas Principais */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        {KANBAN_COLUNAS.map((col) => {
+          const videosCol = videos.filter((v) => col.match.includes(v.estagio));
 
           return (
             <div
-              key={estagio}
-              className="kanban-column flex-shrink-0"
-              style={{ scrollSnapAlign: "start" }}
+              key={col.key}
+              className="flex flex-col bg-gray-50/70 p-3.5 rounded-2xl border border-gray-200 min-h-[420px]"
             >
-              {/* Column header */}
-              <div className="flex items-center justify-between mb-3 px-1">
-                <div className="flex items-center gap-2">
-                  <h3 className="text-sm font-bold" style={{ color: "var(--text-primary)" }}>
-                    {ESTAGIO_LABELS[estagio]}
-                  </h3>
-                  <span
-                    className="w-5 h-5 rounded-full flex items-center justify-center text-[10px] font-bold"
-                    style={{
-                      background: "var(--bg-surface)",
-                      color: "var(--text-muted)",
-                    }}
-                  >
-                    {videosCol.length}
-                  </span>
-                </div>
+              {/* Header da coluna */}
+              <div className="flex items-center justify-between mb-3 pb-2 border-b border-gray-200 px-1">
+                <h3 className="text-xs font-bold tracking-wider" style={{ color: col.cor }}>
+                  {col.titulo}
+                </h3>
+                <span className="w-5 h-5 rounded-full bg-gray-200 flex items-center justify-center text-[10px] font-bold text-gray-700">
+                  {videosCol.length}
+                </span>
               </div>
 
               {/* Cards */}
-              <div className="space-y-3 min-h-[220px]">
+              <div className="space-y-3 flex-1 overflow-y-auto">
                 {videosCol.map((video) => {
                   const criadoEm = new Date(video.criadoEm);
                   const ultimoEv = video.ultimoEvento ? new Date(video.ultimoEvento) : criadoEm;
@@ -82,46 +171,57 @@ export default function PipelinePage() {
                   const travado = diasParado >= 3;
 
                   return (
-                    <Link
+                    <div
                       key={video.id}
-                      href={`/pipeline/${video.id}`}
-                      className="kanban-card block relative"
+                      onClick={() => setVideoParaEditar(video)}
+                      className="card p-4 bg-white rounded-xl border border-gray-200 hover:border-gray-400 transition-all shadow-xs cursor-pointer group relative"
                       style={
                         travado
-                          ? {
-                              borderColor: "var(--danger)",
-                              background: "rgba(239, 68, 68, 0.04)",
-                            }
+                          ? { borderColor: "#ef4444", background: "rgba(239, 68, 68, 0.02)" }
                           : {}
                       }
                     >
-                      {/* Client color bar */}
+                      {/* Top Bar: Cliente + Formato */}
                       <div className="flex items-center justify-between mb-2">
-                        <div className="flex items-center gap-2">
+                        <div className="flex items-center gap-1.5 min-w-0">
                           <span
-                            className="w-2.5 h-2.5 rounded-full"
-                            style={{ background: video.projeto?.cor || "var(--accent)" }}
+                            className="w-2.5 h-2.5 rounded-full flex-shrink-0"
+                            style={{ background: video.projeto?.cor || "#ff5a3d" }}
                           />
-                          <span className="text-[11px] font-bold" style={{ color: video.projeto?.cor || "var(--text-muted)" }}>
+                          <span className="text-[11px] font-bold text-gray-700 truncate max-w-[120px]">
                             {video.projeto?.nome || "Sem cliente"}
                           </span>
                         </div>
-                        <span className="badge badge-neutral text-[10px]">
+                        <span className="badge badge-neutral text-[9px] font-bold">
                           {FORMATO_LABELS[video.formato] || video.formato}
                         </span>
                       </div>
 
                       {/* Title */}
-                      <p className="text-sm font-bold mb-3" style={{ color: "var(--text-primary)" }}>
+                      <p className="text-sm font-bold text-gray-900 mb-3 leading-snug">
                         {video.titulo}
                       </p>
 
+                      {/* Quick Stage Selector on Card */}
+                      <div className="mb-3" onClick={(e) => e.stopPropagation()}>
+                        <select
+                          value={video.estagio}
+                          onChange={(e) => handleMoverEstagio(video.id, video.estagio, e)}
+                          className="w-full text-[11px] font-bold py-1 px-2 rounded-lg bg-gray-100 text-gray-700 border border-gray-200 cursor-pointer hover:bg-gray-200 transition-colors"
+                        >
+                          <option value="briefing">📋 BRIEFING</option>
+                          <option value="cortando">✂️ EDITANDO</option>
+                          <option value="revisao">🔍 EDITADO</option>
+                          <option value="entregue">🚀 ENVIADO</option>
+                        </select>
+                      </div>
+
                       {/* Meta row */}
-                      <div className="flex items-center justify-between text-[11px]" style={{ color: "var(--text-muted)" }}>
-                        <div className="flex items-center gap-3">
+                      <div className="flex items-center justify-between text-[10px] text-gray-500 pt-2 border-t border-gray-100">
+                        <div className="flex items-center gap-2">
                           {video.prazoEntrega && (
                             <span className="flex items-center gap-1 font-medium">
-                              <Clock className="w-3 h-3" />
+                              <Clock className="w-3 h-3 text-gray-400" />
                               {new Date(video.prazoEntrega).toLocaleDateString("pt-BR", {
                                 day: "numeric",
                                 month: "short",
@@ -132,44 +232,45 @@ export default function PipelinePage() {
                             <span className="font-semibold">{horasParaTexto(video.estimativaHoras)}</span>
                           )}
                         </div>
-                        <div className="flex items-center gap-2">
-                          {video.rodadasAlteracao > 0 && (
-                            <span
-                              className="flex items-center gap-0.5 font-bold"
-                              style={{
-                                color: video.rodadasAlteracao >= 3 ? "var(--danger)" : "var(--text-muted)",
-                              }}
-                            >
-                              <RotateCcw className="w-3 h-3" />
-                              {video.rodadasAlteracao}
-                            </span>
-                          )}
-                          <span className="flex items-center gap-1 font-medium">
-                            {AGUARDANDO_ICONS[video.aguardando || "eu"]}
-                            {AGUARDANDO_LABELS[video.aguardando || "eu"]}
-                          </span>
+
+                        {/* Card Buttons: Editar e Apagar */}
+                        <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setVideoParaEditar(video);
+                            }}
+                            className="p-1 rounded hover:bg-gray-100 text-gray-600 cursor-pointer"
+                            title="Editar vídeo"
+                          >
+                            <Edit3 className="w-3.5 h-3.5" />
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={(e) => handleExcluirVideo(video.id, video.titulo, e)}
+                            className="p-1 rounded hover:bg-red-50 text-red-500 cursor-pointer"
+                            title="Apagar vídeo"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
                         </div>
                       </div>
 
-                      {/* Travado badge */}
+                      {/* Alerta de Vídeo Parado */}
                       {travado && (
-                        <div className="mt-3 flex items-center gap-1.5 text-[11px] font-semibold" style={{ color: "var(--danger)" }}>
-                          <AlertTriangle className="w-3 h-3" />
+                        <div className="mt-2.5 flex items-center gap-1.5 text-[10px] font-bold text-red-600">
+                          <AlertTriangle className="w-3 h-3 flex-shrink-0" />
                           <span>{diasParado} dias parado neste estágio</span>
                         </div>
                       )}
-                    </Link>
+                    </div>
                   );
                 })}
 
                 {videosCol.length === 0 && (
-                  <div
-                    className="rounded-2xl border-2 border-dashed p-8 flex items-center justify-center text-xs font-medium"
-                    style={{
-                      borderColor: "var(--border)",
-                      color: "var(--text-muted)",
-                    }}
-                  >
+                  <div className="border-2 border-dashed border-gray-200 rounded-xl p-8 text-center text-gray-400 text-xs font-medium">
                     Vazio
                   </div>
                 )}

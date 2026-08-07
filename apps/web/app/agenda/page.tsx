@@ -50,24 +50,44 @@ export default function AgendaPage() {
 
   useEffect(() => {
     carregarDados();
+    const interval = setInterval(carregarDados, 4000);
+    const onFocus = () => carregarDados();
+    window.addEventListener("focus", onFocus);
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener("focus", onFocus);
+    };
   }, [dataAtual]);
 
   const carregarDados = async () => {
-    setLoading(true);
-    const ano = dataAtual.getFullYear();
-    const mes = dataAtual.getMonth();
+    try {
+      const ano = dataAtual.getFullYear();
+      const mes = dataAtual.getMonth();
 
-    const inicio = new Date(ano, mes - 1, 1);
-    const fim = new Date(ano, mes + 2, 0);
+      const inicio = new Date(ano, mes - 1, 1).toISOString();
+      const fim = new Date(ano, mes + 2, 0).toISOString();
 
-    const [evs, projs] = await Promise.all([
-      getEventos(inicio, fim),
-      getProjetos(),
-    ]);
+      const [resE, resP] = await Promise.all([
+        fetch(`/api/eventos?inicio=${inicio}&fim=${fim}`, { cache: "no-store" }).then((r) => r.json()).catch(() => null),
+        fetch("/api/projetos", { cache: "no-store" }).then((r) => r.json()).catch(() => null),
+      ]);
 
-    setEventos(evs);
-    setProjetos(projs);
-    setLoading(false);
+      if (Array.isArray(resE)) setEventos(resE);
+      else {
+        const evs = await getEventos(new Date(inicio), new Date(fim));
+        setEventos(evs);
+      }
+
+      if (Array.isArray(resP)) setProjetos(resP);
+      else {
+        const projs = await getProjetos();
+        setProjetos(projs);
+      }
+    } catch (e) {
+      console.error("Erro ao carregar agenda:", e);
+    } finally {
+      setLoading(false);
+    }
   };
 
   // Navegação do Mês

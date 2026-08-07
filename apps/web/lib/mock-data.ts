@@ -83,24 +83,21 @@ export const INBOX_ITEMS: {
 // ── Constantes ────────────────────────────────────────────
 
 export const ESTAGIO_LABELS: Record<string, string> = {
-  briefing: "Briefing",
-  material_recebido: "Material",
-  cortando: "Cortando",
-  primeiro_corte: "1º Corte",
-  revisao: "Revisão",
-  ajustes: "Ajustes",
-  aprovado: "Aprovado",
-  entregue: "Entregue",
+  briefing: "BRIEFING",
+  material_recebido: "EDITANDO",
+  cortando: "EDITANDO",
+  primeiro_corte: "EDITADO",
+  revisao: "EDITADO",
+  ajustes: "EDITADO",
+  aprovado: "ENVIADO",
+  entregue: "ENVIADO",
 };
 
 export const ESTAGIOS_KANBAN = [
   "briefing",
-  "material_recebido",
   "cortando",
-  "primeiro_corte",
   "revisao",
-  "ajustes",
-  "aprovado",
+  "entregue",
 ] as const;
 
 export const FORMATO_LABELS: Record<string, string> = {

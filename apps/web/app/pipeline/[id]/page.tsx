@@ -1,6 +1,6 @@
 "use client";
 
-import { use } from "react";
+import { use, useState, useEffect } from "react";
 import {
   ArrowLeft,
   Clock,
@@ -9,31 +9,24 @@ import {
   Camera,
   ShieldCheck,
   RotateCcw,
-  Play,
   ExternalLink,
   FileText,
   Timer,
   ChevronRight,
+  Trash2,
+  Edit3,
+  Loader2,
 } from "lucide-react";
 import Link from "next/link";
-import {
-  VIDEOS,
-  ESTAGIO_LABELS,
-  FORMATO_LABELS,
-  AGUARDANDO_LABELS,
-  NOTAS,
-} from "@/lib/mock-data";
+import { useRouter } from "next/navigation";
 import { horasParaTexto } from "@/lib/utils";
+import { ModalEditarVideo } from "@/components/modals/modal-editar-video";
 
-const ESTAGIOS_TIMELINE = [
-  "briefing",
-  "material_recebido",
-  "cortando",
-  "primeiro_corte",
-  "revisao",
-  "ajustes",
-  "aprovado",
-  "entregue",
+const KANBAN_STAGES = [
+  { key: "briefing", label: "BRIEFING" },
+  { key: "cortando", label: "EDITANDO" },
+  { key: "revisao", label: "EDITADO" },
+  { key: "entregue", label: "ENVIADO" },
 ];
 
 export default function VideoDetalhePage({
@@ -42,246 +35,239 @@ export default function VideoDetalhePage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = use(params);
-  const video = VIDEOS.find((v) => v.id === id) || VIDEOS[0];
-  const notasDoVideo = NOTAS.filter((n) => n.videoId === video.id);
-  const estagioIdx = ESTAGIOS_TIMELINE.indexOf(video.estagio);
-  const diasParado = video.ultimoEvento
-    ? Math.floor((Date.now() - video.ultimoEvento.getTime()) / (1000 * 60 * 60 * 24))
-    : Math.floor((Date.now() - video.criadoEm.getTime()) / (1000 * 60 * 60 * 24));
+  const router = useRouter();
+
+  const [video, setVideo] = useState<any | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [modalEditarOpen, setModalEditarOpen] = useState(false);
+
+  const carregarVideo = async () => {
+    setLoading(true);
+    try {
+      const res = await fetch(`/api/videos/${id}`).then((r) => r.json()).catch(() => null);
+      if (res && res.id) setVideo(res);
+    } catch (e) {
+      console.error(e);
+    }
+    setLoading(false);
+  };
+
+  useEffect(() => {
+    carregarVideo();
+  }, [id]);
+
+  const handleMoverEstagio = async (novoEstagio: string) => {
+    if (!video) return;
+    setVideo({ ...video, estagio: novoEstagio });
+    try {
+      await fetch(`/api/videos/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ estagio: novoEstagio }),
+      });
+      carregarVideo();
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const handleExcluirVideo = async () => {
+    if (!video || !confirm(`Tem certeza que deseja APAGAR o vídeo "${video.titulo}"?`)) return;
+    try {
+      await fetch(`/api/videos/${id}`, { method: "DELETE" });
+      router.push("/pipeline");
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="card p-12 text-center flex flex-col items-center justify-center gap-2 animate-fade-in-up">
+        <Loader2 className="w-6 h-6 animate-spin text-accent" />
+        <p className="text-xs text-gray-500">Carregando vídeo do Supabase...</p>
+      </div>
+    );
+  }
+
+  if (!video) {
+    return (
+      <div className="card p-12 text-center space-y-4 animate-fade-in-up">
+        <p className="text-sm font-semibold text-gray-700">Vídeo não encontrado</p>
+        <Link href="/pipeline" className="btn-primary inline-flex text-xs px-4 py-2">
+          Voltar ao Pipeline
+        </Link>
+      </div>
+    );
+  }
+
+  const estagioIdx = KANBAN_STAGES.findIndex((s) => s.key === video.estagio);
 
   return (
-    <div className="animate-fade-in-up max-w-4xl">
-      {/* Back */}
+    <div className="animate-fade-in-up max-w-4xl space-y-6 pb-12">
+      {/* Modal Editar */}
+      <ModalEditarVideo
+        isOpen={modalEditarOpen}
+        video={video}
+        onClose={() => setModalEditarOpen(false)}
+        onSaved={carregarVideo}
+        onDeleted={() => router.push("/pipeline")}
+      />
+
+      {/* Voltar */}
       <Link
         href="/pipeline"
-        className="inline-flex items-center gap-2 text-sm mb-6 transition-colors"
-        style={{ color: "var(--text-muted)" }}
+        className="inline-flex items-center gap-2 text-sm text-gray-500 hover:text-gray-900 transition-colors font-semibold"
       >
         <ArrowLeft className="w-4 h-4" />
-        Pipeline
+        Voltar ao Pipeline
       </Link>
 
-      {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-start justify-between gap-4 mb-8">
+      {/* Header com botões Editar e Apagar */}
+      <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
         <div>
           <div className="flex items-center gap-3 mb-2">
             <span
               className="w-3 h-3 rounded-full"
-              style={{ background: video.projeto?.cor || "var(--accent)" }}
+              style={{ background: video.projeto?.cor || "#ff5a3d" }}
             />
-            <span className="text-sm font-medium" style={{ color: video.projeto?.cor }}>
-              {video.projeto?.nome}
+            <span className="text-sm font-bold" style={{ color: video.projeto?.cor || "#ff5a3d" }}>
+              {video.projeto?.nome || "Sem cliente"}
             </span>
-            <span className="badge badge-neutral">{FORMATO_LABELS[video.formato]}</span>
+            <span className="badge badge-neutral text-xs capitalize">{video.formato || "Vídeo"}</span>
           </div>
-          <h1 className="font-heading text-3xl font-bold tracking-tight">
+          <h1 className="font-heading text-3xl font-bold tracking-tight text-gray-900">
             {video.titulo}
           </h1>
         </div>
-        <div className="flex gap-2">
-          <button className="btn-primary flex items-center gap-2 text-sm">
-            <Play className="w-4 h-4" />
-            Iniciar Foco
+
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => setModalEditarOpen(true)}
+            className="btn-primary flex items-center gap-1.5 text-xs py-2.5 px-5 cursor-pointer shadow-xs"
+          >
+            <Edit3 className="w-4 h-4" />
+            Editar Detalhes
+          </button>
+
+          <button
+            type="button"
+            onClick={handleExcluirVideo}
+            className="px-4 py-2.5 rounded-full border border-red-200 text-red-600 hover:bg-red-50 text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer"
+          >
+            <Trash2 className="w-4 h-4" />
+            Apagar Vídeo
           </button>
         </div>
       </div>
 
-      {/* Estágio timeline */}
-      <div className="card p-6 mb-6 animate-fade-in-up-delay-1">
-        <h2 className="font-heading text-base font-semibold tracking-tight mb-5">
-          Progresso
+      {/* Estágios — Mudar Estágio com 1 Clique */}
+      <div className="card p-6">
+        <h2 className="font-heading text-base font-semibold tracking-tight mb-4 text-gray-900">
+          Progresso no Pipeline (Clique para alterar estágio)
         </h2>
-        <div className="flex items-center gap-1 overflow-x-auto pb-2">
-          {ESTAGIOS_TIMELINE.map((est, i) => {
-            const done = i < estagioIdx;
-            const current = i === estagioIdx;
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+          {KANBAN_STAGES.map((stg, i) => {
+            const isCurrent = video.estagio === stg.key;
+            const isDone = i < estagioIdx;
+
             return (
-              <div key={est} className="flex items-center gap-1 flex-shrink-0">
-                <div
-                  className="flex items-center gap-2 px-3 py-2 rounded-lg text-xs font-medium whitespace-nowrap transition-all"
-                  style={{
-                    background: current
-                      ? "var(--accent-subtle)"
-                      : done
-                      ? "var(--success-subtle)"
-                      : "var(--bg-surface)",
-                    color: current
-                      ? "var(--accent)"
-                      : done
-                      ? "var(--success)"
-                      : "var(--text-muted)",
-                    border: current ? "1px solid var(--border-accent)" : "1px solid transparent",
-                  }}
-                >
-                  {ESTAGIO_LABELS[est]}
-                </div>
-                {i < ESTAGIOS_TIMELINE.length - 1 && (
-                  <ChevronRight
-                    className="w-3 h-3 flex-shrink-0"
-                    style={{ color: done ? "var(--success)" : "var(--border)" }}
-                  />
-                )}
-              </div>
+              <button
+                key={stg.key}
+                onClick={() => handleMoverEstagio(stg.key)}
+                className={`p-3 rounded-xl text-xs font-bold text-center transition-all cursor-pointer border ${
+                  isCurrent
+                    ? "bg-accent text-white border-accent shadow-md"
+                    : isDone
+                    ? "bg-green-50 text-green-700 border-green-200 hover:bg-green-100"
+                    : "bg-gray-50 text-gray-600 border-gray-200 hover:bg-gray-100"
+                }`}
+              >
+                {stg.label}
+              </button>
             );
           })}
         </div>
       </div>
 
+      {/* Grade de Detalhes e Links */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Info */}
-        <div className="card p-6 animate-fade-in-up-delay-2">
-          <h2 className="font-heading text-base font-semibold tracking-tight mb-4">
-            Detalhes
+        <div className="card p-6 space-y-4">
+          <h2 className="font-heading text-base font-semibold tracking-tight text-gray-900 border-b pb-2">
+            Informações do Projeto
           </h2>
-          <div className="space-y-4">
-            <InfoRow
-              icon={<Clock className="w-4 h-4" />}
-              label="Prazo"
-              value={
-                video.prazoEntrega
-                  ? video.prazoEntrega.toLocaleDateString("pt-BR", {
+          <div className="space-y-3 text-xs">
+            <div className="flex justify-between py-1.5 border-b border-gray-100">
+              <span className="text-gray-500">Cliente/Projeto:</span>
+              <span className="font-bold text-gray-900">{video.projeto?.nome || "Sem cliente"}</span>
+            </div>
+            <div className="flex justify-between py-1.5 border-b border-gray-100">
+              <span className="text-gray-500">Prazo de entrega:</span>
+              <span className="font-bold text-gray-900">
+                {video.prazoEntrega
+                  ? new Date(video.prazoEntrega).toLocaleDateString("pt-BR", {
                       weekday: "short",
                       day: "numeric",
                       month: "short",
-                      hour: "2-digit",
-                      minute: "2-digit",
                     })
-                  : "Sem prazo"
-              }
-            />
-            <InfoRow
-              icon={<Timer className="w-4 h-4" />}
-              label="Estimativa"
-              value={video.estimativaHoras ? horasParaTexto(video.estimativaHoras) : "—"}
-            />
-            <InfoRow
-              icon={<Timer className="w-4 h-4" />}
-              label="Horas reais"
-              value={video.horasReais ? horasParaTexto(video.horasReais) : "0h"}
-            />
-            <InfoRow
-              icon={
-                video.aguardando === "cliente" || video.aguardando === "aprovacao"
-                  ? <Users className="w-4 h-4" />
-                  : video.aguardando === "gravacao"
-                  ? <Camera className="w-4 h-4" />
-                  : <User className="w-4 h-4" />
-              }
-              label="Aguardando"
-              value={AGUARDANDO_LABELS[video.aguardando || "eu"]}
-            />
-            <InfoRow
-              icon={<RotateCcw className="w-4 h-4" />}
-              label="Rodadas de alteração"
-              value={String(video.rodadasAlteracao)}
-              alert={video.rodadasAlteracao >= 3}
-            />
-            <InfoRow
-              icon={<Clock className="w-4 h-4" />}
-              label="Dias no estágio"
-              value={`${diasParado} dias`}
-              alert={diasParado >= 3}
-            />
-          </div>
-        </div>
-
-        {/* Links & Notas */}
-        <div className="space-y-6">
-          {/* Links */}
-          <div className="card p-6 animate-fade-in-up-delay-2">
-            <h2 className="font-heading text-base font-semibold tracking-tight mb-4">
-              Links
-            </h2>
-            <div className="space-y-2">
-              <LinkRow label="Material bruto" url={video.linkBruto} />
-              <LinkRow label="Link de entrega" url={video.linkEntrega} />
+                  : "Sem prazo"}
+              </span>
+            </div>
+            <div className="flex justify-between py-1.5 border-b border-gray-100">
+              <span className="text-gray-500">Estimativa de horas:</span>
+              <span className="font-bold text-gray-900">
+                {video.estimativaHoras ? horasParaTexto(video.estimativaHoras) : "—"}
+              </span>
+            </div>
+            <div className="flex justify-between py-1.5 border-b border-gray-100">
+              <span className="text-gray-500">Aguardando por:</span>
+              <span className="font-bold text-gray-900 capitalize">{video.aguardando || "eu"}</span>
             </div>
           </div>
+        </div>
 
-          {/* Notas */}
-          <div className="card p-6 animate-fade-in-up-delay-3">
-            <h2 className="font-heading text-base font-semibold tracking-tight mb-4 flex items-center gap-2">
-              <FileText className="w-4 h-4" style={{ color: "var(--accent)" }} />
-              Notas ({notasDoVideo.length})
-            </h2>
-            {notasDoVideo.length > 0 ? (
-              <div className="space-y-3">
-                {notasDoVideo.map((nota) => (
-                  <div
-                    key={nota.id}
-                    className="p-3 rounded-xl"
-                    style={{ background: "var(--bg-surface)" }}
-                  >
-                    <p className="text-sm font-medium mb-1">{nota.titulo}</p>
-                    <p className="text-xs whitespace-pre-wrap" style={{ color: "var(--text-muted)" }}>
-                      {nota.conteudo.slice(0, 200)}
-                    </p>
-                  </div>
-                ))}
-              </div>
-            ) : (
-              <p className="text-sm" style={{ color: "var(--text-muted)" }}>
-                Nenhuma nota vinculada
-              </p>
-            )}
+        {/* Links */}
+        <div className="card p-6 space-y-4">
+          <h2 className="font-heading text-base font-semibold tracking-tight text-gray-900 border-b pb-2">
+            Links do Projeto
+          </h2>
+          <div className="space-y-3">
+            <div className="p-3 rounded-xl bg-gray-50 flex items-center justify-between">
+              <span className="text-xs font-semibold text-gray-600">Material Bruto:</span>
+              {video.linkBruto ? (
+                <a
+                  href={video.linkBruto}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-xs font-bold text-accent hover:underline flex items-center gap-1"
+                >
+                  Abrir Link <ExternalLink className="w-3 h-3" />
+                </a>
+              ) : (
+                <span className="text-xs text-gray-400">Não informado</span>
+              )}
+            </div>
+
+            <div className="p-3 rounded-xl bg-gray-50 flex items-center justify-between">
+              <span className="text-xs font-semibold text-gray-600">Entrega Final:</span>
+              {video.linkEntrega ? (
+                <a
+                  href={video.linkEntrega}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-xs font-bold text-accent hover:underline flex items-center gap-1"
+                >
+                  Abrir Link <ExternalLink className="w-3 h-3" />
+                </a>
+              ) : (
+                <span className="text-xs text-gray-400">Não informado</span>
+              )}
+            </div>
           </div>
         </div>
       </div>
-    </div>
-  );
-}
-
-function InfoRow({
-  icon,
-  label,
-  value,
-  alert = false,
-}: {
-  icon: React.ReactNode;
-  label: string;
-  value: string;
-  alert?: boolean;
-}) {
-  return (
-    <div className="flex items-center justify-between py-2 border-b" style={{ borderColor: "var(--border)" }}>
-      <div className="flex items-center gap-2" style={{ color: "var(--text-muted)" }}>
-        {icon}
-        <span className="text-sm">{label}</span>
-      </div>
-      <span
-        className="text-sm font-medium"
-        style={{ color: alert ? "var(--danger)" : "var(--text-primary)" }}
-      >
-        {value}
-      </span>
-    </div>
-  );
-}
-
-function LinkRow({ label, url }: { label: string; url?: string | null }) {
-  return (
-    <div
-      className="flex items-center justify-between p-3 rounded-xl"
-      style={{ background: "var(--bg-surface)" }}
-    >
-      <span className="text-sm" style={{ color: "var(--text-secondary)" }}>
-        {label}
-      </span>
-      {url ? (
-        <a
-          href={url}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="flex items-center gap-1 text-sm"
-          style={{ color: "var(--accent)" }}
-        >
-          Abrir <ExternalLink className="w-3 h-3" />
-        </a>
-      ) : (
-        <span className="text-xs" style={{ color: "var(--text-muted)" }}>
-          Não adicionado
-        </span>
-      )}
     </div>
   );
 }
