@@ -4,6 +4,18 @@ import prisma from "@/lib/db";
 import type { Prioridade, StatusTarefa } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 
+export async function getTarefas() {
+  try {
+    return await prisma.tarefa.findMany({
+      include: { projeto: true },
+      orderBy: { criadoEm: "desc" },
+    });
+  } catch (error) {
+    console.error("Erro ao buscar tarefas:", error);
+    return [];
+  }
+}
+
 export async function alternarStatusTarefa(tarefaId: string, statusAtual: StatusTarefa) {
   try {
     const novoStatus: StatusTarefa =

@@ -1,8 +1,8 @@
 import dotenv from "dotenv";
 import path from "path";
 
-dotenv.config({ path: path.resolve(__dirname, "../../../.env") });
-dotenv.config({ path: path.resolve(__dirname, "../../web/.env.local") });
+dotenv.config({ path: path.resolve(__dirname, "../../../.env"), override: true });
+dotenv.config({ path: path.resolve(__dirname, "../../web/.env.local"), override: false });
 
 export const config = {
   telegramToken: process.env.TELEGRAM_BOT_TOKEN || "",
