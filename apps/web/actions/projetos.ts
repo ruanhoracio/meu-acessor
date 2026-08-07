@@ -4,6 +4,18 @@ import prisma from "@/lib/db";
 import type { TipoProjeto } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 
+export async function getProjetos() {
+  try {
+    return await prisma.projeto.findMany({
+      where: { ativo: true },
+      orderBy: { nome: "asc" },
+    });
+  } catch (error) {
+    console.error("Erro ao buscar projetos:", error);
+    return [];
+  }
+}
+
 export async function criarProjeto(data: {
   nome: string;
   tipo: TipoProjeto;
@@ -20,6 +32,7 @@ export async function criarProjeto(data: {
 
     revalidatePath("/config");
     revalidatePath("/pipeline");
+    revalidatePath("/");
     return { success: true, projeto: novoProjeto };
   } catch (error) {
     console.error("Erro ao criar projeto:", error);
@@ -36,6 +49,7 @@ export async function excluirProjeto(projetoId: string) {
 
     revalidatePath("/config");
     revalidatePath("/pipeline");
+    revalidatePath("/");
     return { success: true };
   } catch (error) {
     console.error("Erro ao desativar projeto:", error);
