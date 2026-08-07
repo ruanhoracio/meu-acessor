@@ -1,0 +1,7 @@
+export * from './videos'
+export * from './tarefas'
+export * from './projetos'
+export * from './inbox'
+export * from './notas'
+export * from './referencias'
+export * from './capacidade'
