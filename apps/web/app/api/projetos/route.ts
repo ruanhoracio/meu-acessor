@@ -10,9 +10,9 @@ export async function GET() {
       orderBy: { nome: "asc" },
     });
     return NextResponse.json(projetos);
-  } catch (error: any) {
+  } catch (error) {
     console.error("Erro no GET /api/projetos:", error);
-    return NextResponse.json({ error: "Erro ao buscar projetos", details: error?.message || String(error) }, { status: 500 });
+    return NextResponse.json({ error: "Erro ao buscar projetos" }, { status: 500 });
   }
 }
 
@@ -34,16 +34,8 @@ export async function POST(req: Request) {
     });
 
     return NextResponse.json(projeto);
-  } catch (error: any) {
+  } catch (error) {
     console.error("Erro no POST /api/projetos:", error);
-    return NextResponse.json(
-      {
-        error: "Erro ao criar projeto.",
-        details: error?.message || String(error),
-        code: error?.code,
-        meta: error?.meta,
-      },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: "Erro ao criar projeto." }, { status: 500 });
   }
 }
