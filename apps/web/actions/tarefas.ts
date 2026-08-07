@@ -1,6 +1,6 @@
 "use server";
 
-import prisma from "@meu-assessor/db";
+import prisma from "@/lib/db";
 import type { Prioridade, StatusTarefa } from "@meu-assessor/db";
 import { revalidatePath } from "next/cache";
 

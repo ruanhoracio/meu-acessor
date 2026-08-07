@@ -1,6 +1,6 @@
 "use server";
 
-import prisma from "@meu-assessor/db";
+import prisma from "@/lib/db";
 
 export async function getDashboardData() {
   try {

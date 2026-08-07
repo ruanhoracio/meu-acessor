@@ -1,5 +1,5 @@
 {
-  "buildCommand": "npx prisma generate --schema=./packages/db/prisma/schema.prisma || npx prisma generate --schema=../../packages/db/prisma/schema.prisma; next build",
-  "outputDirectory": ".next",
+  "buildCommand": "npx prisma generate --schema=./packages/db/prisma/schema.prisma && npm run build --workspace=web",
+  "outputDirectory": "apps/web/.next",
   "framework": "nextjs"
 }

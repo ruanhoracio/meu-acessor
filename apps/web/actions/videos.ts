@@ -1,6 +1,6 @@
 "use server";
 
-import prisma from "@meu-assessor/db";
+import prisma from "@/lib/db";
 import type { EstagioVideo, FormatoVideo, AguardandoQuem } from "@meu-assessor/db";
 import { revalidatePath } from "next/cache";
 
