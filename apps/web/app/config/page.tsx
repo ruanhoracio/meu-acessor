@@ -94,12 +94,25 @@ export default function ConfigPage() {
     if (file) {
       const reader = new FileReader();
       reader.onload = (evt) => {
-        const base64 = evt.target?.result as string;
-        if (base64) {
-          localStorage.setItem("ruan_user_avatar", base64);
-          setUserAvatar(base64);
-          exibirSucesso("Foto de perfil atualizada!");
-        }
+        const img = document.createElement("img");
+        img.onload = () => {
+          const canvas = document.createElement("canvas");
+          const size = 300;
+          canvas.width = size;
+          canvas.height = size;
+          const ctx = canvas.getContext("2d");
+          if (ctx) {
+            const minDim = Math.min(img.width, img.height);
+            const sx = (img.width - minDim) / 2;
+            const sy = (img.height - minDim) / 2;
+            ctx.drawImage(img, sx, sy, minDim, minDim, 0, 0, size, size);
+            const croppedBase64 = canvas.toDataURL("image/jpeg", 0.9);
+            localStorage.setItem("ruan_user_avatar", croppedBase64);
+            setUserAvatar(croppedBase64);
+            exibirSucesso("Foto de perfil redimensionada e salva com sucesso!");
+          }
+        };
+        img.src = evt.target?.result as string;
       };
       reader.readAsDataURL(file);
     }

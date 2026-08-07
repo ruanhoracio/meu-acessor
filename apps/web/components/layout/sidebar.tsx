@@ -30,11 +30,15 @@ export function Sidebar() {
   const pathname = usePathname();
   const [inboxCount, setInboxCount] = useState(0);
   const [userAvatar, setUserAvatar] = useState<string | null>(null);
+  const [nomeUsuario, setNomeUsuario] = useState("Ruan");
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
     const avatarSalvo = localStorage.getItem("ruan_user_avatar");
     if (avatarSalvo) setUserAvatar(avatarSalvo);
+
+    const nomeSalvo = localStorage.getItem("ruan_user_name");
+    if (nomeSalvo) setNomeUsuario(nomeSalvo);
 
     const buscarInbox = () => {
       fetch("/api/inbox/count")
@@ -53,11 +57,24 @@ export function Sidebar() {
     if (file) {
       const reader = new FileReader();
       reader.onload = (evt) => {
-        const base64 = evt.target?.result as string;
-        if (base64) {
-          localStorage.setItem("ruan_user_avatar", base64);
-          setUserAvatar(base64);
-        }
+        const img = document.createElement("img");
+        img.onload = () => {
+          const canvas = document.createElement("canvas");
+          const size = 300;
+          canvas.width = size;
+          canvas.height = size;
+          const ctx = canvas.getContext("2d");
+          if (ctx) {
+            const minDim = Math.min(img.width, img.height);
+            const sx = (img.width - minDim) / 2;
+            const sy = (img.height - minDim) / 2;
+            ctx.drawImage(img, sx, sy, minDim, minDim, 0, 0, size, size);
+            const croppedBase64 = canvas.toDataURL("image/jpeg", 0.9);
+            localStorage.setItem("ruan_user_avatar", croppedBase64);
+            setUserAvatar(croppedBase64);
+          }
+        };
+        img.src = evt.target?.result as string;
       };
       reader.readAsDataURL(file);
     }
@@ -126,7 +143,7 @@ export function Sidebar() {
           Configurações
         </Link>
 
-        {/* User avatar com upload de foto do computador */}
+        {/* User avatar com redimensionador de foto */}
         <div className="mt-5 mx-3 flex items-center gap-3">
           <input
             type="file"
@@ -139,9 +156,9 @@ export function Sidebar() {
           <button
             type="button"
             onClick={() => fileInputRef.current?.click()}
-            className="relative group w-9 h-9 rounded-full overflow-hidden flex-shrink-0 cursor-pointer border hover:opacity-90 transition-all"
-            style={{ borderColor: "var(--border)" }}
-            title="Clique para escolher foto do seu computador"
+            className="relative group w-10 h-10 rounded-full overflow-hidden flex-shrink-0 cursor-pointer border-2 hover:opacity-90 transition-all shadow-xs"
+            style={{ borderColor: "var(--accent)" }}
+            title="Clique para escolher e redimensionar foto do seu computador"
           >
             {userAvatar ? (
               <Image src={userAvatar} alt="Foto de perfil" fill className="object-cover" />
@@ -150,18 +167,17 @@ export function Sidebar() {
                 className="w-full h-full flex items-center justify-center text-sm font-bold text-white"
                 style={{
                   background: "linear-gradient(135deg, var(--accent), #c22f16)",
-                  boxShadow: "0 3px 10px rgba(255, 90, 61, 0.25)",
                 }}
               >
-                R
+                {nomeUsuario.charAt(0).toUpperCase()}
               </div>
             )}
             <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
-              <Camera className="w-3.5 h-3.5 text-white" />
+              <Camera className="w-4 h-4 text-white" />
             </div>
           </button>
           <div className="min-w-0">
-            <p className="text-[13px] font-semibold truncate" style={{ color: "var(--text-primary)" }}>Ruan</p>
+            <p className="text-[13px] font-semibold truncate" style={{ color: "var(--text-primary)" }}>{nomeUsuario}</p>
             <p className="text-[11px] truncate" style={{ color: "var(--text-muted)" }}>Editor de Vídeo</p>
           </div>
         </div>
