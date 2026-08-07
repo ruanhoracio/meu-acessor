@@ -162,7 +162,12 @@ export async function handleMensagem(ctx: Context) {
     }
 
     const msgLinhas = classificacoes
-      .map((c) => c.confirmacao || `✓ ${c.tipo === "video" ? "Vídeo" : "Tarefa"} criada: ${c.titulo}`)
+      .map((c) => {
+        if (c.confirmacao) return c.confirmacao;
+        if (c.tipo === "video") return `✓ Vídeo adicionado no Pipeline: "${c.titulo}"${c.prazo ? ` (Prazo: ${new Date(c.prazo).toLocaleDateString("pt-BR")})` : ""}`;
+        if (c.tipo === "evento") return `✓ Compromisso agendado na Agenda: "${c.titulo}"${c.prazo ? ` (${new Date(c.prazo).toLocaleDateString("pt-BR")})` : ""}`;
+        return `✓ Tarefa criada: "${c.titulo}"${c.prazo ? ` (Prazo: ${new Date(c.prazo).toLocaleDateString("pt-BR")})` : ""}`;
+      })
       .filter((t) => t && t.trim().length > 0);
 
     const confirmacaoMsg = msgLinhas.length > 0 ? msgLinhas.join("\n") : "✓ Registrado com sucesso!";
