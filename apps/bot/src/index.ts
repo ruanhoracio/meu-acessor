@@ -18,6 +18,11 @@ if (!config.telegramToken) {
 
 const bot = new Bot(config.telegramToken);
 
+// Error Handler resiliente para que o bot NUNCA caia
+bot.catch((err) => {
+  console.error("⚠️ [Telegram Bot Error Guard]:", err.error || err);
+});
+
 // ── Comandos ───────────────────────────────────────────────
 bot.command("start", (ctx) =>
   ctx.reply("👋 Olá, Ruan! Eu sou o seu Assessor. Manda áudio, texto, foto ou link que eu organizo tudo pra você!")
@@ -34,6 +39,13 @@ bot.on("message", handleMensagem);
 // ── Inicia rotinas ─────────────────────────────────────────
 iniciarRotinasAgendadas(bot);
 
-// ── Long Polling ───────────────────────────────────────────
+// ── Long Polling com reconexão automática ───────────────────
 console.log("🚀 Bot do Meu Assessor iniciado com sucesso via Long Polling!");
-bot.start();
+
+bot.start({
+  onStart: (info) => {
+    console.log(`🤖 Conectado ao bot @${info.username} (ID: ${info.id})`);
+  },
+}).catch((err) => {
+  console.error("❌ Falha fatal ao iniciar bot:", err);
+});
