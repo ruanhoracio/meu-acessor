@@ -484,7 +484,7 @@ export default function ConfigPage() {
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-xl bg-gray-50 border border-gray-200">
             <div>
               <p className="text-sm font-bold text-gray-900">Senha de Acesso do App</p>
-              <p className="text-xs text-gray-500">Senha padrão atual: <code className="font-bold text-accent">1025</code></p>
+              <p className="text-xs text-gray-500">Defina uma nova senha de segurança para proteger o acesso ao painel.</p>
             </div>
 
             <div className="flex items-center gap-2">

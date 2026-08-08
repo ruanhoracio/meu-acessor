@@ -98,7 +98,7 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
                   setSenhaInput(e.target.value);
                   setErro(false);
                 }}
-                placeholder="Senha (padrão: 1025)"
+                placeholder="Digite sua senha"
                 className="input w-full pl-10 pr-10 text-center font-bold tracking-widest text-lg py-3 rounded-2xl border-gray-200 focus:border-accent"
                 autoFocus
                 required
@@ -114,7 +114,7 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
 
             {erro && (
               <p className="text-xs font-bold text-red-500 animate-shake">
-                Senha incorreta. Tente novamente (Dica: 1025).
+                Senha incorreta. Tente novamente.
               </p>
             )}
 
