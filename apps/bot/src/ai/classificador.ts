@@ -62,24 +62,30 @@ export async function classificarComClaude(
 
   const guiaDatas = gerarGuiaDatas(agora);
 
-  const systemPrompt = `Você é o "Meu Assessor", assistente IA ultra-rápido para editor de vídeo.
+  const systemPrompt = `Você é o "Meu Assessor", assistente IA para editor de vídeo.
 Data Atual: ${guiaDatas}
 Clientes Ativos: ${JSON.stringify(contexto.projetosAtivos)}
 
-Classifique a mensagem e responda APENAS um array JSON válido:
+REGRAS DE CLASSIFICAÇÃO:
+1. "evento": Se o usuário pedir para "colocar na agenda", "agendar", "marcar reunião/call", "ir ao centro/médico/dentista/compromisso".
+   - Limpe expressões como "coloque na agenda" do título.
+2. "video": Se mencionar edição de vídeo, cortar VSL, Reels, Criativo, aula.
+3. "tarefa": Afazeres gerais (pagar conta, comprar plugin, e-mail).
+
+Responda APENAS um array JSON válido:
 [
   {
     "tipo": "video" | "tarefa" | "evento" | "nota" | "referencia",
-    "titulo": "Título limpo sem expressão de data",
+    "titulo": "Título limpo sem expressão de agenda ou data",
     "projeto": "Nome do cliente se mencionado",
     "formato": "reels" | "vsl" | "criativo" | "aula" | "institucional" | "outro",
     "prazo": "YYYY-MM-DDT18:00:00.000Z",
     "confianca": 0.95,
-    "confirmacao": "✓ Tarefa criada: Título (Prazo: Quinta-feira, 10/08)"
+    "confirmacao": "✓ Compromisso agendado na Agenda: Título (08/08/2026)"
   }
 ]`;
 
-  // 1. Groq (Llama-3.3-70b - Resposta em 250ms com max_tokens reduzido)
+  // 1. Groq (Llama-3.3-70b)
   if (groq) {
     try {
       const response = await groq.chat.completions.create({
@@ -129,7 +135,7 @@ function tentarClassificacaoInstantanea(
   projetosAtivos: string[]
 ): ClassificacaoOutput[] | null {
   const msgTrim = mensagem.trim();
-  if (msgTrim.includes("\n") || msgTrim.length > 80) return null; // Para mensagens longas usa LLM
+  if (msgTrim.includes("\n") || msgTrim.length > 100) return null;
 
   const msgLower = msgTrim.toLowerCase();
 
@@ -146,12 +152,33 @@ function tentarClassificacaoInstantanea(
     ];
   }
 
-  // Detecta se é agendamento / reunião
-  const isEvento = msgLower.includes("agendar") || msgLower.includes("reunião") || msgLower.includes("reuniao") || msgLower.includes("call com") || msgLower.includes("marcar ");
-  // Detecta se é vídeo
-  const isVideo = msgLower.includes("vídeo") || msgLower.includes("video") || msgLower.includes("vsl") || msgLower.includes("reels") || msgLower.includes("corte");
+  // Detecta se é agendamento / evento de agenda
+  const isEvento =
+    msgLower.includes("agenda") ||
+    msgLower.includes("agendar") ||
+    msgLower.includes("marcar") ||
+    msgLower.includes("reunião") ||
+    msgLower.includes("reuniao") ||
+    msgLower.includes("call") ||
+    msgLower.includes("compromisso") ||
+    msgLower.includes("médico") ||
+    msgLower.includes("medico") ||
+    msgLower.includes("dentista") ||
+    msgLower.includes("consulta") ||
+    msgLower.includes("barbeiro") ||
+    msgLower.includes("ir no") ||
+    msgLower.includes("ir ao") ||
+    msgLower.includes("ir para");
 
-  // Identifica projeto se houver na mensagem
+  // Detecta se é vídeo
+  const isVideo =
+    msgLower.includes("vídeo") ||
+    msgLower.includes("video") ||
+    msgLower.includes("vsl") ||
+    msgLower.includes("reels") ||
+    msgLower.includes("corte");
+
+  // Identifica projeto se houver
   let projetoEncontrado: string | undefined;
   for (const proj of projetosAtivos) {
     if (msgLower.includes(proj.toLowerCase())) {
@@ -206,12 +233,14 @@ function tentarClassificacaoInstantanea(
     }
   }
 
-  // Limpa prefixos de comando como "agendar", "marcar", "criar tarefa"
+  // Limpa expressões de agenda do título (ex: "coloque na agenda", "na agenda", "por favor")
   tituloLimpo = tituloLimpo
-    .replace(/^(agendar|marcar|criar|fazer)\s+/i, "")
+    .replace(/(?:,?\s*)?(?:coloque|colocar|põe|bota|adicione|salve|salvar)?\s*(?:na|pra|para)?\s*agenda/gi, "")
+    .replace(/^(agendar|marcar|criar|fazer|preciso|tenho que)\s+/gi, "")
+    .replace(/,\s*$/, "")
     .trim();
+
   if (!tituloLimpo) tituloLimpo = msgTrim;
-  // Capitaliza primeira letra
   tituloLimpo = tituloLimpo.charAt(0).toUpperCase() + tituloLimpo.slice(1);
 
   const tipoFinal = isEvento ? "evento" : isVideo ? "video" : "tarefa";
