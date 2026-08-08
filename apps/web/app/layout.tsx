@@ -4,6 +4,7 @@ import "./globals.css";
 import { Sidebar } from "@/components/layout/sidebar";
 import { BottomNav } from "@/components/layout/bottom-nav";
 import { Header } from "@/components/layout/header";
+import { AuthGate } from "@/components/auth/auth-gate";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -55,21 +56,23 @@ export default function RootLayout({
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
       </head>
       <body>
-        <div className="flex min-h-screen">
-          {/* Sidebar — desktop only */}
-          <Sidebar />
+        <AuthGate>
+          <div className="flex min-h-screen">
+            {/* Sidebar — desktop only */}
+            <Sidebar />
 
-          {/* Main content */}
-          <main className="flex-1 md:ml-[260px] pb-[96px] md:pb-0">
-            <Header />
-            <div className="px-4 md:px-8 py-6 max-w-[1400px] mx-auto">
-              {children}
-            </div>
-          </main>
+            {/* Main content */}
+            <main className="flex-1 md:ml-[260px] pb-[96px] md:pb-0">
+              <Header />
+              <div className="px-4 md:px-8 py-6 max-w-[1400px] mx-auto">
+                {children}
+              </div>
+            </main>
 
-          {/* Bottom nav — mobile only */}
-          <BottomNav />
-        </div>
+            {/* Bottom nav — mobile only */}
+            <BottomNav />
+          </div>
+        </AuthGate>
       </body>
     </html>
   );

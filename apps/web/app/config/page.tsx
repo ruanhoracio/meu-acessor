@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { Plus, Trash2, Check, Clock, Bot, Sliders, User, Camera, CheckCircle2, Loader2, AlertCircle, Crop } from "lucide-react";
+import { Plus, Trash2, Check, Clock, Bot, Sliders, User, Camera, CheckCircle2, Loader2, AlertCircle, Crop, Shield } from "lucide-react";
 import { getProjetos, criarProjeto, excluirProjeto } from "@/actions/projetos";
 import { ModalCropper } from "@/components/modals/modal-cropper";
 
@@ -466,6 +466,66 @@ export default function ConfigPage() {
               onChange={(e) => setHorarioFechamento(e.target.value)}
               className="input w-32 text-center font-bold"
             />
+          </div>
+        </div>
+      </section>
+
+      {/* ── Segurança do App (Better Auth / Senha de Acesso) ───────────────────────── */}
+      <section className="card p-6">
+        <h2 className="font-heading text-lg font-semibold tracking-tight mb-2 flex items-center gap-2">
+          <Shield className="w-5 h-5 text-accent" />
+          Segurança do App (Better Auth)
+        </h2>
+        <p className="text-xs mb-6 text-gray-500">
+          Proteja o seu painel com uma senha simples de acesso rápido.
+        </p>
+
+        <div className="space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-xl bg-gray-50 border border-gray-200">
+            <div>
+              <p className="text-sm font-bold text-gray-900">Senha de Acesso do App</p>
+              <p className="text-xs text-gray-500">Senha padrão atual: <code className="font-bold text-accent">1025</code></p>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <input
+                type="text"
+                placeholder="Nova Senha"
+                id="novaSenhaInput"
+                className="input w-36 text-center font-bold text-sm"
+              />
+              <button
+                type="button"
+                onClick={() => {
+                  const input = document.getElementById("novaSenhaInput") as HTMLInputElement;
+                  if (input && input.value.trim()) {
+                    localStorage.setItem("assessor_custom_password", input.value.trim());
+                    exibirSucesso(`Nova senha configurada com sucesso: "${input.value.trim()}"`);
+                    input.value = "";
+                  }
+                }}
+                className="btn-primary text-xs py-2.5 px-4 cursor-pointer"
+              >
+                Salvar Senha
+              </button>
+            </div>
+          </div>
+
+          <div className="flex items-center justify-between p-4 rounded-xl bg-red-50 border border-red-200">
+            <div>
+              <p className="text-sm font-bold text-red-900">Sair e Bloquear App</p>
+              <p className="text-xs text-red-600">Exibe a tela de bloqueio e exige a senha para entrar novamente.</p>
+            </div>
+            <button
+              type="button"
+              onClick={() => {
+                localStorage.removeItem("assessor_auth_session");
+                window.location.reload();
+              }}
+              className="px-4 py-2.5 rounded-xl bg-red-600 hover:bg-red-700 text-white text-xs font-bold transition-all cursor-pointer shadow-xs"
+            >
+              🔒 Bloquear App Agora
+            </button>
           </div>
         </div>
       </section>
