@@ -25,6 +25,25 @@ import { horasParaTexto } from "@/lib/utils";
 import { BannerAvisos } from "@/components/dashboard/banner-avisos";
 import { BarraCapturaIA } from "@/components/dashboard/barra-captura-ia";
 
+function getDiaString(dateInput: Date | string | null): string {
+  if (!dateInput) return "";
+  const d = new Date(dateInput);
+  if (isNaN(d.getTime())) return "";
+
+  if (typeof dateInput === "string" && /^\d{4}-\d{2}-\d{2}$/.test(dateInput.trim())) {
+    return dateInput.trim();
+  }
+
+  if (d.getUTCHours() === 0 && d.getUTCMinutes() === 0 && d.getUTCSeconds() === 0) {
+    return d.toISOString().split("T")[0];
+  }
+
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
 export default function HojePage() {
   const [tarefas, setTarefas] = useState<any[]>([]);
   const [videos, setVideos] = useState<any[]>([]);
@@ -84,15 +103,27 @@ export default function HojePage() {
     }
   };
 
-  // Filtragem para HOJE
-  const hojeStr = new Date().toDateString();
+  // Filtragem ESTRITA para HOJE (Apenas tarefas sem prazo ou de hoje/atrasadas)
+  const hojeStr = getDiaString(new Date());
 
-  const tarefasHoje = tarefas.filter((t) => t.status !== "concluida");
-  const tarefasConcluidasHoje = tarefas.filter((t) => t.status === "concluida");
+  const tarefasHoje = tarefas.filter((t) => {
+    if (t.status === "concluida") return false;
+    if (!t.prazo) return true; // Tarefas sem prazo ficam na lista de Hoje por padrão
+    const pStr = getDiaString(t.prazo);
+    return pStr <= hojeStr; // Apenas de hoje ou atrasadas!
+  });
+
+  const tarefasConcluidasHoje = tarefas.filter((t) => {
+    if (t.status !== "concluida") return false;
+    if (!t.prazo) return true;
+    const pStr = getDiaString(t.prazo);
+    return pStr === hojeStr;
+  });
 
   const eventosHoje = eventos.filter((e) => {
     if (!e.inicio) return false;
-    return new Date(e.inicio).toDateString() === hojeStr;
+    const eStr = getDiaString(e.inicio);
+    return eStr === hojeStr;
   });
 
   const videosAtivos = videos.filter((v) => v.estagio !== "entregue");
@@ -122,7 +153,7 @@ export default function HojePage() {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <StatCard
           icon={<CheckCircle2 className="w-4 h-4 text-accent" />}
-          label="Tarefas pendentes"
+          label="Tarefas pendentes hoje"
           value={String(tarefasHoje.length)}
           accent={false}
         />
@@ -227,12 +258,12 @@ export default function HojePage() {
           </div>
         </div>
 
-        {/* ── Tarefas do dia (Com Sync em Tempo Real) ───────────────────────── */}
+        {/* ── Tarefas do dia (Estritamente de HOJE) ───────────────────────── */}
         <div className="card p-5 animate-fade-in-up-delay-2">
           <div className="flex items-center justify-between mb-4">
             <h2 className="font-heading text-base font-bold tracking-tight text-gray-900 flex items-center gap-2">
               <CheckCircle2 className="w-4 h-4 text-accent" />
-              Tarefas ({tarefasHoje.length})
+              Tarefas de Hoje ({tarefasHoje.length})
             </h2>
             <Link href="/tarefas" className="text-xs font-semibold text-gray-500 hover:text-gray-900 flex items-center gap-1">
               Ver tudo <ChevronRight className="w-3 h-3" />
