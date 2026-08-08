@@ -25,6 +25,25 @@ const PRIORIDADE_LABELS: Record<string, string> = {
   baixa: "Baixa",
 };
 
+function getDiaString(dateInput: Date | string | null): string {
+  if (!dateInput) return "";
+  const d = new Date(dateInput);
+  if (isNaN(d.getTime())) return "";
+
+  if (typeof dateInput === "string" && /^\d{4}-\d{2}-\d{2}$/.test(dateInput.trim())) {
+    return dateInput.trim();
+  }
+
+  if (d.getUTCHours() === 0 && d.getUTCMinutes() === 0 && d.getUTCSeconds() === 0) {
+    return d.toISOString().split("T")[0];
+  }
+
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
 export default function TarefasKanbanPage() {
   const [tarefas, setTarefas] = useState<any[]>([]);
   const [videos, setVideos] = useState<any[]>([]);
@@ -59,10 +78,14 @@ export default function TarefasKanbanPage() {
     carregarDados();
     const interval = setInterval(carregarDados, 4000);
     const onFocus = () => carregarDados();
+    const onDadosUpdated = () => carregarDados();
+
     window.addEventListener("focus", onFocus);
+    window.addEventListener("dados_updated", onDadosUpdated);
     return () => {
       clearInterval(interval);
       window.removeEventListener("focus", onFocus);
+      window.removeEventListener("dados_updated", onDadosUpdated);
     };
   }, []);
 
@@ -90,6 +113,7 @@ export default function TarefasKanbanPage() {
         body: JSON.stringify({ status: novoStatus }),
       });
     }
+    window.dispatchEvent(new Event("dados_updated"));
     carregarDados();
   };
 
@@ -103,67 +127,63 @@ export default function TarefasKanbanPage() {
         setTarefas((prev) => prev.filter((t) => t.id !== id));
         await fetch(`/api/tarefas/${id}`, { method: "DELETE" });
       }
+      window.dispatchEvent(new Event("dados_updated"));
       carregarDados();
     }
   };
 
-  // Normalização unificada de tarefas + vídeos para o Kanban de datas
+  // Normalização unificada de tarefas + vídeos
   const todosItens: any[] = [
     ...tarefas.map((t) => ({
       ...t,
       tipoItem: "tarefa",
-      dataPrazo: t.prazo ? new Date(t.prazo) : null,
+      dataPrazo: t.prazo,
       isConcluido: t.status === "concluida",
     })),
     ...videos.map((v) => ({
       ...v,
       tipoItem: "video",
-      dataPrazo: v.prazoEntrega ? new Date(v.prazoEntrega) : null,
+      dataPrazo: v.prazoEntrega,
       isConcluido: v.estagio === "entregue" || v.estagio === "aprovado",
       prioridade: "alta",
     })),
   ];
 
-  // Classificação das colunas do Kanban por data
-  const hoje = new Date();
-  hoje.setHours(0, 0, 0, 0);
+  // Classificação à prova de fuso horário
+  const hojeObj = new Date();
+  const hojeStr = getDiaString(hojeObj);
 
-  const amanha = new Date(hoje);
-  amanha.setDate(hoje.getDate() + 1);
-
-  const depoisDeAmanha = new Date(hoje);
-  depoisDeAmanha.setDate(hoje.getDate() + 2);
+  const amanhaObj = new Date(hojeObj);
+  amanhaObj.setDate(hojeObj.getDate() + 1);
+  const amanhaStr = getDiaString(amanhaObj);
 
   const itensFiltrados = todosItens.filter((t) => {
     if (filtroProjeto && t.projetoId !== filtroProjeto) return false;
     return true;
   });
 
-  // Coluna 1: HOJE (Tarefas sem prazo ou para hoje/atrasadas)
+  // Coluna 1: HOJE (Sem prazo ou prazo <= hojeStr)
   const colHoje = itensFiltrados.filter((t) => {
     if (t.isConcluido) return false;
-    if (!t.dataPrazo) return true; // Itens sem prazo vão para HOJE por padrão
-    const d = new Date(t.dataPrazo);
-    d.setHours(0, 0, 0, 0);
-    return d <= hoje;
+    if (!t.dataPrazo) return true;
+    const pStr = getDiaString(t.dataPrazo);
+    return pStr <= hojeStr;
   });
 
-  // Coluna 2: AMANHÃ
+  // Coluna 2: AMANHÃ (prazo === amanhaStr)
   const colAmanha = itensFiltrados.filter((t) => {
     if (t.isConcluido) return false;
     if (!t.dataPrazo) return false;
-    const d = new Date(t.dataPrazo);
-    d.setHours(0, 0, 0, 0);
-    return d.getTime() === amanha.getTime();
+    const pStr = getDiaString(t.dataPrazo);
+    return pStr === amanhaStr;
   });
 
-  // Coluna 3: PRÓXIMOS DIAS
+  // Coluna 3: PRÓXIMOS DIAS (prazo > amanhaStr)
   const colProximos = itensFiltrados.filter((t) => {
     if (t.isConcluido) return false;
     if (!t.dataPrazo) return false;
-    const d = new Date(t.dataPrazo);
-    d.setHours(0, 0, 0, 0);
-    return d >= depoisDeAmanha;
+    const pStr = getDiaString(t.dataPrazo);
+    return pStr > amanhaStr;
   });
 
   // Coluna 4: CONCLUÍDAS
@@ -183,15 +203,15 @@ export default function TarefasKanbanPage() {
         isOpen={!!tarefaParaEditar}
         tarefa={tarefaParaEditar}
         onClose={() => setTarefaParaEditar(null)}
-        onSaved={carregarDados}
+        onSaved={() => { window.dispatchEvent(new Event("dados_updated")); carregarDados(); }}
       />
 
       <ModalEditarVideo
         isOpen={!!videoParaEditar}
         video={videoParaEditar}
         onClose={() => setVideoParaEditar(null)}
-        onSaved={carregarDados}
-        onDeleted={carregarDados}
+        onSaved={() => { window.dispatchEvent(new Event("dados_updated")); carregarDados(); }}
+        onDeleted={() => { window.dispatchEvent(new Event("dados_updated")); carregarDados(); }}
       />
 
       <ModalNovo
@@ -206,7 +226,7 @@ export default function TarefasKanbanPage() {
             Kanban de Tarefas & Vídeos
           </h1>
           <p className="text-xs text-gray-500">
-            Organizados automaticamente por data: Hoje, Amanhã, Próximos Dias e Concluídas.
+            Organizados por data real: Hoje, Amanhã, Próximos Dias e Concluídas.
           </p>
         </div>
 
@@ -290,8 +310,8 @@ export default function TarefasKanbanPage() {
                 {col.itens.map((item) => {
                   const isVideo = item.tipoItem === "video";
                   const concluido = item.isConcluido;
-                  const tPrazo = item.dataPrazo;
-                  const atrasada = !concluido && tPrazo && tPrazo < hoje;
+                  const itemDiaStr = getDiaString(item.dataPrazo);
+                  const atrasada = !concluido && itemDiaStr && itemDiaStr < hojeStr;
 
                   return (
                     <div
@@ -361,10 +381,10 @@ export default function TarefasKanbanPage() {
 
                       {/* Data & Ações no hover */}
                       <div className="flex items-center justify-between text-[10px] text-gray-400 pt-2 border-t border-gray-100">
-                        {tPrazo ? (
+                        {itemDiaStr ? (
                           <span className="flex items-center gap-1 font-medium" style={atrasada ? { color: "#ef4444" } : {}}>
                             <Calendar className="w-3 h-3" />
-                            {tPrazo.toLocaleDateString("pt-BR", { day: "numeric", month: "short" })}
+                            {itemDiaStr.split("-").reverse().slice(0, 2).join("/")}
                           </span>
                         ) : (
                           <span>Sem prazo definido</span>

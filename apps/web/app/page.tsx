@@ -22,50 +22,87 @@ import {
   AGUARDANDO_LABELS,
 } from "@/lib/mock-data";
 import { horasParaTexto } from "@/lib/utils";
-import { getDashboardData } from "@/actions/dashboard";
-import { alternarStatusTarefa } from "@/actions/tarefas";
 import { BannerAvisos } from "@/components/dashboard/banner-avisos";
 import { BarraCapturaIA } from "@/components/dashboard/barra-captura-ia";
 
 export default function HojePage() {
-  const [data, setData] = useState<{
-    tarefasHoje: any[];
-    tarefasConcluidas: any[];
-    videosAtivos: any[];
-    eventosHoje: any[];
-    travadosCount: number;
-  }>({
-    tarefasHoje: [],
-    tarefasConcluidas: [],
-    videosAtivos: [],
-    eventosHoje: [],
-    travadosCount: 0,
-  });
+  const [tarefas, setTarefas] = useState<any[]>([]);
+  const [videos, setVideos] = useState<any[]>([]);
+  const [eventos, setEventos] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
 
   const carregarData = async () => {
-    const res = await getDashboardData();
-    if (res.success) {
-      setData({
-        tarefasHoje: res.tarefasHoje,
-        tarefasConcluidas: res.tarefasConcluidas,
-        videosAtivos: res.videosAtivos,
-        eventosHoje: res.eventosHoje,
-        travadosCount: res.travadosCount,
-      });
+    try {
+      const [resT, resV, resE] = await Promise.all([
+        fetch("/api/tarefas", { cache: "no-store" }).then((r) => r.json()).catch(() => []),
+        fetch("/api/videos", { cache: "no-store" }).then((r) => r.json()).catch(() => []),
+        fetch("/api/eventos", { cache: "no-store" }).then((r) => r.json()).catch(() => []),
+      ]);
+
+      if (Array.isArray(resT)) setTarefas(resT);
+      if (Array.isArray(resV)) setVideos(resV);
+      if (Array.isArray(resE)) setEventos(resE);
+    } catch (e) {
+      console.error("Erro ao carregar Dashboard:", e);
+    } finally {
+      setLoading(false);
     }
   };
 
   useEffect(() => {
     carregarData();
+    const interval = setInterval(carregarData, 4000);
+    const onFocus = () => carregarData();
+    const onDadosUpdated = () => carregarData();
+
+    window.addEventListener("focus", onFocus);
+    window.addEventListener("dados_updated", onDadosUpdated);
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener("focus", onFocus);
+      window.removeEventListener("dados_updated", onDadosUpdated);
+    };
   }, []);
 
-  const toggleTarefa = async (id: string, status: string) => {
-    await alternarStatusTarefa(id, status as any);
-    carregarData();
+  const toggleTarefa = async (id: string, statusAtual: string) => {
+    const novoStatus = statusAtual === "concluida" ? "aberta" : "concluida";
+
+    setTarefas((prev) =>
+      prev.map((t) => (t.id === id ? { ...t, status: novoStatus } : t))
+    );
+
+    try {
+      await fetch(`/api/tarefas/${id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status: novoStatus }),
+      });
+      window.dispatchEvent(new Event("dados_updated"));
+      carregarData();
+    } catch (err) {
+      console.error("Erro ao alternar tarefa:", err);
+    }
   };
 
+  // Filtragem para HOJE
+  const hojeStr = new Date().toDateString();
+
+  const tarefasHoje = tarefas.filter((t) => t.status !== "concluida");
+  const tarefasConcluidasHoje = tarefas.filter((t) => t.status === "concluida");
+
+  const eventosHoje = eventos.filter((e) => {
+    if (!e.inicio) return false;
+    return new Date(e.inicio).toDateString() === hojeStr;
+  });
+
+  const videosAtivos = videos.filter((v) => v.estagio !== "entregue");
+  const travadosCount = videosAtivos.filter((v) => {
+    const ultimoEv = v.ultimoEvento ? new Date(v.ultimoEvento) : new Date(v.criadoEm);
+    return Math.floor((Date.now() - ultimoEv.getTime()) / (1000 * 60 * 60 * 24)) >= 3;
+  }).length;
+
   // Capacidade da semana
-  const horasComprometidas = data.videosAtivos.reduce(
+  const horasComprometidas = videosAtivos.reduce(
     (acc, v) => acc + (v.estimativaHoras || 0),
     0
   );
@@ -74,9 +111,9 @@ export default function HojePage() {
   const estourada = percentual > 100;
 
   return (
-    <div className="space-y-6 animate-fade-in-up">
+    <div className="space-y-6 animate-fade-in-up pb-12">
       {/* ── Captura Inteligente com IA ─────────────────── */}
-      <BarraCapturaIA onSucesso={carregarData} />
+      <BarraCapturaIA onSucesso={() => { window.dispatchEvent(new Event("dados_updated")); carregarData(); }} />
 
       {/* ── Carrossel de Avisos em Looping ──────────── */}
       <BannerAvisos />
@@ -84,27 +121,27 @@ export default function HojePage() {
       {/* ── Resumo rápido ──────────────────────────── */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <StatCard
-          icon={<CheckCircle2 className="w-4 h-4" />}
-          label="Tarefas hoje"
-          value={String(data.tarefasHoje.length)}
+          icon={<CheckCircle2 className="w-4 h-4 text-accent" />}
+          label="Tarefas pendentes"
+          value={String(tarefasHoje.length)}
           accent={false}
         />
         <StatCard
-          icon={<Clapperboard className="w-4 h-4" />}
-          label="Vídeos ativos"
-          value={String(data.videosAtivos.length)}
+          icon={<Clapperboard className="w-4 h-4 text-blue-500" />}
+          label="Vídeos em edição"
+          value={String(videosAtivos.length)}
           accent={false}
         />
         <StatCard
-          icon={<AlertTriangle className="w-4 h-4" />}
-          label="Travados"
-          value={String(data.travadosCount)}
-          accent={data.travadosCount > 0}
+          icon={<AlertTriangle className="w-4 h-4 text-red-500" />}
+          label="Vídeos travados"
+          value={String(travadosCount)}
+          accent={travadosCount > 0}
         />
         <StatCard
-          icon={<Timer className="w-4 h-4" />}
-          label="Compromissos"
-          value={String(data.eventosHoje.length)}
+          icon={<Timer className="w-4 h-4 text-green-500" />}
+          label="Agenda hoje"
+          value={String(eventosHoje.length)}
           accent={false}
         />
       </div>
@@ -113,8 +150,8 @@ export default function HojePage() {
       <div className="card p-5 animate-fade-in-up-delay-1">
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
-            <TrendingUp className="w-4 h-4" style={{ color: "var(--text-muted)" }} />
-            <span className="text-sm font-semibold" style={{ color: "var(--text-secondary)" }}>
+            <TrendingUp className="w-4 h-4 text-gray-500" />
+            <span className="text-sm font-semibold text-gray-700">
               Capacidade da semana
             </span>
           </div>
@@ -130,16 +167,12 @@ export default function HojePage() {
             className="progress-fill"
             style={{
               width: `${Math.min(percentual, 100)}%`,
-              background: estourada
-                ? "var(--danger)"
-                : "var(--accent)",
-              boxShadow: estourada
-                ? "0 0 12px var(--danger-subtle)"
-                : "0 0 12px var(--accent-glow)",
+              background: estourada ? "var(--danger)" : "var(--accent)",
+              boxShadow: estourada ? "0 0 12px var(--danger-subtle)" : "0 0 12px var(--accent-glow)",
             }}
           />
         </div>
-        <p className="text-xs mt-2" style={{ color: "var(--text-muted)" }}>
+        <p className="text-xs mt-2 text-gray-500">
           {estourada
             ? `⚠️ Semana estourada em ${horasParaTexto(horasComprometidas - horasDisponiveis)}`
             : `${horasParaTexto(horasDisponiveis - horasComprometidas)} disponíveis`}
@@ -150,27 +183,27 @@ export default function HojePage() {
         {/* ── Agenda do dia ────────────────────────── */}
         <div className="card p-5 animate-fade-in-up-delay-1">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="font-heading text-base font-bold tracking-tight flex items-center gap-2">
-              <Clock className="w-4 h-4" style={{ color: "var(--accent)" }} />
-              Agenda Hoje ({data.eventosHoje.length})
+            <h2 className="font-heading text-base font-bold tracking-tight text-gray-900 flex items-center gap-2">
+              <Clock className="w-4 h-4 text-accent" />
+              Agenda Hoje ({eventosHoje.length})
             </h2>
-            <Link href="/agenda" className="text-xs font-semibold flex items-center gap-1" style={{ color: "var(--text-muted)" }}>
+            <Link href="/agenda" className="text-xs font-semibold text-gray-500 hover:text-gray-900 flex items-center gap-1">
               Ver tudo <ChevronRight className="w-3 h-3" />
             </Link>
           </div>
           <div className="space-y-3">
-            {data.eventosHoje.map((evento) => {
+            {eventosHoje.map((evento) => {
               const inicio = new Date(evento.inicio);
               const fim = evento.fim ? new Date(evento.fim) : null;
               return (
                 <div
                   key={evento.id}
-                  className="flex gap-3 p-3 rounded-[14px] transition-colors"
-                  style={{ background: "var(--bg-surface)", borderLeft: `4px solid ${evento.projeto?.cor || "var(--accent)"}` }}
+                  className="flex gap-3 p-3 rounded-xl bg-gray-50 transition-colors border-l-4"
+                  style={{ borderColor: evento.projeto?.cor || "var(--accent)" }}
                 >
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold truncate" style={{ color: "var(--text-primary)" }}>{evento.titulo}</p>
-                    <p className="text-xs mt-0.5" style={{ color: "var(--text-muted)" }}>
+                    <p className="text-sm font-semibold text-gray-900 truncate">{evento.titulo}</p>
+                    <p className="text-xs text-gray-500 mt-0.5">
                       {inicio.toLocaleTimeString("pt-BR", {
                         hour: "2-digit",
                         minute: "2-digit",
@@ -186,68 +219,70 @@ export default function HojePage() {
               );
             })}
 
-            {data.eventosHoje.length === 0 && (
-              <p className="text-xs py-4 text-center" style={{ color: "var(--text-muted)" }}>
+            {eventosHoje.length === 0 && (
+              <p className="text-xs py-4 text-center text-gray-400">
                 Nenhum compromisso marcado para hoje
               </p>
             )}
           </div>
         </div>
 
-        {/* ── Tarefas do dia ───────────────────────── */}
+        {/* ── Tarefas do dia (Com Sync em Tempo Real) ───────────────────────── */}
         <div className="card p-5 animate-fade-in-up-delay-2">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="font-heading text-base font-bold tracking-tight flex items-center gap-2">
-              <CheckCircle2 className="w-4 h-4" style={{ color: "var(--accent)" }} />
-              Tarefas ({data.tarefasHoje.length})
+            <h2 className="font-heading text-base font-bold tracking-tight text-gray-900 flex items-center gap-2">
+              <CheckCircle2 className="w-4 h-4 text-accent" />
+              Tarefas ({tarefasHoje.length})
             </h2>
-            <Link href="/tarefas" className="text-xs font-semibold flex items-center gap-1" style={{ color: "var(--text-muted)" }}>
+            <Link href="/tarefas" className="text-xs font-semibold text-gray-500 hover:text-gray-900 flex items-center gap-1">
               Ver tudo <ChevronRight className="w-3 h-3" />
             </Link>
           </div>
           <div className="space-y-2">
-            {data.tarefasConcluidas.map((t) => (
-              <div key={t.id} className="flex items-center gap-3 py-2 px-3 rounded-lg opacity-50">
-                <CheckCircle2 className="w-4 h-4 flex-shrink-0" style={{ color: "var(--success)" }} />
-                <span className="text-sm line-through" style={{ color: "var(--text-muted)" }}>
-                  {t.titulo}
-                </span>
-              </div>
-            ))}
-            {data.tarefasHoje.map((t) => (
+            {tarefasHoje.map((t) => (
               <div
                 key={t.id}
                 onClick={() => toggleTarefa(t.id, t.status)}
-                className="flex items-center gap-3 py-2.5 px-3 rounded-[12px] transition-colors cursor-pointer"
-                style={{ background: "var(--bg-surface)" }}
+                className="flex items-center gap-3 py-2.5 px-3 rounded-xl bg-gray-50 hover:bg-gray-100 transition-colors cursor-pointer"
               >
                 <Circle
-                  className="w-4 h-4 flex-shrink-0"
-                  style={{
-                    color:
-                      t.prioridade === "urgente"
-                        ? "var(--danger)"
-                        : t.prioridade === "alta"
-                        ? "var(--warning)"
-                        : "var(--text-muted)",
-                  }}
+                  className={`w-4 h-4 flex-shrink-0 ${
+                    t.prioridade === "urgente"
+                      ? "text-red-500"
+                      : t.prioridade === "alta"
+                      ? "text-amber-500"
+                      : "text-gray-400"
+                  }`}
                 />
                 <div className="flex-1 min-w-0">
-                  <span className="text-sm font-semibold truncate block" style={{ color: "var(--text-primary)" }}>{t.titulo}</span>
+                  <span className="text-sm font-semibold text-gray-900 truncate block">{t.titulo}</span>
                   {t.projeto && (
-                    <span className="text-[11px] font-medium" style={{ color: t.projeto.cor }}>
+                    <span className="text-[11px] font-bold" style={{ color: t.projeto.cor }}>
                       {t.projeto.nome}
                     </span>
                   )}
                 </div>
                 {t.prioridade === "urgente" && (
-                  <Zap className="w-3.5 h-3.5 flex-shrink-0" style={{ color: "var(--danger)" }} />
+                  <Zap className="w-3.5 h-3.5 flex-shrink-0 text-red-500" />
                 )}
               </div>
             ))}
 
-            {data.tarefasHoje.length === 0 && data.tarefasConcluidas.length === 0 && (
-              <p className="text-xs py-4 text-center" style={{ color: "var(--text-muted)" }}>
+            {tarefasConcluidasHoje.map((t) => (
+              <div
+                key={t.id}
+                onClick={() => toggleTarefa(t.id, t.status)}
+                className="flex items-center gap-3 py-2 px-3 rounded-lg opacity-50 cursor-pointer hover:opacity-75 transition-opacity"
+              >
+                <CheckCircle2 className="w-4 h-4 flex-shrink-0 text-green-500" />
+                <span className="text-sm line-through text-gray-400 truncate">
+                  {t.titulo}
+                </span>
+              </div>
+            ))}
+
+            {tarefasHoje.length === 0 && tarefasConcluidasHoje.length === 0 && (
+              <p className="text-xs py-4 text-center text-gray-400">
                 Nenhuma tarefa pendente para hoje
               </p>
             )}
@@ -257,16 +292,16 @@ export default function HojePage() {
         {/* ── Vídeos prioritários ──────────────────── */}
         <div className="card p-5 animate-fade-in-up-delay-3">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="font-heading text-base font-bold tracking-tight flex items-center gap-2">
-              <Video className="w-4 h-4" style={{ color: "var(--accent)" }} />
-              Vídeos Ativos ({data.videosAtivos.length})
+            <h2 className="font-heading text-base font-bold tracking-tight text-gray-900 flex items-center gap-2">
+              <Video className="w-4 h-4 text-accent" />
+              Vídeos Ativos ({videosAtivos.length})
             </h2>
-            <Link href="/pipeline" className="text-xs font-semibold flex items-center gap-1" style={{ color: "var(--text-muted)" }}>
+            <Link href="/pipeline" className="text-xs font-semibold text-gray-500 hover:text-gray-900 flex items-center gap-1">
               Ver tudo <ChevronRight className="w-3 h-3" />
             </Link>
           </div>
           <div className="space-y-3">
-            {data.videosAtivos.slice(0, 4).map((v) => {
+            {videosAtivos.slice(0, 4).map((v) => {
               const ultimoEv = v.ultimoEvento ? new Date(v.ultimoEvento) : new Date(v.criadoEm);
               const diasParado = Math.floor((Date.now() - ultimoEv.getTime()) / (1000 * 60 * 60 * 24));
               const travado = diasParado >= 3;
@@ -275,19 +310,19 @@ export default function HojePage() {
                 <Link
                   key={v.id}
                   href={`/pipeline/${v.id}`}
-                  className="block p-3 rounded-[14px] transition-all card"
+                  className="block p-3 rounded-xl bg-gray-50 hover:bg-gray-100 transition-all border-l-4"
                   style={{
-                    borderLeft: `4px solid ${v.projeto?.cor || "var(--accent)"}`,
+                    borderColor: v.projeto?.cor || "var(--accent)",
                   }}
                 >
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0">
-                      <p className="text-sm font-semibold truncate" style={{ color: "var(--text-primary)" }}>{v.titulo}</p>
+                      <p className="text-sm font-semibold text-gray-900 truncate">{v.titulo}</p>
                       <div className="flex items-center gap-2 mt-1">
                         <span className="badge badge-neutral text-[10px]">
                           {FORMATO_LABELS[v.formato] || v.formato}
                         </span>
-                        <span className="badge badge-neutral text-[10px]">
+                        <span className="badge badge-neutral text-[10px] uppercase font-bold text-accent">
                           {ESTAGIO_LABELS[v.estagio] || v.estagio}
                         </span>
                       </div>
@@ -298,11 +333,11 @@ export default function HojePage() {
                           {diasParado}d parado
                         </span>
                       )}
-                      <div className="flex items-center gap-1 text-[11px]" style={{ color: "var(--text-muted)" }}>
+                      <div className="flex items-center gap-1 text-[11px] text-gray-500">
                         {v.aguardando === "cliente" || v.aguardando === "aprovacao" ? (
-                          <Users className="w-3 h-3" />
+                          <Users className="w-3 h-3 text-gray-400" />
                         ) : (
-                          <User className="w-3 h-3" />
+                          <User className="w-3 h-3 text-gray-400" />
                         )}
                         {AGUARDANDO_LABELS[v.aguardando || "eu"]}
                       </div>
@@ -312,8 +347,8 @@ export default function HojePage() {
               );
             })}
 
-            {data.videosAtivos.length === 0 && (
-              <p className="text-xs py-4 text-center" style={{ color: "var(--text-muted)" }}>
+            {videosAtivos.length === 0 && (
+              <p className="text-xs py-4 text-center text-gray-400">
                 Nenhum vídeo em edição
               </p>
             )}
@@ -347,7 +382,7 @@ function StatCard({
           : {}
       }
     >
-      <div className="flex items-center gap-2" style={{ color: "var(--text-muted)" }}>
+      <div className="flex items-center gap-2 text-gray-500">
         {icon}
         <span className="text-xs font-semibold">{label}</span>
       </div>

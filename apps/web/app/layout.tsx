@@ -22,6 +22,11 @@ export const metadata: Metadata = {
   title: "Meu Assessor",
   description: "Seu assistente pessoal — compromissos, tarefas, vídeos e notas em um só lugar.",
   manifest: "/manifest.json",
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "Assessor",
+  },
   icons: {
     icon: "/favicon.svg",
     apple: "/apple-touch-icon.svg",
@@ -33,6 +38,8 @@ export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
   maximumScale: 1,
+  userScalable: false,
+  viewportFit: "cover",
 };
 
 export default function RootLayout({
@@ -42,13 +49,18 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="pt-BR" className={`${inter.variable} ${urbanist.variable}`}>
+      <head>
+        <meta name="mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+      </head>
       <body>
         <div className="flex min-h-screen">
           {/* Sidebar — desktop only */}
           <Sidebar />
 
           {/* Main content */}
-          <main className="flex-1 md:ml-[260px] pb-[80px] md:pb-0">
+          <main className="flex-1 md:ml-[260px] pb-[96px] md:pb-0">
             <Header />
             <div className="px-4 md:px-8 py-6 max-w-[1400px] mx-auto">
               {children}
