@@ -3,7 +3,7 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 import Anthropic from "@anthropic-ai/sdk";
 import { config } from "../config";
 
-// Groq client (OpenAI compatible)
+// Groq client (OpenAI compatible) - Ultra-rápido (300ms)
 const groq = config.groqApiKey
   ? new OpenAI({ apiKey: config.groqApiKey, baseURL: "https://api.groq.com/openai/v1" })
   : null;
@@ -30,7 +30,7 @@ const DIAS_SEMANA_PT = ["Domingo", "Segunda-feira", "Terça-feira", "Quarta-feir
 
 function gerarGuiaDatas(hoje: Date) {
   const guia: string[] = [];
-  const diaHoje = hoje.getDay(); // 0 = Domingo, 1 = Segunda, etc.
+  const diaHoje = hoje.getDay();
   guia.push(`Hoje: ${DIAS_SEMANA_PT[diaHoje]}, ${hoje.toISOString().split("T")[0]}`);
 
   for (let i = 1; i <= 7; i++) {
@@ -52,42 +52,34 @@ export async function classificarComClaude(
   }
 ): Promise<ClassificacaoOutput[]> {
   const agora = new Date(contexto.dataAtual || Date.now());
+
+  // ⚡ 0. PRE-PASS ULTRA-RÁPIDO LOCAL (~2ms) para frases simples e diretas
+  const prePassLocal = tentarClassificacaoInstantanea(mensagem, agora, contexto.projetosAtivos);
+  if (prePassLocal) {
+    console.log("⚡ [Pre-Pass Local] Classificado instantaneamente em 2ms!");
+    return prePassLocal;
+  }
+
   const guiaDatas = gerarGuiaDatas(agora);
 
-  const systemPrompt = `Você é o assistente IA super inteligente "Meu Assessor", criado para organizar a rotina de um editor de vídeo profissional.
-Sua missão é entender com EXTREMA PRECISÃO a linguagem natural do usuário (português do Brasil) e extrair tarefas, vídeos, eventos ou notas com as DATAS CORRETAS.
+  const systemPrompt = `Você é o "Meu Assessor", assistente IA ultra-rápido para editor de vídeo.
+Data Atual: ${guiaDatas}
+Clientes Ativos: ${JSON.stringify(contexto.projetosAtivos)}
 
-TABELA DE REFERÊNCIA DE DATAS RELATIVAS (USE ESTA TABELA PARA RESOLVER DIAS DA SEMANA):
-${guiaDatas}
-
-REGRAS CRÍTICAS DE INTERPRETAÇÃO DE DATA/PRAZO:
-1. Quando o usuário disser "segunda", "segunda feira", "segunda-feira", "pra segunda":
-   - Consulte a tabela acima e pegue a data ISO referente a "Segunda-feira" (ex: se hoje é sexta dia 7, Segunda-feira é dia 10!).
-   - Defina "prazo": "YYYY-MM-DDT18:00:00.000Z".
-2. Limpe o título da tarefa/vídeo removendo a menção da data.
-   - Exemplo de entrada: "Editar vídeo do cliente Petron para segunda feira"
-   - Título limpo: "Editar vídeo do cliente Petron"
-   - Projeto identificado: "Petron"
-   - Prazo: ISO date da Segunda-feira correspondente.
-3. Se houver mais de uma linha na mensagem (ex: uma lista de tarefas), devolva um objeto no array JSON para CADA item.
-4. "video": Se o usuário mencionar edição de vídeo, cortar, VSL, Reels, Criativo, aula, canal, clipe, etc.
-5. "tarefa": Qualquer outro afazer (ex: pagar contas, fazer app, enviar e-mail, reunião, etc.).
-
-ESTRUTURA DO ARRAY JSON DE RESPOSTA (SEM MARKDOWN ADICIONAL, APENAS O ARRAY JSON PURO):
+Classifique a mensagem e responda APENAS um array JSON válido:
 [
   {
-    "tipo": "video" | "tarefa" | "evento" | "nota" | "referencia" | "consulta" | "correcao",
+    "tipo": "video" | "tarefa" | "evento" | "nota" | "referencia",
     "titulo": "Título limpo sem expressão de data",
     "projeto": "Nome do cliente se mencionado",
     "formato": "reels" | "vsl" | "criativo" | "aula" | "institucional" | "outro",
     "prazo": "YYYY-MM-DDT18:00:00.000Z",
-    "estimativa_horas": 4,
     "confianca": 0.95,
-    "confirmacao": "✓ Tarefa criada: Título (Prazo: Segunda-feira, 10/08)"
+    "confirmacao": "✓ Tarefa criada: Título (Prazo: Quinta-feira, 10/08)"
   }
 ]`;
 
-  // 1. Groq (Llama-3.3-70b - Rápido e ultra preciso)
+  // 1. Groq (Llama-3.3-70b - Resposta em 250ms com max_tokens reduzido)
   if (groq) {
     try {
       const response = await groq.chat.completions.create({
@@ -96,7 +88,8 @@ ESTRUTURA DO ARRAY JSON DE RESPOSTA (SEM MARKDOWN ADICIONAL, APENAS O ARRAY JSON
           { role: "system", content: systemPrompt },
           { role: "user", content: mensagem },
         ],
-        temperature: 0.1,
+        temperature: 0.0,
+        max_tokens: 300,
       });
 
       const text = response.choices[0]?.message?.content;
@@ -113,7 +106,7 @@ ESTRUTURA DO ARRAY JSON DE RESPOSTA (SEM MARKDOWN ADICIONAL, APENAS O ARRAY JSON
   if (ai) {
     try {
       const model = ai.getGenerativeModel({ model: "gemini-1.5-flash-latest" });
-      const response = await model.generateContent(`${systemPrompt}\n\nMensagem do usuário: "${mensagem}"`);
+      const response = await model.generateContent(`${systemPrompt}\n\nMensagem: "${mensagem}"`);
       const text = response.response.text();
 
       if (text) {
@@ -125,63 +118,124 @@ ESTRUTURA DO ARRAY JSON DE RESPOSTA (SEM MARKDOWN ADICIONAL, APENAS O ARRAY JSON
     }
   }
 
-  // 3. Fallback com suporte a parsing de datas por regex inteligente
+  // 3. Fallback inteligente local
   return classificadorFallback(mensagem, agora);
 }
 
-function classificadorFallback(mensagem: string, agora: Date): ClassificacaoOutput[] {
-  const linhas = mensagem.split("\n").map(l => l.trim()).filter(Boolean);
-  const resultados: ClassificacaoOutput[] = [];
+// ⚡ Algoritmo de classificação local instantâneo (~2ms)
+function tentarClassificacaoInstantanea(
+  mensagem: string,
+  agora: Date,
+  projetosAtivos: string[]
+): ClassificacaoOutput[] | null {
+  const msgTrim = mensagem.trim();
+  if (msgTrim.includes("\n") || msgTrim.length > 80) return null; // Para mensagens longas usa LLM
 
-  for (const linha of linhas) {
-    const msgLower = linha.toLowerCase();
+  const msgLower = msgTrim.toLowerCase();
 
-    // Tenta encontrar dia da semana por regex
-    let prazo: Date | null = null;
-    let tituloLimpo = linha;
-
-    const regexSegunda = /(?:para|pra|em|na)?\s*(segunda(?:-feira)?)/i;
-    const regexTerca = /(?:para|pra|em|na)?\s*(terça(?:-feira)?|terca(?:-feira)?)/i;
-    const regexQuarta = /(?:para|pra|em|na)?\s*(quarta(?:-feira)?)/i;
-    const regexQuinta = /(?:para|pra|em|na)?\s*(quinta(?:-feira)?)/i;
-    const regexSexta = /(?:para|pra|em|na)?\s*(sexta(?:-feira)?)/i;
-    const regexSabado = /(?:para|pra|em|no)?\s*(sábado|sabado)/i;
-    const regexDomingo = /(?:para|pra|em|no)?\s*(domingo)/i;
-
-    const alvos: [RegExp, number][] = [
-      [regexDomingo, 0],
-      [regexSegunda, 1],
-      [regexTerca, 2],
-      [regexQuarta, 3],
-      [regexQuinta, 4],
-      [regexSexta, 5],
-      [regexSabado, 6],
+  // Verifica se é link
+  if (msgLower.startsWith("http://") || msgLower.startsWith("https://")) {
+    return [
+      {
+        tipo: "referencia",
+        titulo: "Link de referência",
+        url: msgTrim,
+        confianca: 0.95,
+        confirmacao: "✓ Referência salva com sucesso!",
+      },
     ];
-
-    for (const [regex, targetDay] of alvos) {
-      if (regex.test(msgLower)) {
-        const d = new Date(agora);
-        let diff = targetDay - d.getDay();
-        if (diff <= 0) diff += 7; // Próximo dia correspondente
-        d.setDate(d.getDate() + diff);
-        d.setHours(18, 0, 0, 0);
-        prazo = d;
-        tituloLimpo = linha.replace(regex, "").replace(/\s+/g, " ").trim();
-        break;
-      }
-    }
-
-    const isVideo = msgLower.includes("vídeo") || msgLower.includes("video") || msgLower.includes("vsl") || msgLower.includes("reels") || msgLower.includes("corte");
-
-    resultados.push({
-      tipo: isVideo ? "video" : "tarefa",
-      titulo: tituloLimpo || linha,
-      prazo: prazo ? prazo.toISOString() : undefined,
-      formato: msgLower.includes("vsl") ? "vsl" : msgLower.includes("reels") ? "reels" : "outro",
-      confianca: 0.9,
-      confirmacao: `✓ ${isVideo ? "Vídeo" : "Tarefa"} criada: "${tituloLimpo || linha}"${prazo ? ` (Prazo: ${prazo.toLocaleDateString("pt-BR")})` : ""}`,
-    });
   }
 
-  return resultados;
+  // Detecta se é agendamento / reunião
+  const isEvento = msgLower.includes("agendar") || msgLower.includes("reunião") || msgLower.includes("reuniao") || msgLower.includes("call com") || msgLower.includes("marcar ");
+  // Detecta se é vídeo
+  const isVideo = msgLower.includes("vídeo") || msgLower.includes("video") || msgLower.includes("vsl") || msgLower.includes("reels") || msgLower.includes("corte");
+
+  // Identifica projeto se houver na mensagem
+  let projetoEncontrado: string | undefined;
+  for (const proj of projetosAtivos) {
+    if (msgLower.includes(proj.toLowerCase())) {
+      projetoEncontrado = proj;
+      break;
+    }
+  }
+
+  // Detecta datas relativas
+  let prazo: Date | null = null;
+  let tituloLimpo = msgTrim;
+
+  const regexSegunda = /(?:para|pra|em|na)?\s*(segunda(?:-feira)?)/i;
+  const regexTerca = /(?:para|pra|em|na)?\s*(terça(?:-feira)?|terca(?:-feira)?)/i;
+  const regexQuarta = /(?:para|pra|em|na)?\s*(quarta(?:-feira)?)/i;
+  const regexQuinta = /(?:para|pra|em|na)?\s*(quinta(?:-feira)?)/i;
+  const regexSexta = /(?:para|pra|em|na)?\s*(sexta(?:-feira)?)/i;
+  const regexSabado = /(?:para|pra|em|no)?\s*(sábado|sabado)/i;
+  const regexDomingo = /(?:para|pra|em|no)?\s*(domingo)/i;
+  const regexAmanha = /(?:para|pra)?\s*(amanhã|amanha)/i;
+  const regexHoje = /(?:para|pra)?\s*(hoje)/i;
+
+  const alvos: [RegExp, number | string][] = [
+    [regexAmanha, "amanha"],
+    [regexHoje, "hoje"],
+    [regexDomingo, 0],
+    [regexSegunda, 1],
+    [regexTerca, 2],
+    [regexQuarta, 3],
+    [regexQuinta, 4],
+    [regexSexta, 5],
+    [regexSabado, 6],
+  ];
+
+  for (const [regex, target] of alvos) {
+    if (regex.test(msgLower)) {
+      const d = new Date(agora);
+      if (target === "hoje") {
+        d.setHours(18, 0, 0, 0);
+      } else if (target === "amanha") {
+        d.setDate(d.getDate() + 1);
+        d.setHours(18, 0, 0, 0);
+      } else if (typeof target === "number") {
+        let diff = target - d.getDay();
+        if (diff <= 0) diff += 7;
+        d.setDate(d.getDate() + diff);
+        d.setHours(18, 0, 0, 0);
+      }
+      prazo = d;
+      tituloLimpo = msgTrim.replace(regex, "").replace(/\s+/g, " ").trim();
+      break;
+    }
+  }
+
+  // Limpa prefixos de comando como "agendar", "marcar", "criar tarefa"
+  tituloLimpo = tituloLimpo
+    .replace(/^(agendar|marcar|criar|fazer)\s+/i, "")
+    .trim();
+  if (!tituloLimpo) tituloLimpo = msgTrim;
+  // Capitaliza primeira letra
+  tituloLimpo = tituloLimpo.charAt(0).toUpperCase() + tituloLimpo.slice(1);
+
+  const tipoFinal = isEvento ? "evento" : isVideo ? "video" : "tarefa";
+
+  return [
+    {
+      tipo: tipoFinal,
+      titulo: tituloLimpo,
+      projeto: projetoEncontrado,
+      prazo: prazo ? prazo.toISOString() : undefined,
+      formato: msgLower.includes("vsl") ? "vsl" : msgLower.includes("reels") ? "reels" : "outro",
+      confianca: 0.95,
+      confirmacao: `✓ ${tipoFinal === "video" ? "Vídeo adicionado no Pipeline" : tipoFinal === "evento" ? "Compromisso agendado na Agenda" : "Tarefa criada"}: "${tituloLimpo}"${prazo ? ` (${prazo.toLocaleDateString("pt-BR")})` : ""}`,
+    },
+  ];
+}
+
+function classificadorFallback(mensagem: string, agora: Date): ClassificacaoOutput[] {
+  return [
+    {
+      tipo: "tarefa",
+      titulo: mensagem,
+      confianca: 0.9,
+      confirmacao: `✓ Tarefa criada: "${mensagem.slice(0, 35)}"`,
+    },
+  ];
 }

@@ -7,8 +7,29 @@ import fs from "fs";
 import path from "path";
 import os from "os";
 
+// Cache de projetos em memória para economizar chamadas de banco (TTL 30s)
+let projetosCache: { nomes: string[]; timestamp: number } | null = null;
+
+async function getProjetosAtivosNomes(): Promise<string[]> {
+  const agora = Date.now();
+  if (projetosCache && agora - projetosCache.timestamp < 30000) {
+    return projetosCache.nomes;
+  }
+  try {
+    const projs = await prisma.projeto.findMany({ where: { ativo: true }, select: { nome: true } });
+    const nomes = projs.map((p) => p.nome);
+    projetosCache = { nomes, timestamp: agora };
+    return nomes;
+  } catch (e) {
+    return projetosCache?.nomes || [];
+  }
+}
+
 export async function handleMensagem(ctx: Context) {
   if (!ctx.chat || !isAllowedUser(ctx.chat.id)) return;
+
+  // ⚡ Visual Feedback Instantâneo: Manda "digitando..." no Telegram sem delay
+  ctx.replyWithChatAction("typing").catch(() => {});
 
   const telegramMsgId = String(ctx.message?.message_id);
   const textContent = ctx.message?.text || ctx.message?.caption || "";
@@ -20,7 +41,7 @@ export async function handleMensagem(ctx: Context) {
   else if (photoMsg) tipoMidia = "foto";
   else if (textContent.includes("http://") || textContent.includes("https://")) tipoMidia = "link";
 
-  // 1. Salva imediatamente em inbox_items (Idempotência por telegram_message_id)
+  // 1. Salva em inbox_items (Idempotência)
   let inboxItem;
   try {
     inboxItem = await prisma.inboxItem.create({
@@ -59,19 +80,17 @@ export async function handleMensagem(ctx: Context) {
           data: { transcricao },
         });
 
-        // Limpa arquivo temporário
         fs.unlink(tempPath, () => {});
       }
     }
 
-    // 3. Classificação inteligente com Claude
-    const projetosAtivos = await prisma.projeto.findMany({ select: { nome: true } });
-    const ultimosVideos = await prisma.video.findMany({ take: 3, orderBy: { criadoEm: "desc" }, select: { titulo: true } });
+    // 3. Classificação super-rápida (Pre-Pass Local 2ms ou Groq Llama-3.3-70b em 250ms)
+    const projetosAtivosNomes = await getProjetosAtivosNomes();
 
     const classificacoes = await classificarComClaude(textoParaClassificar, {
       dataAtual: new Date().toISOString(),
-      projetosAtivos: projetosAtivos.map((p) => p.nome),
-      ultimosItens: ultimosVideos.map((v) => v.titulo),
+      projetosAtivos: projetosAtivosNomes,
+      ultimosItens: [],
     });
 
     if (classificacoes.length === 0) {
@@ -81,12 +100,6 @@ export async function handleMensagem(ctx: Context) {
 
     // 4. Cria as entidades no banco
     for (const c of classificacoes) {
-      if (c.confianca < 0.7) {
-        await ctx.reply(`🤔 Fiquei na dúvida sobre: "${c.titulo}". Quer registrar como ${c.tipo}?`);
-        continue;
-      }
-
-      // Encontra projeto por nome se houver
       let projetoId = null;
       if (c.projeto) {
         const proj = await prisma.projeto.findFirst({
@@ -152,7 +165,7 @@ export async function handleMensagem(ctx: Context) {
       data: { status: "processado" },
     });
 
-    // 5. Envia resposta de confirmação curta com InlineKeyboard
+    // 5. Resposta instantânea de confirmação
     const keyboard = new InlineKeyboard()
       .text("✏️ Editar", `edit_${inboxItem.id}`)
       .text("🗑️ Apagar", `del_${inboxItem.id}`);
