@@ -4,6 +4,25 @@ import prisma from "@meu-assessor/db";
 import { config } from "../config";
 import { ESTAGIO_LABELS } from "@meu-assessor/core";
 
+function getDiaString(dateInput: Date | string | null): string {
+  if (!dateInput) return "";
+  const d = new Date(dateInput);
+  if (isNaN(d.getTime())) return "";
+
+  if (typeof dateInput === "string" && /^\d{4}-\d{2}-\d{2}$/.test(dateInput.trim())) {
+    return dateInput.trim();
+  }
+
+  if (d.getUTCHours() === 0 && d.getUTCMinutes() === 0 && d.getUTCSeconds() === 0) {
+    return d.toISOString().split("T")[0];
+  }
+
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
 export function iniciarRotinasAgendadas(bot: Bot) {
   if (!config.allowedChatId) {
     console.log("[Jobs] TELEGRAM_ALLOWED_CHAT_ID não configurado. Rotinas agendadas desativadas.");
@@ -12,38 +31,53 @@ export function iniciarRotinasAgendadas(bot: Bot) {
 
   const chatId = config.allowedChatId;
 
-  // 1. Relatório Matinal completo das 08:00 AM
+  // 1. Relatório Matinal ESTRITAMENTE do DIA às 08:00 AM
   cron.schedule("0 8 * * *", async () => {
-    console.log("[Jobs] Executando resumo matinal das 08:00...");
+    console.log("[Jobs] Executando resumo matinal estritamente do DIA às 08:00...");
     try {
-      const hoje = new Date();
-      hoje.setHours(0, 0, 0, 0);
+      const hojeObj = new Date();
+      const hojeStr = getDiaString(hojeObj);
 
-      const amanha = new Date(hoje);
-      amanha.setDate(amanha.getDate() + 1);
+      const amanhaObj = new Date(hojeObj);
+      amanhaObj.setDate(hojeObj.getDate() + 1);
 
-      const [eventos, tarefas, videos] = await Promise.all([
-        prisma.evento.findMany({
-          where: { inicio: { gte: hoje, lt: amanha } },
-          include: { projeto: true },
-          orderBy: { inicio: "asc" },
-        }),
-        prisma.tarefa.findMany({
-          where: { status: { in: ["aberta", "fazendo"] } },
-          include: { projeto: true },
-          orderBy: { prioridade: "asc" },
-        }),
-        prisma.video.findMany({
-          where: { estagio: { notIn: ["entregue", "aprovado"] } },
-          include: { projeto: true },
-          orderBy: { prazoEntrega: "asc" },
-        }),
-      ]);
+      // Buscar apenas compromissos de hoje
+      const eventos = await prisma.evento.findMany({
+        where: { inicio: { gte: new Date(hojeStr + "T00:00:00.000Z"), lt: new Date(getDiaString(amanhaObj) + "T00:00:00.000Z") } },
+        include: { projeto: true },
+        orderBy: { inicio: "asc" },
+      });
 
-      let text = `☀️ *Bom dia, Ruan! Seu Resumo das 08:00*\n\n`;
+      // Buscar apenas tarefas de hoje (sem prazo ou prazo <= hojeStr)
+      const todasTarefasAbertas = await prisma.tarefa.findMany({
+        where: { status: { in: ["aberta", "fazendo"] } },
+        include: { projeto: true },
+        orderBy: { prioridade: "asc" },
+      });
+
+      const tarefasDoDia = todasTarefasAbertas.filter((t) => {
+        if (!t.prazo) return true; // Sem prazo fica para hoje
+        const pStr = getDiaString(t.prazo);
+        return pStr <= hojeStr; // Apenas de hoje ou atrasadas!
+      });
+
+      // Buscar apenas vídeos com prazo para hoje ou ativos em edição
+      const todosVideosAtivos = await prisma.video.findMany({
+        where: { estagio: { notIn: ["entregue", "aprovado"] } },
+        include: { projeto: true },
+        orderBy: { prazoEntrega: "asc" },
+      });
+
+      const videosDoDia = todosVideosAtivos.filter((v) => {
+        if (!v.prazoEntrega) return true;
+        const vStr = getDiaString(v.prazoEntrega);
+        return vStr <= hojeStr; // Prazo para hoje ou atrasado
+      });
+
+      let text = `☀️ *Bom dia, Ruan! Seu Resumo do Dia (${hojeStr.split("-").reverse().slice(0, 2).join("/")})*\n\n`;
 
       if (eventos.length > 0) {
-        text += `📅 *Compromissos na Agenda (${eventos.length}):*\n`;
+        text += `📅 *Agenda do Dia (${eventos.length}):*\n`;
         eventos.forEach((e) => {
           const hor = new Date(e.inicio).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
           text += `  • ${hor} — *${e.titulo}*${e.projeto ? ` (_${e.projeto.nome}_)` : ""}\n`;
@@ -53,24 +87,26 @@ export function iniciarRotinasAgendadas(bot: Bot) {
         text += `📅 *Agenda:* Nenhum compromisso marcado para hoje.\n\n`;
       }
 
-      if (tarefas.length > 0) {
-        text += `📋 *Tarefas do Dia (${tarefas.length}):*\n`;
-        tarefas.slice(0, 5).forEach((t) => {
+      if (tarefasDoDia.length > 0) {
+        text += `📋 *Tarefas do Dia (${tarefasDoDia.length}):*\n`;
+        tarefasDoDia.slice(0, 6).forEach((t) => {
           text += `  • *${t.titulo}*${t.projeto ? ` (_${t.projeto.nome}_)` : ""}\n`;
         });
-        if (tarefas.length > 5) text += `  _...e mais ${tarefas.length - 5} tarefas._\n`;
+        if (tarefasDoDia.length > 6) text += `  _...e mais ${tarefasDoDia.length - 6} tarefas._\n`;
         text += `\n`;
       } else {
-        text += `📋 *Tarefas:* Nenhuma tarefa pendente.\n\n`;
+        text += `📋 *Tarefas:* Nenhuma tarefa pendente para hoje.\n\n`;
       }
 
-      if (videos.length > 0) {
-        text += `🎬 *Vídeos em Edição (${videos.length}):*\n`;
-        videos.slice(0, 4).forEach((v) => {
+      if (videosDoDia.length > 0) {
+        text += `🎬 *Vídeos do Dia (${videosDoDia.length}):*\n`;
+        videosDoDia.slice(0, 4).forEach((v) => {
           const est = ESTAGIO_LABELS[v.estagio] || v.estagio;
           text += `  • *${v.titulo}* — _${est}_${v.projeto ? ` (${v.projeto.nome})` : ""}\n`;
         });
         text += `\n`;
+      } else {
+        text += `🎬 *Vídeos:* Nenhum vídeo pendente para hoje.\n\n`;
       }
 
       text += `🚀 *Bom trabalho hoje!* Qualquer ideia, compromisso ou tarefa, só me mandar aqui!`;
@@ -85,14 +121,21 @@ export function iniciarRotinasAgendadas(bot: Bot) {
   cron.schedule("0 14 * * *", async () => {
     console.log("[Jobs] Executando checagem das 14:00...");
     try {
-      const pendentes = await prisma.tarefa.count({
+      const hojeStr = getDiaString(new Date());
+      const todasTarefas = await prisma.tarefa.findMany({
         where: { status: "aberta" },
       });
 
-      if (pendentes > 0) {
+      const tarefasHoje = todasTarefas.filter((t) => {
+        if (!t.prazo) return true;
+        const pStr = getDiaString(t.prazo);
+        return pStr <= hojeStr;
+      });
+
+      if (tarefasHoje.length > 0) {
         await bot.api.sendMessage(
           chatId,
-          `⚡ *Checagem da tarde:* Você ainda tem *${pendentes} tarefas abertas* no seu painel.`
+          `⚡ *Checagem da tarde:* Você ainda tem *${tarefasHoje.length} tarefas pendentes para hoje* no seu painel.`
         );
       }
     } catch (err) {
@@ -141,5 +184,5 @@ export function iniciarRotinasAgendadas(bot: Bot) {
     }
   });
 
-  console.log("⏰ Rotinas agendadas (08:00 matinal, 14:00 checagem, alertas por hora) iniciadas.");
+  console.log("⏰ Rotinas agendadas (08:00 matinal estritamente do dia, 14:00 checagem, alertas por hora) iniciadas.");
 }
