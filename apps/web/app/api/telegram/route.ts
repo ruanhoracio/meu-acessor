@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from "next/server";
-import { Bot, InlineKeyboard } from "grammy";
 import prisma from "@/lib/db";
 import OpenAI from "openai";
 
@@ -7,7 +6,6 @@ const TELEGRAM_TOKEN = process.env.TELEGRAM_BOT_TOKEN || "";
 const ALLOWED_CHAT_ID = process.env.TELEGRAM_ALLOWED_CHAT_ID || "";
 const GROQ_KEY = process.env.GROQ_API_KEY || "";
 
-const bot = new Bot(TELEGRAM_TOKEN);
 const groq = GROQ_KEY ? new OpenAI({ apiKey: GROQ_KEY, baseURL: "https://api.groq.com/openai/v1" }) : null;
 
 // Algoritmo local instantâneo (~2ms)
