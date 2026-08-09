@@ -33,6 +33,17 @@ const CORES_EVENTO = [
   "#3b82f6", // Azul
 ];
 
+function getCorEvento(ev: any) {
+  if (ev.projeto?.cor) return ev.projeto.cor;
+  const key = ev.idOriginal || ev.id || ev.titulo || "";
+  let hash = 0;
+  for (let i = 0; i < key.length; i++) {
+    hash = key.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  const index = Math.abs(hash) % CORES_EVENTO.length;
+  return CORES_EVENTO[index];
+}
+
 export default function AgendaPage() {
   const [dataAtual, setDataAtual] = useState(new Date());
   const [eventos, setEventos] = useState<any[]>([]);
@@ -339,7 +350,7 @@ export default function AgendaPage() {
                       hour: "2-digit",
                       minute: "2-digit",
                     });
-                    const cor = ev.projeto?.cor || CORES_EVENTO[idx % CORES_EVENTO.length];
+                    const cor = getCorEvento(ev);
                     const isMensal = ev.recorrencia === "mensal";
                     const isSemanal = ev.recorrencia === "semanal";
 
