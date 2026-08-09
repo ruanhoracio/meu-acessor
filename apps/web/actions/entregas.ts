@@ -5,22 +5,16 @@ import { revalidatePath } from "next/cache";
 
 export async function getEntregasMensais(projetoId: string | null, mes: number, ano: number) {
   try {
-    // Definir intervalo do mês
-    const inicioMes = new Date(ano, mes - 1, 1, 0, 0, 0, 0);
-    const fimMes = new Date(ano, mes, 0, 23, 59, 59, 999);
-
     const whereCondition: any = {
-      criadoEm: {
-        gte: inicioMes,
-        lte: fimMes,
-      },
+      mes,
+      ano,
     };
 
     if (projetoId && projetoId !== "todos") {
       whereCondition.projetoId = projetoId;
     }
 
-    const videos = await prisma.video.findMany({
+    const entregas = await prisma.entregaMensal.findMany({
       where: whereCondition,
       include: {
         projeto: true,
@@ -37,7 +31,7 @@ export async function getEntregasMensais(projetoId: string | null, mes: number, 
 
     return {
       success: true,
-      videos: JSON.parse(JSON.stringify(videos)),
+      videos: JSON.parse(JSON.stringify(entregas)),
       projetos: JSON.parse(JSON.stringify(projetos)),
     };
   } catch (error: any) {
@@ -46,21 +40,17 @@ export async function getEntregasMensais(projetoId: string | null, mes: number, 
   }
 }
 
-export async function toggleVideoConcluido(videoId: string, concluido: boolean) {
+export async function toggleVideoConcluido(entregaId: string, concluido: boolean) {
   try {
-    const videoAtualizado = await prisma.video.update({
-      where: { id: videoId },
+    const entregaAtualizada = await prisma.entregaMensal.update({
+      where: { id: entregaId },
       data: {
-        estagio: concluido ? "entregue" : "briefing",
-        entregueEm: concluido ? new Date() : null,
+        concluido,
       },
     });
 
     revalidatePath("/entregas");
-    revalidatePath("/pipeline");
-    revalidatePath("/");
-
-    return { success: true, video: JSON.parse(JSON.stringify(videoAtualizado)) };
+    return { success: true, video: JSON.parse(JSON.stringify(entregaAtualizada)) };
   } catch (error: any) {
     console.error("[toggleVideoConcluido Error]:", error);
     return { success: false, error: String(error) };
@@ -80,41 +70,49 @@ export async function criarVideoEntrega(data: {
       return { success: false, error: "Título é obrigatório." };
     }
 
-    // Criar com data dentro do mês especificado
-    const dataCriacao = new Date(data.ano, data.mes - 1, new Date().getDate(), 12, 0, 0);
-
-    const novoVideo = await prisma.video.create({
+    const novaEntrega = await prisma.entregaMensal.create({
       data: {
         titulo: data.titulo.trim(),
         projetoId: data.projetoId && data.projetoId !== "todos" ? data.projetoId : null,
-        formato: (data.formato as any) || "outro",
-        estagio: data.concluido ? "entregue" : "briefing",
-        entregueEm: data.concluido ? new Date() : null,
-        criadoEm: dataCriacao,
+        formato: data.formato || "outro",
+        concluido: !!data.concluido,
+        mes: data.mes,
+        ano: data.ano,
       },
     });
 
     revalidatePath("/entregas");
-    revalidatePath("/pipeline");
-    revalidatePath("/");
-
-    return { success: true, video: JSON.parse(JSON.stringify(novoVideo)) };
+    return { success: true, video: JSON.parse(JSON.stringify(novaEntrega)) };
   } catch (error: any) {
     console.error("[criarVideoEntrega Error]:", error);
     return { success: false, error: String(error) };
   }
 }
 
-export async function excluirVideoEntrega(videoId: string) {
+export async function atualizarMetaCliente(projetoId: string, meta: number) {
   try {
-    await prisma.video.delete({
-      where: { id: videoId },
+    if (!projetoId || projetoId === "todos") return { success: false, error: "Selecione um cliente válido." };
+
+    const projetoAtualizado = await prisma.projeto.update({
+      where: { id: projetoId },
+      data: { metaVideosMensal: meta },
     });
 
     revalidatePath("/entregas");
-    revalidatePath("/pipeline");
-    revalidatePath("/");
+    return { success: true, projeto: JSON.parse(JSON.stringify(projetoAtualizado)) };
+  } catch (error: any) {
+    console.error("[atualizarMetaCliente Error]:", error);
+    return { success: false, error: String(error) };
+  }
+}
 
+export async function excluirVideoEntrega(entregaId: string) {
+  try {
+    await prisma.entregaMensal.delete({
+      where: { id: entregaId },
+    });
+
+    revalidatePath("/entregas");
     return { success: true };
   } catch (error: any) {
     console.error("[excluirVideoEntrega Error]:", error);

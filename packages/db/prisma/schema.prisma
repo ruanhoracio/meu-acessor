@@ -57,18 +57,35 @@ enum TipoProjeto {
 }
 
 model Projeto {
-  id     String      @id @default(cuid())
-  nome   String
-  tipo   TipoProjeto @default(cliente)
-  cor    String      @default("#ff5a3d")
-  ativo  Boolean     @default(true)
+  id               String      @id @default(cuid())
+  nome             String
+  tipo             TipoProjeto @default(cliente)
+  cor              String      @default("#ff5a3d")
+  ativo            Boolean     @default(true)
+  metaVideosMensal Int         @default(10) @map("meta_videos_mensal")
 
-  tarefas   Tarefa[]
-  videos    Video[]
-  eventos   Evento[]
-  notas     Nota[]
+  tarefas         Tarefa[]
+  videos          Video[]
+  eventos         Evento[]
+  notas           Nota[]
+  entregasMensais EntregaMensal[]
 
   @@map("projetos")
+}
+
+model EntregaMensal {
+  id        String   @id @default(cuid())
+  titulo    String
+  formato   String   @default("outro")
+  concluido Boolean  @default(false)
+  mes       Int      // 1-12
+  ano       Int      // 2026
+  projetoId String?  @map("projeto_id")
+  criadoEm  DateTime @default(now()) @map("criado_em")
+
+  projeto   Projeto? @relation(fields: [projetoId], references: [id], onDelete: SetNull)
+
+  @@map("entregas_mensais")
 }
 
 // ── Tarefas ─────────────────────────────────────────────────
