@@ -1,5 +1,8 @@
 {
-  "buildCommand": "npx prisma generate --schema=./prisma/schema.prisma && next build",
-  "outputDirectory": ".next",
-  "framework": "nextjs"
+  "crons": [
+    {
+      "path": "/api/cron/rotinas",
+      "schedule": "* * * * *"
+    }
+  ]
 }
