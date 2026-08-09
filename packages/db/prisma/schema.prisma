@@ -192,6 +192,7 @@ model Evento {
   inicio         DateTime
   fim            DateTime?
   local          String?
+  recorrencia     String?   // "unico", "semanal", "mensal"
   projetoId      String?   @map("projeto_id")
   googleEventId  String?   @unique @map("google_event_id")
   origem         String?   // "telegram", "web", "google"

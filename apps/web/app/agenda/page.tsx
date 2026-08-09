@@ -11,8 +11,11 @@ import {
   Trash2,
   X,
   Check,
+  Repeat,
+  Edit2,
+  Save,
 } from "lucide-react";
-import { getEventos, criarEvento, excluirEvento } from "@/actions/agenda";
+import { getEventos, criarEvento, atualizarEvento, excluirEvento } from "@/actions/agenda";
 import { getProjetos } from "@/actions/projetos";
 
 const DIAS_SEMANA = ["DOM.", "SEG.", "TER.", "QUA.", "QUI.", "SEX.", "SÁB."];
@@ -42,11 +45,17 @@ export default function AgendaPage() {
   const [novoTitulo, setNovoTitulo] = useState("");
   const [novoHorario, setNovoHorario] = useState("09:00");
   const [novoProjetoId, setNovoProjetoId] = useState("");
-  const [novaCor, setNovaCor] = useState(CORES_EVENTO[0]);
+  const [novaRecorrencia, setNovaRecorrencia] = useState("unico");
   const [salvando, setSalvando] = useState(false);
 
-  // Detalhes do Evento
+  // Modal Detalhes & Edição
   const [eventoSelecionado, setEventoSelecionado] = useState<any | null>(null);
+  const [editando, setEditando] = useState(false);
+  const [editTitulo, setEditTitulo] = useState("");
+  const [editData, setEditData] = useState("");
+  const [editHorario, setEditHorario] = useState("");
+  const [editProjetoId, setEditProjetoId] = useState("");
+  const [editRecorrencia, setEditRecorrencia] = useState("unico");
 
   useEffect(() => {
     carregarDados();
@@ -64,25 +73,16 @@ export default function AgendaPage() {
       const ano = dataAtual.getFullYear();
       const mes = dataAtual.getMonth();
 
-      const inicio = new Date(ano, mes - 1, 1).toISOString();
-      const fim = new Date(ano, mes + 2, 0).toISOString();
+      const inicio = new Date(ano, mes, 1);
+      const fim = new Date(ano, mes + 1, 0, 23, 59, 59);
 
-      const [resE, resP] = await Promise.all([
-        fetch(`/api/eventos?inicio=${inicio}&fim=${fim}`, { cache: "no-store" }).then((r) => r.json()).catch(() => null),
-        fetch("/api/projetos", { cache: "no-store" }).then((r) => r.json()).catch(() => null),
+      const [evs, projs] = await Promise.all([
+        getEventos(inicio, fim),
+        getProjetos(),
       ]);
 
-      if (Array.isArray(resE)) setEventos(resE);
-      else {
-        const evs = await getEventos(new Date(inicio), new Date(fim));
-        setEventos(evs);
-      }
-
-      if (Array.isArray(resP)) setProjetos(resP);
-      else {
-        const projs = await getProjetos();
-        setProjetos(projs);
-      }
+      setEventos(evs);
+      setProjetos(projs);
     } catch (e) {
       console.error("Erro ao carregar agenda:", e);
     } finally {
@@ -128,6 +128,7 @@ export default function AgendaPage() {
     const mesStr = String(dia.getMonth() + 1).padStart(2, "0");
     const diaStr = String(dia.getDate()).padStart(2, "0");
     setDataSelecionada(`${anoStr}-${mesStr}-${diaStr}`);
+    setNovaRecorrencia("unico");
     setModalOpen(true);
   };
 
@@ -147,12 +148,57 @@ export default function AgendaPage() {
       inicio,
       fim,
       projetoId: novoProjetoId || undefined,
+      recorrencia: novaRecorrencia,
     });
 
     setSalvando(false);
     if (res.success) {
       setModalOpen(false);
       setNovoTitulo("");
+      carregarDados();
+    }
+  };
+
+  const abrirDetalhesEvento = (ev: any) => {
+    setEventoSelecionado(ev);
+    setEditando(false);
+
+    const d = new Date(ev.inicio);
+    const anoStr = d.getFullYear();
+    const mesStr = String(d.getMonth() + 1).padStart(2, "0");
+    const diaStr = String(d.getDate()).padStart(2, "0");
+    const horStr = d.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+
+    setEditTitulo(ev.titulo);
+    setEditData(`${anoStr}-${mesStr}-${diaStr}`);
+    setEditHorario(horStr);
+    setEditProjetoId(ev.projetoId || "");
+    setEditRecorrencia(ev.recorrencia || "unico");
+  };
+
+  const handleAtualizarEventoSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!eventoSelecionado || salvando) return;
+
+    setSalvando(true);
+    const [ano, mes, dia] = editData.split("-").map(Number);
+    const [horas, minutos] = editHorario.split(":").map(Number);
+
+    const inicio = new Date(ano, mes - 1, dia, horas, minutos);
+    const fim = new Date(inicio.getTime() + 60 * 60 * 1000);
+
+    const res = await atualizarEvento(eventoSelecionado.id, {
+      titulo: editTitulo,
+      inicio,
+      fim,
+      projetoId: editProjetoId || null,
+      recorrencia: editRecorrencia,
+    });
+
+    setSalvando(false);
+    if (res.success) {
+      setEventoSelecionado(null);
+      setEditando(false);
       carregarDados();
     }
   };
@@ -172,7 +218,7 @@ export default function AgendaPage() {
 
   return (
     <div className="animate-fade-in-up space-y-4 max-w-[1400px] mx-auto pb-10">
-      {/* ── Top Bar da Agenda estilo Google Calendar ─────── */}
+      {/* ── Top Bar da Agenda ─────────────────────────────── */}
       <div className="card p-4 flex flex-col md:flex-row items-center justify-between gap-4 bg-white border shadow-xs">
         <div className="flex items-center gap-3">
           <button
@@ -221,7 +267,7 @@ export default function AgendaPage() {
         </div>
       </div>
 
-      {/* ── Grade Mensal do Calendário (Estilo Google Agenda) ─── */}
+      {/* ── Grade Mensal do Calendário ──────────────────────── */}
       <div className="card p-0 overflow-hidden bg-white border shadow-card rounded-2xl">
         {/* Cabeçalho com dias da semana */}
         <div className="grid grid-cols-7 border-b bg-gray-50/80 text-center py-2.5 text-xs font-bold text-gray-600 uppercase tracking-wider" style={{ borderColor: "var(--border)" }}>
@@ -294,18 +340,25 @@ export default function AgendaPage() {
                       minute: "2-digit",
                     });
                     const cor = ev.projeto?.cor || CORES_EVENTO[idx % CORES_EVENTO.length];
+                    const isMensal = ev.recorrencia === "mensal";
+                    const isSemanal = ev.recorrencia === "semanal";
 
                     return (
                       <div
                         key={ev.id}
                         onClick={(e) => {
                           e.stopPropagation();
-                          setEventoSelecionado(ev);
+                          abrirDetalhesEvento(ev);
                         }}
                         className="px-2 py-1 rounded-md text-[11px] font-semibold text-white truncate shadow-xs flex items-center gap-1 transition-transform hover:scale-[1.02] cursor-pointer"
                         style={{ background: cor }}
-                        title={`${horStr} — ${ev.titulo}`}
+                        title={`${horStr} — ${ev.titulo} ${isMensal ? "(Fixo Mensal)" : ""}`}
                       >
+                        {isMensal ? (
+                          <Repeat className="w-3 h-3 flex-shrink-0 text-white animate-pulse" />
+                        ) : isSemanal ? (
+                          <Repeat className="w-3 h-3 flex-shrink-0 text-white" />
+                        ) : null}
                         <span className="opacity-90 font-mono text-[10px]">{horStr}</span>
                         <span className="truncate">{ev.titulo}</span>
                       </div>
@@ -321,7 +374,7 @@ export default function AgendaPage() {
       {/* ── Modal Novo Evento ─────────────────────────────── */}
       {modalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs animate-fade-in">
-          <div className="card p-6 w-full max-w-md bg-white shadow-2xl relative">
+          <div className="card p-6 w-full max-w-md bg-white shadow-2xl relative rounded-2xl">
             <button
               onClick={() => setModalOpen(false)}
               className="absolute top-4 right-4 p-1 rounded-lg text-gray-400 hover:text-gray-600"
@@ -358,7 +411,7 @@ export default function AgendaPage() {
                     type="date"
                     value={dataSelecionada}
                     onChange={(e) => setDataSelecionada(e.target.value)}
-                    className="input w-full"
+                    className="input w-full text-xs font-semibold"
                     required
                   />
                 </div>
@@ -371,20 +424,37 @@ export default function AgendaPage() {
                     type="time"
                     value={novoHorario}
                     onChange={(e) => setNovoHorario(e.target.value)}
-                    className="input w-full"
+                    className="input w-full text-xs font-semibold"
                     required
                   />
                 </div>
               </div>
 
+              {/* Repetição / Evento Fixo */}
+              <div>
+                <label className="text-xs font-semibold text-gray-700 block mb-1 flex items-center gap-1.5">
+                  <Repeat className="w-3.5 h-3.5 text-accent" />
+                  Repetição / Evento Fixo:
+                </label>
+                <select
+                  value={novaRecorrencia}
+                  onChange={(e) => setNovaRecorrencia(e.target.value)}
+                  className="input w-full text-xs font-bold text-gray-800"
+                >
+                  <option value="unico">📌 Compromisso Único (Nesta data)</option>
+                  <option value="mensal">🔁 Fixo Mensal (Repete todo mês neste mesmo dia)</option>
+                  <option value="semanal">🔄 Fixo Semanal (Repete toda semana)</option>
+                </select>
+              </div>
+
               <div>
                 <label className="text-xs font-semibold text-gray-700 block mb-1">
-                  Vincular ao Projeto (Opcional):
+                  Vincular ao Cliente (Opcional):
                 </label>
                 <select
                   value={novoProjetoId}
                   onChange={(e) => setNovoProjetoId(e.target.value)}
-                  className="input w-full"
+                  className="input w-full text-xs"
                 >
                   <option value="">Nenhum (Geral)</option>
                   {projetos.map((p) => (
@@ -395,7 +465,7 @@ export default function AgendaPage() {
                 </select>
               </div>
 
-              <div className="flex justify-end gap-2 pt-3 border-t" style={{ borderColor: "var(--border)" }}>
+              <div className="flex justify-end gap-2 pt-3 border-t border-gray-100">
                 <button
                   type="button"
                   onClick={() => setModalOpen(false)}
@@ -416,10 +486,10 @@ export default function AgendaPage() {
         </div>
       )}
 
-      {/* ── Modal Detalhes do Evento ─────────────────────── */}
+      {/* ── Modal Detalhes e Edição do Evento ───────────────── */}
       {eventoSelecionado && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs animate-fade-in">
-          <div className="card p-6 w-full max-w-md bg-white shadow-2xl relative">
+          <div className="card p-6 w-full max-w-md bg-white shadow-2xl relative rounded-2xl">
             <button
               onClick={() => setEventoSelecionado(null)}
               className="absolute top-4 right-4 p-1 rounded-lg text-gray-400 hover:text-gray-600"
@@ -427,58 +497,184 @@ export default function AgendaPage() {
               <X className="w-5 h-5" />
             </button>
 
-            <div className="flex items-center gap-3 mb-4">
-              <span
-                className="w-4 h-4 rounded-full"
-                style={{ background: eventoSelecionado.projeto?.cor || "var(--accent)" }}
-              />
-              <h3 className="font-heading text-lg font-bold text-gray-900">
-                {eventoSelecionado.titulo}
-              </h3>
-            </div>
+            {!editando ? (
+              <>
+                <div className="flex items-center justify-between gap-3 mb-4">
+                  <div className="flex items-center gap-3">
+                    <span
+                      className="w-4 h-4 rounded-full"
+                      style={{ background: eventoSelecionado.projeto?.cor || "var(--accent)" }}
+                    />
+                    <h3 className="font-heading text-lg font-bold text-gray-900">
+                      {eventoSelecionado.titulo}
+                    </h3>
+                  </div>
 
-            <div className="space-y-3 text-sm text-gray-600 mb-6">
-              <div className="flex items-center gap-2">
-                <Clock className="w-4 h-4 text-gray-400" />
-                <span>
-                  {new Date(eventoSelecionado.inicio).toLocaleDateString("pt-BR", {
-                    weekday: "long",
-                    day: "numeric",
-                    month: "long",
-                  })}{" "}
-                  às{" "}
-                  {new Date(eventoSelecionado.inicio).toLocaleTimeString("pt-BR", {
-                    hour: "2-digit",
-                    minute: "2-digit",
-                  })}
-                </span>
-              </div>
-
-              {eventoSelecionado.projeto && (
-                <div className="flex items-center gap-2">
-                  <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-gray-100 text-gray-700">
-                    Cliente: {eventoSelecionado.projeto.nome}
-                  </span>
+                  <button
+                    onClick={() => setEditando(true)}
+                    className="p-1.5 rounded-lg text-gray-500 hover:text-accent hover:bg-gray-100 transition-colors flex items-center gap-1 text-xs font-semibold cursor-pointer"
+                    title="Editar compromisso"
+                  >
+                    <Edit2 className="w-4 h-4" />
+                    <span>Editar</span>
+                  </button>
                 </div>
-              )}
-            </div>
 
-            <div className="flex justify-between items-center pt-3 border-t" style={{ borderColor: "var(--border)" }}>
-              <button
-                onClick={() => handleExcluirEvento(eventoSelecionado.id)}
-                className="text-red-600 hover:text-red-700 text-xs font-semibold flex items-center gap-1.5 cursor-pointer"
-              >
-                <Trash2 className="w-4 h-4" />
-                <span>Excluir Compromisso</span>
-              </button>
+                <div className="space-y-3 text-sm text-gray-600 mb-6">
+                  <div className="flex items-center gap-2">
+                    <Clock className="w-4 h-4 text-gray-400" />
+                    <span>
+                      {new Date(eventoSelecionado.inicio).toLocaleDateString("pt-BR", {
+                        weekday: "long",
+                        day: "numeric",
+                        month: "long",
+                      })}{" "}
+                      às{" "}
+                      {new Date(eventoSelecionado.inicio).toLocaleTimeString("pt-BR", {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}
+                    </span>
+                  </div>
 
-              <button
-                onClick={() => setEventoSelecionado(null)}
-                className="btn-neutral py-2 px-4 text-xs"
-              >
-                Fechar
-              </button>
-            </div>
+                  {eventoSelecionado.recorrencia && eventoSelecionado.recorrencia !== "unico" && (
+                    <div className="flex items-center gap-2">
+                      <Repeat className="w-4 h-4 text-accent" />
+                      <span className="text-xs font-bold text-accent px-2.5 py-0.5 rounded-full bg-accent/10">
+                        {eventoSelecionado.recorrencia === "mensal"
+                          ? "🔁 Evento Fixo Mensal"
+                          : "🔄 Evento Fixo Semanal"}
+                      </span>
+                    </div>
+                  )}
+
+                  {eventoSelecionado.projeto && (
+                    <div className="flex items-center gap-2">
+                      <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-gray-100 text-gray-700">
+                        Cliente: {eventoSelecionado.projeto.nome}
+                      </span>
+                    </div>
+                  )}
+                </div>
+
+                <div className="flex justify-between items-center pt-3 border-t border-gray-100">
+                  <button
+                    onClick={() => handleExcluirEvento(eventoSelecionado.id)}
+                    className="text-red-600 hover:text-red-700 text-xs font-semibold flex items-center gap-1.5 cursor-pointer"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                    <span>Excluir Compromisso</span>
+                  </button>
+
+                  <button
+                    onClick={() => setEventoSelecionado(null)}
+                    className="btn-neutral py-2 px-4 text-xs"
+                  >
+                    Fechar
+                  </button>
+                </div>
+              </>
+            ) : (
+              /* Formulário de Edição do Evento */
+              <form onSubmit={handleAtualizarEventoSubmit} className="space-y-4">
+                <h3 className="font-heading text-lg font-bold text-gray-900 mb-2">
+                  Editar Compromisso
+                </h3>
+
+                <div>
+                  <label className="text-xs font-semibold text-gray-700 block mb-1">
+                    Título:
+                  </label>
+                  <input
+                    type="text"
+                    value={editTitulo}
+                    onChange={(e) => setEditTitulo(e.target.value)}
+                    className="input w-full"
+                    required
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="text-xs font-semibold text-gray-700 block mb-1">
+                      Data:
+                    </label>
+                    <input
+                      type="date"
+                      value={editData}
+                      onChange={(e) => setEditData(e.target.value)}
+                      className="input w-full text-xs font-semibold"
+                      required
+                    />
+                  </div>
+                  <div>
+                    <label className="text-xs font-semibold text-gray-700 block mb-1">
+                      Horário:
+                    </label>
+                    <input
+                      type="time"
+                      value={editHorario}
+                      onChange={(e) => setEditHorario(e.target.value)}
+                      className="input w-full text-xs font-semibold"
+                      required
+                    />
+                  </div>
+                </div>
+
+                {/* Seletor de Fixo Mensal no Edit */}
+                <div>
+                  <label className="text-xs font-semibold text-gray-700 block mb-1 flex items-center gap-1.5">
+                    <Repeat className="w-3.5 h-3.5 text-accent" />
+                    Frequência / Repetição:
+                  </label>
+                  <select
+                    value={editRecorrencia}
+                    onChange={(e) => setEditRecorrencia(e.target.value)}
+                    className="input w-full text-xs font-bold text-gray-800"
+                  >
+                    <option value="unico">📌 Compromisso Único</option>
+                    <option value="mensal">🔁 Fixo Mensal (Todo mês neste dia)</option>
+                    <option value="semanal">🔄 Fixo Semanal (Toda semana)</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="text-xs font-semibold text-gray-700 block mb-1">
+                    Cliente:
+                  </label>
+                  <select
+                    value={editProjetoId}
+                    onChange={(e) => setEditProjetoId(e.target.value)}
+                    className="input w-full text-xs"
+                  >
+                    <option value="">Nenhum (Geral)</option>
+                    {projetos.map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.nome}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="flex justify-end gap-2 pt-3 border-t border-gray-100">
+                  <button
+                    type="button"
+                    onClick={() => setEditando(false)}
+                    className="btn-neutral py-2 px-4 text-xs"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={salvando}
+                    className="btn-primary py-2 px-5 text-xs flex items-center gap-1.5"
+                  >
+                    <Save className="w-4 h-4" />
+                    <span>{salvando ? "Salvando..." : "Salvar Alterações"}</span>
+                  </button>
+                </div>
+              </form>
+            )}
           </div>
         </div>
       )}
