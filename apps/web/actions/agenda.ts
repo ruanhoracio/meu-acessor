@@ -28,52 +28,73 @@ export async function getEventos(dataInicio: Date, dataFim: Date) {
       },
     });
 
-    // Projetar eventos recorrentes (Mensal / Semanal) dentro da janela visualizada se não caírem originalmente nela
     const resultadoProjetado: any[] = [];
-    const idsProcessados = new Set();
 
     for (const evt of eventos) {
       const inicioEvt = new Date(evt.inicio);
       const fimEvt = evt.fim ? new Date(evt.fim) : null;
-      const duracaoMs = fimEvt ? fimEvt.getTime() - inicioEvt.getTime() : 3600000; // 1h default
+      const duracaoMs = fimEvt ? fimEvt.getTime() - inicioEvt.getTime() : 3600000;
 
-      if (inicioEvt >= dataInicio && inicioEvt <= dataFim) {
-        resultadoProjetado.push(evt);
-        idsProcessados.add(evt.id);
+      // Evento Único (sem recorrência)
+      if (!evt.recorrencia || evt.recorrencia === "unico") {
+        if (inicioEvt >= dataInicio && inicioEvt <= dataFim) {
+          resultadoProjetado.push(evt);
+        }
         continue;
       }
 
-      // Se for recorrente mensal
-      if (evt.recorrencia === "mensal") {
-        const diaDoMes = inicioEvt.getDate();
-        // Projetar para o ano e mês da dataInicio
-        const mesTarget = dataInicio.getMonth();
-        const anoTarget = dataInicio.getFullYear();
-
-        const dataProjetada = new Date(anoTarget, mesTarget, diaDoMes, inicioEvt.getHours(), inicioEvt.getMinutes());
-        if (dataProjetada >= dataInicio && dataProjetada <= dataFim) {
-          resultadoProjetado.push({
-            ...evt,
-            inicio: dataProjetada,
-            fim: new Date(dataProjetada.getTime() + duracaoMs),
-            isProjetadoRecorrente: true,
-          });
-        }
-      } else if (evt.recorrencia === "semanal") {
+      // Evento Fixo Semanal (Repete toda semana no mesmo dia da semana e horário)
+      if (evt.recorrencia === "semanal") {
         const diaSemanaTarget = inicioEvt.getDay();
-        // Iterar pelos dias do intervalo
         const curr = new Date(dataInicio);
+        curr.setHours(0, 0, 0, 0);
+
         while (curr <= dataFim) {
           if (curr.getDay() === diaSemanaTarget) {
-            const dataProjetada = new Date(curr.getFullYear(), curr.getMonth(), curr.getDate(), inicioEvt.getHours(), inicioEvt.getMinutes());
+            const dataProjetada = new Date(
+              curr.getFullYear(),
+              curr.getMonth(),
+              curr.getDate(),
+              inicioEvt.getHours(),
+              inicioEvt.getMinutes()
+            );
+
             resultadoProjetado.push({
               ...evt,
+              id: `${evt.id}_${dataProjetada.getTime()}`,
+              idOriginal: evt.id,
               inicio: dataProjetada,
               fim: new Date(dataProjetada.getTime() + duracaoMs),
               isProjetadoRecorrente: true,
             });
           }
           curr.setDate(curr.getDate() + 1);
+        }
+      }
+
+      // Evento Fixo Mensal (Repete todo mês no mesmo dia do mês e horário)
+      else if (evt.recorrencia === "mensal") {
+        const diaDoMesTarget = inicioEvt.getDate();
+        const mesTarget = dataInicio.getMonth();
+        const anoTarget = dataInicio.getFullYear();
+
+        const dataProjetada = new Date(
+          anoTarget,
+          mesTarget,
+          diaDoMesTarget,
+          inicioEvt.getHours(),
+          inicioEvt.getMinutes()
+        );
+
+        if (dataProjetada >= dataInicio && dataProjetada <= dataFim) {
+          resultadoProjetado.push({
+            ...evt,
+            id: `${evt.id}_${dataProjetada.getTime()}`,
+            idOriginal: evt.id,
+            inicio: dataProjetada,
+            fim: new Date(dataProjetada.getTime() + duracaoMs),
+            isProjetadoRecorrente: true,
+          });
         }
       }
     }
@@ -123,8 +144,11 @@ export async function atualizarEvento(
   }
 ) {
   try {
+    // Tratar se for id projetado (ex: cuid_172345678)
+    const targetId = eventoId.includes("_") ? eventoId.split("_")[0] : eventoId;
+
     const eventoAtualizado = await prisma.evento.update({
-      where: { id: eventoId },
+      where: { id: targetId },
       data: {
         ...(data.titulo && { titulo: data.titulo.trim() }),
         ...(data.inicio && { inicio: data.inicio }),
@@ -145,8 +169,10 @@ export async function atualizarEvento(
 
 export async function excluirEvento(eventoId: string) {
   try {
+    const targetId = eventoId.includes("_") ? eventoId.split("_")[0] : eventoId;
+
     await prisma.evento.delete({
-      where: { id: eventoId },
+      where: { id: targetId },
     });
 
     revalidatePath("/agenda");
