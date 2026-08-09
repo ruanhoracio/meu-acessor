@@ -8,6 +8,7 @@ import {
   LayoutDashboard,
   Clapperboard,
   CheckSquare,
+  ClipboardCheck,
   Calendar,
   FileText,
   Bookmark,
@@ -19,6 +20,7 @@ import {
 const NAV_ITEMS = [
   { href: "/", label: "Hoje", icon: LayoutDashboard },
   { href: "/pipeline", label: "Pipeline", icon: Clapperboard },
+  { href: "/entregas", label: "Entregas", icon: ClipboardCheck },
   { href: "/tarefas", label: "Tarefas", icon: CheckSquare },
   { href: "/agenda", label: "Agenda", icon: Calendar },
   { href: "/notas", label: "Notas", icon: FileText },
