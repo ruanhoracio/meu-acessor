@@ -265,3 +265,15 @@ model LembreteEnviado {
   @@unique([tipo, entidadeId, enviadoEm])
   @@map("lembretes_enviados")
 }
+
+model LembreteAgendado {
+  id               String   @id @default(cuid())
+  mensagem         String
+  horarioAlvo      DateTime @map("horario_alvo")
+  horarioNotificar  DateTime @map("horario_notificar")
+  enviado          Boolean  @default(false)
+  chatId           String   @map("chat_id")
+  criadoEm         DateTime @default(now()) @map("criado_em")
+
+  @@map("lembretes_agendados")
+}

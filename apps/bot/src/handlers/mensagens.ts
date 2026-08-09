@@ -108,7 +108,21 @@ export async function handleMensagem(ctx: Context) {
         if (proj) projetoId = proj.id;
       }
 
-      if (c.tipo === "video") {
+      if (c.tipo === "lembrete") {
+        const horarioAlvo = c.prazo ? new Date(c.prazo) : new Date();
+        const horarioNotificar = c.horarioNotificar
+          ? new Date(c.horarioNotificar)
+          : new Date(horarioAlvo.getTime() - 5 * 60 * 1000);
+
+        await prisma.lembreteAgendado.create({
+          data: {
+            mensagem: c.titulo,
+            horarioAlvo,
+            horarioNotificar,
+            chatId: String(ctx.chat.id),
+          },
+        });
+      } else if (c.tipo === "video") {
         await prisma.video.create({
           data: {
             titulo: c.titulo,

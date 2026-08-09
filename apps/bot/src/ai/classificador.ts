@@ -3,7 +3,6 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 import Anthropic from "@anthropic-ai/sdk";
 import { config } from "../config";
 
-// Groq client (OpenAI compatible) - Ultra-rápido (300ms)
 const groq = config.groqApiKey
   ? new OpenAI({ apiKey: config.groqApiKey, baseURL: "https://api.groq.com/openai/v1" })
   : null;
@@ -12,11 +11,12 @@ const ai = config.geminiApiKey ? new GoogleGenerativeAI(config.geminiApiKey) : n
 const anthropic = config.anthropicApiKey ? new Anthropic({ apiKey: config.anthropicApiKey }) : null;
 
 export interface ClassificacaoOutput {
-  tipo: "video" | "tarefa" | "evento" | "nota" | "referencia" | "consulta" | "correcao";
+  tipo: "video" | "tarefa" | "evento" | "nota" | "referencia" | "lembrete" | "consulta" | "correcao";
   titulo: string;
   projeto?: string;
   formato?: "reels" | "vsl" | "criativo" | "aula" | "institucional" | "outro";
   prazo?: string;
+  horarioNotificar?: string;
   estimativa_horas?: number;
   estagio?: string;
   descricao?: string;
@@ -53,7 +53,7 @@ export async function classificarComClaude(
 ): Promise<ClassificacaoOutput[]> {
   const agora = new Date(contexto.dataAtual || Date.now());
 
-  // ⚡ 0. PRE-PASS ULTRA-RÁPIDO LOCAL (~2ms) para frases simples e diretas
+  // ⚡ 0. PRE-PASS ULTRA-RÁPIDO LOCAL (~2ms) para frases simples e lembretes
   const prePassLocal = tentarClassificacaoInstantanea(mensagem, agora, contexto.projetosAtivos);
   if (prePassLocal) {
     console.log("⚡ [Pre-Pass Local] Classificado instantaneamente em 2ms!");
@@ -67,25 +67,24 @@ Data Atual: ${guiaDatas}
 Clientes Ativos: ${JSON.stringify(contexto.projetosAtivos)}
 
 REGRAS DE CLASSIFICAÇÃO:
-1. "evento": Se o usuário pedir para "colocar na agenda", "agendar", "marcar reunião/call", "ir ao centro/médico/dentista/compromisso".
-   - Limpe expressões como "coloque na agenda" do título.
-2. "video": Se mencionar edição de vídeo, cortar VSL, Reels, Criativo, aula.
-3. "tarefa": Afazeres gerais (pagar conta, comprar plugin, e-mail).
+1. "lembrete": Se o usuário disser "me lembra de...", "me avise...", "lembrar que...".
+   - Calcule o horário exato pedido e defina prazo (horário alvo).
+2. "evento": Se pedir para "colocar na agenda", "agendar", "marcar reunião/call", "ir ao centro/médico".
+3. "video": Se mencionar edição de vídeo, VSL, Reels, Criativo.
+4. "tarefa": Afazeres gerais.
 
 Responda APENAS um array JSON válido:
 [
   {
-    "tipo": "video" | "tarefa" | "evento" | "nota" | "referencia",
-    "titulo": "Título limpo sem expressão de agenda ou data",
+    "tipo": "video" | "tarefa" | "evento" | "nota" | "referencia" | "lembrete",
+    "titulo": "Título limpo",
     "projeto": "Nome do cliente se mencionado",
-    "formato": "reels" | "vsl" | "criativo" | "aula" | "institucional" | "outro",
     "prazo": "YYYY-MM-DDT18:00:00.000Z",
     "confianca": 0.95,
-    "confirmacao": "✓ Compromisso agendado na Agenda: Título (08/08/2026)"
+    "confirmacao": "⏰ Lembrete agendado para às 09:00 (Aviso em 5 min antes)"
   }
 ]`;
 
-  // 1. Groq (Llama-3.3-70b)
   if (groq) {
     try {
       const response = await groq.chat.completions.create({
@@ -108,23 +107,6 @@ Responda APENAS um array JSON válido:
     }
   }
 
-  // 2. Gemini
-  if (ai) {
-    try {
-      const model = ai.getGenerativeModel({ model: "gemini-1.5-flash-latest" });
-      const response = await model.generateContent(`${systemPrompt}\n\nMensagem: "${mensagem}"`);
-      const text = response.response.text();
-
-      if (text) {
-        const jsonText = text.trim().replace(/^```json/, "").replace(/^```/, "").replace(/```$/, "").trim();
-        return JSON.parse(jsonText) as ClassificacaoOutput[];
-      }
-    } catch (error) {
-      console.error("[Gemini] Erro na classificação:", error);
-    }
-  }
-
-  // 3. Fallback inteligente local
   return classificadorFallback(mensagem, agora);
 }
 
@@ -135,9 +117,73 @@ function tentarClassificacaoInstantanea(
   projetosAtivos: string[]
 ): ClassificacaoOutput[] | null {
   const msgTrim = mensagem.trim();
-  if (msgTrim.includes("\n") || msgTrim.length > 100) return null;
+  if (msgTrim.includes("\n") || msgTrim.length > 120) return null;
 
   const msgLower = msgTrim.toLowerCase();
+
+  // ⏰ DETECÇÃO DE LEMBRETE PROATIVO ("me lembra de amanhã às 9 chamar tal pessoa")
+  const isLembrete =
+    msgLower.includes("me lembra") ||
+    msgLower.includes("me lembre") ||
+    msgLower.includes("lembrar de") ||
+    msgLower.includes("lembrar que") ||
+    msgLower.includes("me avisa") ||
+    msgLower.includes("me avise");
+
+  if (isLembrete) {
+    let dataAlvo = new Date(agora);
+
+    // Verifica se é amanhã
+    if (msgLower.includes("amanhã") || msgLower.includes("amanha")) {
+      dataAlvo.setDate(dataAlvo.getDate() + 1);
+    }
+
+    // Extrai horário (ex: às 9, às 09:00, 15h, às 14:30)
+    let hora = 9;
+    let minuto = 0;
+
+    const matchHora = msgLower.match(/(?:às|as|para\s*as|para\s*às)?\s*(\d{1,2})(?:h|:(\d{2}))?/i);
+    if (matchHora) {
+      hora = parseInt(matchHora[1], 10);
+      if (matchHora[2]) minuto = parseInt(matchHora[2], 10);
+    }
+
+    dataAlvo.setHours(hora, minuto, 0, 0);
+
+    // Se o horário calculado já passou hoje, agenda para amanhã no mesmo horário
+    if (dataAlvo <= agora && !msgLower.includes("amanhã") && !msgLower.includes("amanha")) {
+      dataAlvo.setDate(dataAlvo.getDate() + 1);
+    }
+
+    // Horário da notificação proativa: 5 MINUTOS ANTES
+    const dataNotificar = new Date(dataAlvo.getTime() - 5 * 60 * 1000);
+
+    // Limpa a frase do título
+    let tituloLimpo = msgTrim
+      .replace(/^(?:por\s*favor\s*)?(?:me\s*)?(?:lembra|lembre|avisa|avise)(?:\s*de|\s*que)?/gi, "")
+      .replace(/(?:para|pra|em)?\s*(?:amanhã|amanha|hoje)/gi, "")
+      .replace(/(?:às|as|para\s*as|para\s*às)?\s*\d{1,2}(?:h|:\d{2})?/gi, "")
+      .replace(/^,\s*/, "")
+      .trim();
+
+    if (!tituloLimpo) tituloLimpo = msgTrim;
+    tituloLimpo = tituloLimpo.charAt(0).toUpperCase() + tituloLimpo.slice(1);
+
+    const horaAlvoStr = dataAlvo.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+    const horaNotifStr = dataNotificar.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+    const dataFormatada = dataAlvo.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" });
+
+    return [
+      {
+        tipo: "lembrete",
+        titulo: tituloLimpo,
+        prazo: dataAlvo.toISOString(),
+        horarioNotificar: dataNotificar.toISOString(),
+        confianca: 0.98,
+        confirmacao: `⏰ *Lembrete Agendado!*\n📌 *O que:* "${tituloLimpo}"\n📅 *Horário:* ${dataFormatada} às ${horaAlvoStr}\n🔔 *Aviso Proativo:* ${horaNotifStr} (5 min antes no seu Telegram)`,
+      },
+    ];
+  }
 
   // Verifica se é link
   if (msgLower.startsWith("http://") || msgLower.startsWith("https://")) {
@@ -178,7 +224,6 @@ function tentarClassificacaoInstantanea(
     msgLower.includes("reels") ||
     msgLower.includes("corte");
 
-  // Identifica projeto se houver
   let projetoEncontrado: string | undefined;
   for (const proj of projetosAtivos) {
     if (msgLower.includes(proj.toLowerCase())) {
@@ -187,7 +232,6 @@ function tentarClassificacaoInstantanea(
     }
   }
 
-  // Detecta datas relativas
   let prazo: Date | null = null;
   let tituloLimpo = msgTrim;
 
@@ -233,7 +277,6 @@ function tentarClassificacaoInstantanea(
     }
   }
 
-  // Limpa expressões de agenda do título (ex: "coloque na agenda", "na agenda", "por favor")
   tituloLimpo = tituloLimpo
     .replace(/(?:,?\s*)?(?:coloque|colocar|põe|bota|adicione|salve|salvar)?\s*(?:na|pra|para)?\s*agenda/gi, "")
     .replace(/^(agendar|marcar|criar|fazer|preciso|tenho que)\s+/gi, "")

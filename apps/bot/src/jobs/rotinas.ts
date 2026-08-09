@@ -184,5 +184,40 @@ export function iniciarRotinasAgendadas(bot: Bot) {
     }
   });
 
-  console.log("⏰ Rotinas agendadas (08:00 matinal estritamente do dia, 14:00 checagem, alertas por hora) iniciadas.");
+  // 4. Checagem a cada 30 segundos para Lembretes Agendados (Aviso 5 min antes)
+  cron.schedule("*/30 * * * * *", async () => {
+    try {
+      const agora = new Date();
+      const pendentes = await prisma.lembreteAgendado.findMany({
+        where: {
+          enviado: false,
+          horarioNotificar: { lte: agora },
+        },
+      });
+
+      for (const l of pendentes) {
+        const horAlvoStr = new Date(l.horarioAlvo).toLocaleTimeString("pt-BR", {
+          hour: "2-digit",
+          minute: "2-digit",
+        });
+
+        const targetChatId = l.chatId || chatId;
+
+        await bot.api.sendMessage(
+          targetChatId,
+          `⏰ *LEMBRETE PROATIVO (Faltam 5 minutos!)*\n\n📌 *${l.mensagem}*\n🕒 Agendado para às *${horAlvoStr}*`,
+          { parse_mode: "Markdown" }
+        );
+
+        await prisma.lembreteAgendado.update({
+          where: { id: l.id },
+          data: { enviado: true },
+        });
+      }
+    } catch (err) {
+      console.error("[Jobs] Erro na checagem de lembretes proativos:", err);
+    }
+  });
+
+  console.log("⏰ Rotinas agendadas (08:00 matinal, 14:00 checagem, alertas por hora, lembretes 5 min antes) iniciadas.");
 }
