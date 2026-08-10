@@ -100,14 +100,14 @@ export function Sidebar() {
         borderColor: "var(--border)",
       }}
     >
-      {/* Logo oficial Meu Assessor */}
+      {/* Logo vetorial oficial Meu Assessor */}
       <div
-        className="px-4 h-[76px] flex items-center border-b"
+        className="px-5 h-[76px] flex items-center border-b"
         style={{ borderColor: "var(--border)" }}
       >
-        <div className="relative w-[195px] h-[56px]">
+        <div className="relative w-[185px] h-[52px]">
           <Image
-            src="/logo-header.png"
+            src="/logo-header.svg"
             alt="Meu Assessor"
             fill
             className="object-contain object-left"
