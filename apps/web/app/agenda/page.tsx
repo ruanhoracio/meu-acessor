@@ -1,34 +1,32 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useTransition } from "react";
 import {
   ChevronLeft,
   ChevronRight,
   Plus,
   Calendar as CalendarIcon,
-  Search,
   Clock,
   Trash2,
+  Edit2,
   X,
   Check,
   Repeat,
-  Edit2,
-  Save,
+  GripVertical,
 } from "lucide-react";
 import { getEventos, criarEvento, atualizarEvento, excluirEvento } from "@/actions/agenda";
-import { getProjetos } from "@/actions/projetos";
 
-const DIAS_SEMANA = ["DOM.", "SEG.", "TER.", "QUA.", "QUI.", "SEX.", "SÁB."];
+const DIAS_SEMANA = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
 const MESES = [
   "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
   "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"
 ];
 
 const CORES_EVENTO = [
-  "#ff5a3d", // Laranja Meu Assessor
+  "#ff5a3d", // Laranja
   "#84cc16", // Verde Limão
-  "#6366f1", // Roxo / Azul Servidor
-  "#f59e0b", // Amarelo Dourado
+  "#6366f1", // Roxo / Azul
+  "#f59e0b", // Amarelo
   "#ec4899", // Rosa
   "#3b82f6", // Azul
 ];
@@ -48,114 +46,153 @@ export default function AgendaPage() {
   const [dataAtual, setDataAtual] = useState(new Date());
   const [eventos, setEventos] = useState<any[]>([]);
   const [projetos, setProjetos] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [carregando, setCarregando] = useState(true);
 
   // Modal Novo Evento
   const [modalOpen, setModalOpen] = useState(false);
-  const [dataSelecionada, setDataSelecionada] = useState<string>("");
   const [novoTitulo, setNovoTitulo] = useState("");
+  const [dataSelecionada, setDataSelecionada] = useState("");
+  const [dataFimSelecionada, setDataFimSelecionada] = useState("");
   const [novoHorario, setNovoHorario] = useState("09:00");
   const [novoProjetoId, setNovoProjetoId] = useState("");
   const [novaRecorrencia, setNovaRecorrencia] = useState("unico");
   const [salvando, setSalvando] = useState(false);
 
-  // Modal Detalhes & Edição
-  const [eventoSelecionado, setEventoSelecionado] = useState<any | null>(null);
+  // Modal Detalhes / Edição
+  const [eventoSelecionado, setEventoSelecionado] = useState<any>(null);
   const [editando, setEditando] = useState(false);
   const [editTitulo, setEditTitulo] = useState("");
-  const [editData, setEditData] = useState("");
+  const [editDataInicio, setEditDataInicio] = useState("");
+  const [editDataFim, setEditDataFim] = useState("");
   const [editHorario, setEditHorario] = useState("");
   const [editProjetoId, setEditProjetoId] = useState("");
   const [editRecorrencia, setEditRecorrencia] = useState("unico");
 
-  useEffect(() => {
-    carregarDados();
-    const interval = setInterval(carregarDados, 4000);
-    const onFocus = () => carregarDados();
-    window.addEventListener("focus", onFocus);
-    return () => {
-      clearInterval(interval);
-      window.removeEventListener("focus", onFocus);
-    };
-  }, [dataAtual]);
+  const [isPending, startTransition] = useTransition();
 
-  const carregarDados = async () => {
+  // Carregar eventos da grade
+  const recarregarEventos = async () => {
+    setCarregando(true);
+
+    const ano = dataAtual.getFullYear();
+    const mes = dataAtual.getMonth();
+
+    const primeiroDia = new Date(ano, mes, 1);
+    const inicioGrade = new Date(primeiroDia);
+    inicioGrade.setDate(inicioGrade.getDate() - primeiroDia.getDay());
+
+    const ultimoDia = new Date(ano, mes + 1, 0);
+    const fimGrade = new Date(ultimoDia);
+    fimGrade.setDate(fimGrade.getDate() + (6 - ultimoDia.getDay()));
+    fimGrade.setHours(23, 59, 59, 999);
+
+    const resEvts = await getEventos(inicioGrade, fimGrade);
+    setEventos(resEvts);
+
+    // Buscar lista de projetos
     try {
-      const ano = dataAtual.getFullYear();
-      const mes = dataAtual.getMonth();
+      const resProjs = await fetch("/api/projetos");
+      if (resProjs.ok) {
+        const dataProjs = await resProjs.json();
+        setProjetos(dataProjs);
+      }
+    } catch (e) {}
 
-      const inicio = new Date(ano, mes, 1);
-      const fim = new Date(ano, mes + 1, 0, 23, 59, 59);
-
-      const [evs, projs] = await Promise.all([
-        getEventos(inicio, fim),
-        getProjetos(),
-      ]);
-
-      setEventos(evs);
-      setProjetos(projs);
-    } catch (e) {
-      console.error("Erro ao carregar agenda:", e);
-    } finally {
-      setLoading(false);
-    }
+    setCarregando(false);
   };
 
-  // Navegação do Mês
+  useEffect(() => {
+    recarregarEventos();
+  }, [dataAtual]);
+
+  // Arrastar e Soltar (Drag & Drop) compromisso em outro dia do calendário
+  const handleDropNoDia = async (e: React.DragEvent, diaAlvo: Date) => {
+    e.preventDefault();
+    const eventoIdRaw = e.dataTransfer.getData("text/plain");
+    if (!eventoIdRaw) return;
+
+    const targetId = eventoIdRaw.includes("_") ? eventoIdRaw.split("_")[0] : eventoIdRaw;
+    const evt = eventos.find((item) => item.id === eventoIdRaw || item.id === targetId);
+
+    if (!evt) return;
+
+    const inicioAntigo = new Date(evt.inicio);
+    const fimAntigo = evt.fim ? new Date(evt.fim) : new Date(inicioAntigo.getTime() + 3600000);
+    const diffDiasMs = fimAntigo.getTime() - inicioAntigo.getTime();
+
+    // Nova data de início preservando o horário
+    const novoInicio = new Date(
+      diaAlvo.getFullYear(),
+      diaAlvo.getMonth(),
+      diaAlvo.getDate(),
+      inicioAntigo.getHours(),
+      inicioAntigo.getMinutes()
+    );
+
+    const novoFim = new Date(novoInicio.getTime() + diffDiasMs);
+
+    // Atualização otimista
+    setEventos((prev) =>
+      prev.map((item) =>
+        item.id === eventoIdRaw
+          ? {
+              ...item,
+              inicio: novoInicio.toISOString(),
+              fim: novoFim.toISOString(),
+            }
+          : item
+      )
+    );
+
+    startTransition(async () => {
+      await atualizarEvento(targetId, {
+        inicio: novoInicio,
+        fim: novoFim,
+      });
+      recarregarEventos();
+    });
+  };
+
+  // Navegar entre meses
   const mesAnterior = () => {
     setDataAtual(new Date(dataAtual.getFullYear(), dataAtual.getMonth() - 1, 1));
   };
-
   const proximoMes = () => {
     setDataAtual(new Date(dataAtual.getFullYear(), dataAtual.getMonth() + 1, 1));
   };
-
   const irParaHoje = () => {
     setDataAtual(new Date());
   };
 
-  // Montagem da grade mensal (5 semanas x 7 dias)
-  const getDiasCalendario = () => {
-    const ano = dataAtual.getFullYear();
-    const mes = dataAtual.getMonth();
-
-    const primeiroDiaMes = new Date(ano, mes, 1);
-    const diaSemanaPrimeiro = primeiroDiaMes.getDay();
-
-    const dias = [];
-    const inicioCalendario = new Date(ano, mes, 1 - diaSemanaPrimeiro);
-
-    for (let i = 0; i < 35; i++) {
-      const d = new Date(inicioCalendario);
-      d.setDate(inicioCalendario.getDate() + i);
-      dias.push(d);
-    }
-
-    return dias;
-  };
-
+  // Abrir modal novo evento em um dia específico
   const abrirModalNovoNoDia = (dia: Date) => {
-    const anoStr = dia.getFullYear();
-    const mesStr = String(dia.getMonth() + 1).padStart(2, "0");
-    const diaStr = String(dia.getDate()).padStart(2, "0");
-    setDataSelecionada(`${anoStr}-${mesStr}-${diaStr}`);
+    const dtStr = dia.toISOString().split("T")[0];
+    setDataSelecionada(dtStr);
+    setDataFimSelecionada(dtStr);
+    setNovoTitulo("");
+    setNovoHorario("09:00");
+    setNovoProjetoId("");
     setNovaRecorrencia("unico");
     setModalOpen(true);
   };
 
+  // Criar evento
   const handleSalvarEvento = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!novoTitulo.trim() || !dataSelecionada || salvando) return;
+    if (!novoTitulo.trim() || !dataSelecionada) return;
 
     setSalvando(true);
-    const [ano, mes, dia] = dataSelecionada.split("-").map(Number);
-    const [horas, minutos] = novoHorario.split(":").map(Number);
 
-    const inicio = new Date(ano, mes - 1, dia, horas, minutos);
-    const fim = new Date(inicio.getTime() + 60 * 60 * 1000);
+    const inicio = new Date(`${dataSelecionada}T${novoHorario}:00`);
+    const fimData = dataFimSelecionada || dataSelecionada;
+    const fim = new Date(`${fimData}T${novoHorario}:00`);
+
+    if (fim <= inicio) {
+      fim.setHours(inicio.getHours() + 1);
+    }
 
     const res = await criarEvento({
-      titulo: novoTitulo.trim(),
+      titulo: novoTitulo,
       inicio,
       fim,
       projetoId: novoProjetoId || undefined,
@@ -165,38 +202,23 @@ export default function AgendaPage() {
     setSalvando(false);
     if (res.success) {
       setModalOpen(false);
-      setNovoTitulo("");
-      carregarDados();
+      recarregarEventos();
     }
   };
 
-  const abrirDetalhesEvento = (ev: any) => {
-    setEventoSelecionado(ev);
-    setEditando(false);
-
-    const d = new Date(ev.inicio);
-    const anoStr = d.getFullYear();
-    const mesStr = String(d.getMonth() + 1).padStart(2, "0");
-    const diaStr = String(d.getDate()).padStart(2, "0");
-    const horStr = d.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
-
-    setEditTitulo(ev.titulo);
-    setEditData(`${anoStr}-${mesStr}-${diaStr}`);
-    setEditHorario(horStr);
-    setEditProjetoId(ev.projetoId || "");
-    setEditRecorrencia(ev.recorrencia || "unico");
-  };
-
-  const handleAtualizarEventoSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!eventoSelecionado || salvando) return;
+  // Salvar Edição do Evento
+  const handleSalvarEdicao = async () => {
+    if (!eventoSelecionado || !editTitulo.trim()) return;
 
     setSalvando(true);
-    const [ano, mes, dia] = editData.split("-").map(Number);
-    const [horas, minutos] = editHorario.split(":").map(Number);
 
-    const inicio = new Date(ano, mes - 1, dia, horas, minutos);
-    const fim = new Date(inicio.getTime() + 60 * 60 * 1000);
+    const inicio = new Date(`${editDataInicio}T${editHorario}:00`);
+    const fimData = editDataFim || editDataInicio;
+    const fim = new Date(`${fimData}T${editHorario}:00`);
+
+    if (fim <= inicio) {
+      fim.setHours(inicio.getHours() + 1);
+    }
 
     const res = await atualizarEvento(eventoSelecionado.id, {
       titulo: editTitulo,
@@ -210,70 +232,106 @@ export default function AgendaPage() {
     if (res.success) {
       setEventoSelecionado(null);
       setEditando(false);
-      carregarDados();
+      recarregarEventos();
     }
   };
 
+  // Excluir Evento
   const handleExcluirEvento = async (id: string) => {
-    if (confirm("Deseja realmente remover este compromisso da agenda?")) {
-      const res = await excluirEvento(id);
-      if (res.success) {
-        setEventoSelecionado(null);
-        carregarDados();
-      }
-    }
+    setEventos((prev) => prev.filter((e) => e.id !== id));
+    setEventoSelecionado(null);
+    startTransition(async () => {
+      await excluirEvento(id);
+      recarregarEventos();
+    });
   };
 
-  const diasGrade = getDiasCalendario();
+  // Abrir Detalhes
+  const abrirDetalhesEvento = (ev: any) => {
+    setEventoSelecionado(ev);
+    setEditando(false);
+    setEditTitulo(ev.titulo);
+
+    const dtInicio = new Date(ev.inicio);
+    setEditDataInicio(dtInicio.toISOString().split("T")[0]);
+
+    const dtFim = ev.fim ? new Date(ev.fim) : dtInicio;
+    setEditDataFim(dtFim.toISOString().split("T")[0]);
+
+    const horStr = dtInicio.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+    setEditHorario(horStr);
+    setEditProjetoId(ev.projetoId || "");
+    setEditRecorrencia(ev.recorrencia || "unico");
+  };
+
+  // Gerar dias da grade
+  const ano = dataAtual.getFullYear();
+  const mes = dataAtual.getMonth();
+
+  const primeiroDiaMes = new Date(ano, mes, 1);
+  const diaSemanaPrimeiro = primeiroDiaMes.getDay();
+
+  const inicioGrade = new Date(primeiroDiaMes);
+  inicioGrade.setDate(inicioGrade.getDate() - diaSemanaPrimeiro);
+
+  const diasGrade: Date[] = [];
+  const tempDate = new Date(inicioGrade);
+
+  for (let i = 0; i < 35; i++) {
+    diasGrade.push(new Date(tempDate));
+    tempDate.setDate(tempDate.getDate() + 1);
+  }
+
   const hoje = new Date();
 
   return (
-    <div className="animate-fade-in-up space-y-4 max-w-[1400px] mx-auto pb-10">
-      {/* ── Top Bar da Agenda ─────────────────────────────── */}
-      <div className="card p-4 flex flex-col md:flex-row items-center justify-between gap-4 bg-white border shadow-xs">
-        <div className="flex items-center gap-3">
+    <div className="animate-fade-in-up space-y-6 max-w-7xl mx-auto pb-16">
+      {/* ── Topo do Calendário ─────────────────────────────────────── */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <h1 className="font-heading text-2xl font-bold tracking-tight text-gray-900 flex items-center gap-2">
+            <CalendarIcon className="w-7 h-7 text-accent" />
+            Agenda & Compromissos
+          </h1>
+          <p className="text-xs text-gray-500 mt-1">
+            Arraste os compromissos para mudar os dias. Crie eventos de múltiplos dias ou fixos.
+          </p>
+        </div>
+
+        {/* Controles de Navegação de Mês */}
+        <div className="flex items-center gap-2 self-start md:self-auto">
           <button
             onClick={irParaHoje}
-            className="px-4 py-1.5 rounded-full border text-xs font-bold transition-all hover:bg-gray-50 cursor-pointer"
-            style={{ borderColor: "var(--border)", color: "var(--text-primary)" }}
+            className="px-3 py-1.5 text-xs font-bold rounded-xl border border-gray-200 bg-white hover:bg-gray-50 transition-colors shadow-xs"
           >
             Hoje
           </button>
-
-          <div className="flex items-center gap-1">
+          <div className="flex items-center bg-white border border-gray-200 rounded-xl p-1 shadow-xs">
             <button
               onClick={mesAnterior}
-              className="p-1.5 rounded-full hover:bg-gray-100 transition-colors cursor-pointer"
+              className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors text-gray-700"
               title="Mês anterior"
             >
-              <ChevronLeft className="w-5 h-5 text-gray-600" />
+              <ChevronLeft className="w-4 h-4" />
             </button>
+            <span className="font-heading text-sm font-bold px-3 min-w-[140px] text-center text-gray-900">
+              {MESES[mes]} {ano}
+            </span>
             <button
               onClick={proximoMes}
-              className="p-1.5 rounded-full hover:bg-gray-100 transition-colors cursor-pointer"
+              className="p-1.5 rounded-lg hover:bg-gray-100 transition-colors text-gray-700"
               title="Próximo mês"
             >
-              <ChevronRight className="w-5 h-5 text-gray-600" />
+              <ChevronRight className="w-4 h-4" />
             </button>
-          </div>
-
-          <h2 className="font-heading text-xl font-bold tracking-tight text-gray-900 ml-2">
-            {MESES[dataAtual.getMonth()]} de {dataAtual.getFullYear()}
-          </h2>
-        </div>
-
-        <div className="flex items-center gap-3">
-          <div className="px-3 py-1.5 rounded-xl bg-gray-100 text-xs font-semibold text-gray-600 flex items-center gap-2">
-            <CalendarIcon className="w-4 h-4 text-gray-500" />
-            <span>Mês</span>
           </div>
 
           <button
             onClick={() => abrirModalNovoNoDia(new Date())}
-            className="btn-primary py-2 px-4 text-xs flex items-center gap-1.5 cursor-pointer shadow-xs"
+            className="btn-primary text-xs py-2 px-4 rounded-xl flex items-center gap-1.5 font-bold shadow-sm"
           >
             <Plus className="w-4 h-4" />
-            <span>Novo Evento</span>
+            <span>Novo Compromisso</span>
           </button>
         </div>
       </div>
@@ -281,7 +339,10 @@ export default function AgendaPage() {
       {/* ── Grade Mensal do Calendário ──────────────────────── */}
       <div className="card p-0 overflow-hidden bg-white border shadow-card rounded-2xl">
         {/* Cabeçalho com dias da semana */}
-        <div className="grid grid-cols-7 border-b bg-gray-50/80 text-center py-2.5 text-xs font-bold text-gray-600 uppercase tracking-wider" style={{ borderColor: "var(--border)" }}>
+        <div
+          className="grid grid-cols-7 border-b bg-gray-50/80 text-center py-2.5 text-xs font-bold text-gray-600 uppercase tracking-wider"
+          style={{ borderColor: "var(--border)" }}
+        >
           {DIAS_SEMANA.map((dia) => (
             <div key={dia}>{dia}</div>
           ))}
@@ -296,22 +357,28 @@ export default function AgendaPage() {
               dia.getMonth() === hoje.getMonth() &&
               dia.getFullYear() === hoje.getFullYear();
 
-            // Filtra eventos do dia
+            // Filtra eventos do dia (incluindo compromissos de múltiplos dias!)
+            const inicioDia = new Date(dia.getFullYear(), dia.getMonth(), dia.getDate(), 0, 0, 0, 0);
+            const fimDia = new Date(dia.getFullYear(), dia.getMonth(), dia.getDate(), 23, 59, 59, 999);
+
             const eventosDia = eventos.filter((ev) => {
-              const dEv = new Date(ev.inicio);
-              return (
-                dEv.getDate() === dia.getDate() &&
-                dEv.getMonth() === dia.getMonth() &&
-                dEv.getFullYear() === dia.getFullYear()
-              );
+              const inicioEvt = new Date(ev.inicio);
+              const fimEvt = ev.fim ? new Date(ev.fim) : inicioEvt;
+
+              return inicioEvt <= fimDia && fimEvt >= inicioDia;
             });
 
             return (
               <div
                 key={idx}
                 onClick={() => abrirModalNovoNoDia(dia)}
-                className={`min-h-[120px] p-1.5 bg-white flex flex-col justify-start transition-all hover:bg-gray-50/80 cursor-pointer group relative ${
-                  !ehMesAtual ? "bg-gray-50/50" : ""
+                onDragOver={(e) => {
+                  e.preventDefault();
+                  e.dataTransfer.dropEffect = "move";
+                }}
+                onDrop={(e) => handleDropNoDia(e, dia)}
+                className={`min-h-[120px] p-1.5 bg-white flex flex-col justify-start transition-all hover:bg-gray-50/90 cursor-pointer group relative ${
+                  !ehMesAtual ? "bg-gray-50/50 opacity-60" : ""
                 }`}
               >
                 {/* Número do Dia */}
@@ -343,7 +410,7 @@ export default function AgendaPage() {
                   </button>
                 </div>
 
-                {/* Lista de pílulas de eventos */}
+                {/* Lista de pílulas de eventos (Arrastáveis!) */}
                 <div className="space-y-1 flex-1 overflow-y-auto max-h-[85px] custom-scrollbar">
                   {eventosDia.map((ev) => {
                     const horStr = new Date(ev.inicio).toLocaleTimeString("pt-BR", {
@@ -354,24 +421,33 @@ export default function AgendaPage() {
                     const isMensal = ev.recorrencia === "mensal";
                     const isSemanal = ev.recorrencia === "semanal";
 
+                    const dtIni = new Date(ev.inicio);
+                    const dtFim = ev.fim ? new Date(ev.fim) : dtIni;
+                    const ehMultidias = dtIni.getDate() !== dtFim.getDate() || dtIni.getMonth() !== dtFim.getMonth();
+
                     return (
                       <div
                         key={ev.id}
+                        draggable={true}
+                        onDragStart={(e) => {
+                          e.dataTransfer.setData("text/plain", ev.idOriginal || ev.id);
+                          e.dataTransfer.effectAllowed = "move";
+                        }}
                         onClick={(e) => {
                           e.stopPropagation();
                           abrirDetalhesEvento(ev);
                         }}
-                        className="px-2 py-1 rounded-md text-[11px] font-semibold text-white truncate shadow-xs flex items-center gap-1 transition-transform hover:scale-[1.02] cursor-pointer"
+                        className="px-2 py-1 rounded-md text-[11px] font-semibold text-white truncate shadow-xs flex items-center gap-1 transition-transform hover:scale-[1.02] cursor-grab active:cursor-grabbing select-none"
                         style={{ background: cor }}
-                        title={`${horStr} — ${ev.titulo} ${isMensal ? "(Fixo Mensal)" : ""}`}
+                        title={`${horStr} — ${ev.titulo} ${ehMultidias ? "(Múltiplos dias)" : ""}`}
                       >
-                        {isMensal ? (
+                        <GripVertical className="w-2.5 h-2.5 opacity-60 flex-shrink-0" />
+                        {isMensal || isSemanal ? (
                           <Repeat className="w-3 h-3 flex-shrink-0 text-white animate-pulse" />
-                        ) : isSemanal ? (
-                          <Repeat className="w-3 h-3 flex-shrink-0 text-white" />
                         ) : null}
                         <span className="opacity-90 font-mono text-[10px]">{horStr}</span>
-                        <span className="truncate">{ev.titulo}</span>
+                        <span className="truncate flex-1">{ev.titulo}</span>
+                        {ehMultidias && <span className="text-[9px] bg-black/20 px-1 rounded">2d+</span>}
                       </div>
                     );
                   })}
@@ -382,7 +458,7 @@ export default function AgendaPage() {
         </div>
       </div>
 
-      {/* ── Modal Novo Evento ─────────────────────────────── */}
+      {/* ── Modal Criar Novo Evento ─────────────────────────── */}
       {modalOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40 backdrop-blur-xs animate-fade-in">
           <div className="card p-6 w-full max-w-md bg-white shadow-2xl relative rounded-2xl">
@@ -393,7 +469,8 @@ export default function AgendaPage() {
               <X className="w-5 h-5" />
             </button>
 
-            <h3 className="font-heading text-lg font-bold mb-4 text-gray-900">
+            <h3 className="font-heading text-lg font-bold text-gray-900 mb-4 flex items-center gap-2">
+              <CalendarIcon className="w-5 h-5 text-accent" />
               Novo Compromisso na Agenda
             </h3>
 
@@ -404,24 +481,30 @@ export default function AgendaPage() {
                 </label>
                 <input
                   type="text"
-                  placeholder="Ex: Consulta médica, Reunião com cliente..."
+                  placeholder="Ex: Consulta médica, Viagem, Evento de 2 dias..."
                   value={novoTitulo}
                   onChange={(e) => setNovoTitulo(e.target.value)}
-                  className="input w-full"
+                  className="input w-full font-semibold"
                   required
                   autoFocus
                 />
               </div>
 
+              {/* Data Início & Data Término (Múltiplos Dias!) */}
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="text-xs font-semibold text-gray-700 block mb-1">
-                    Data:
+                    Data de Início:
                   </label>
                   <input
                     type="date"
                     value={dataSelecionada}
-                    onChange={(e) => setDataSelecionada(e.target.value)}
+                    onChange={(e) => {
+                      setDataSelecionada(e.target.value);
+                      if (!dataFimSelecionada || dataFimSelecionada < e.target.value) {
+                        setDataFimSelecionada(e.target.value);
+                      }
+                    }}
                     className="input w-full text-xs font-semibold"
                     required
                   />
@@ -429,16 +512,31 @@ export default function AgendaPage() {
 
                 <div>
                   <label className="text-xs font-semibold text-gray-700 block mb-1">
-                    Horário:
+                    Data de Término (Múltiplos Dias):
                   </label>
                   <input
-                    type="time"
-                    value={novoHorario}
-                    onChange={(e) => setNovoHorario(e.target.value)}
+                    type="date"
+                    value={dataFimSelecionada}
+                    onChange={(e) => setDataFimSelecionada(e.target.value)}
                     className="input w-full text-xs font-semibold"
+                    min={dataSelecionada}
                     required
                   />
                 </div>
+              </div>
+
+              {/* Horário */}
+              <div>
+                <label className="text-xs font-semibold text-gray-700 block mb-1">
+                  Horário de Início:
+                </label>
+                <input
+                  type="time"
+                  value={novoHorario}
+                  onChange={(e) => setNovoHorario(e.target.value)}
+                  className="input w-full text-xs font-semibold"
+                  required
+                />
               </div>
 
               {/* Repetição / Evento Fixo */}
@@ -452,12 +550,13 @@ export default function AgendaPage() {
                   onChange={(e) => setNovaRecorrencia(e.target.value)}
                   className="input w-full text-xs font-bold text-gray-800"
                 >
-                  <option value="unico">📌 Compromisso Único (Nesta data)</option>
-                  <option value="mensal">🔁 Fixo Mensal (Repete todo mês neste mesmo dia)</option>
+                  <option value="unico">📌 Compromisso Único</option>
+                  <option value="mensal">🔁 Fixo Mensal (Repete todo mês)</option>
                   <option value="semanal">🔄 Fixo Semanal (Repete toda semana)</option>
                 </select>
               </div>
 
+              {/* Projeto / Cliente */}
               <div>
                 <label className="text-xs font-semibold text-gray-700 block mb-1">
                   Vincular ao Cliente (Opcional):
@@ -487,7 +586,7 @@ export default function AgendaPage() {
                 <button
                   type="submit"
                   disabled={salvando}
-                  className="btn-primary py-2 px-5 text-xs flex items-center gap-1.5"
+                  className="btn-primary py-2 px-5 text-xs flex items-center gap-1.5 font-bold"
                 >
                   {salvando ? "Salvando..." : "Salvar na Agenda"}
                 </button>
@@ -513,8 +612,8 @@ export default function AgendaPage() {
                 <div className="flex items-center justify-between gap-3 mb-4">
                   <div className="flex items-center gap-3">
                     <span
-                      className="w-4 h-4 rounded-full"
-                      style={{ background: eventoSelecionado.projeto?.cor || "var(--accent)" }}
+                      className="w-4 h-4 rounded-full flex-shrink-0"
+                      style={{ background: getCorEvento(eventoSelecionado) }}
                     />
                     <h3 className="font-heading text-lg font-bold text-gray-900">
                       {eventoSelecionado.titulo}
@@ -533,13 +632,23 @@ export default function AgendaPage() {
 
                 <div className="space-y-3 text-sm text-gray-600 mb-6">
                   <div className="flex items-center gap-2">
-                    <Clock className="w-4 h-4 text-gray-400" />
+                    <Clock className="w-4 h-4 text-gray-400 flex-shrink-0" />
                     <span>
                       {new Date(eventoSelecionado.inicio).toLocaleDateString("pt-BR", {
-                        weekday: "long",
+                        weekday: "short",
                         day: "numeric",
-                        month: "long",
+                        month: "short",
                       })}{" "}
+                      {eventoSelecionado.fim && (
+                        <>
+                          até{" "}
+                          {new Date(eventoSelecionado.fim).toLocaleDateString("pt-BR", {
+                            weekday: "short",
+                            day: "numeric",
+                            month: "short",
+                          })}
+                        </>
+                      )}{" "}
                       às{" "}
                       {new Date(eventoSelecionado.inicio).toLocaleTimeString("pt-BR", {
                         hour: "2-digit",
@@ -548,21 +657,20 @@ export default function AgendaPage() {
                     </span>
                   </div>
 
-                  {eventoSelecionado.recorrencia && eventoSelecionado.recorrencia !== "unico" && (
-                    <div className="flex items-center gap-2">
-                      <Repeat className="w-4 h-4 text-accent" />
-                      <span className="text-xs font-bold text-accent px-2.5 py-0.5 rounded-full bg-accent/10">
-                        {eventoSelecionado.recorrencia === "mensal"
-                          ? "🔁 Evento Fixo Mensal"
-                          : "🔄 Evento Fixo Semanal"}
-                      </span>
+                  {eventoSelecionado.projeto && (
+                    <div className="flex items-center gap-2 text-xs font-semibold text-gray-700">
+                      <span className="w-2.5 h-2.5 rounded-full" style={{ background: eventoSelecionado.projeto.cor }} />
+                      <span>Cliente: {eventoSelecionado.projeto.nome}</span>
                     </div>
                   )}
 
-                  {eventoSelecionado.projeto && (
-                    <div className="flex items-center gap-2">
-                      <span className="text-xs font-semibold px-2.5 py-0.5 rounded-full bg-gray-100 text-gray-700">
-                        Cliente: {eventoSelecionado.projeto.nome}
+                  {eventoSelecionado.recorrencia && eventoSelecionado.recorrencia !== "unico" && (
+                    <div className="flex items-center gap-2 text-xs font-bold text-accent">
+                      <Repeat className="w-3.5 h-3.5" />
+                      <span>
+                        {eventoSelecionado.recorrencia === "mensal"
+                          ? "Evento Fixo Mensal"
+                          : "Evento Fixo Semanal"}
                       </span>
                     </div>
                   )}
@@ -571,15 +679,15 @@ export default function AgendaPage() {
                 <div className="flex justify-between items-center pt-3 border-t border-gray-100">
                   <button
                     onClick={() => handleExcluirEvento(eventoSelecionado.id)}
-                    className="text-red-600 hover:text-red-700 text-xs font-semibold flex items-center gap-1.5 cursor-pointer"
+                    className="p-2 text-red-500 hover:bg-red-50 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer"
                   >
                     <Trash2 className="w-4 h-4" />
-                    <span>Excluir Compromisso</span>
+                    <span>Excluir</span>
                   </button>
 
                   <button
                     onClick={() => setEventoSelecionado(null)}
-                    className="btn-neutral py-2 px-4 text-xs"
+                    className="btn-neutral py-2 px-5 text-xs font-bold"
                   >
                     Fechar
                   </button>
@@ -587,8 +695,8 @@ export default function AgendaPage() {
               </>
             ) : (
               /* Formulário de Edição do Evento */
-              <form onSubmit={handleAtualizarEventoSubmit} className="space-y-4">
-                <h3 className="font-heading text-lg font-bold text-gray-900 mb-2">
+              <div className="space-y-4">
+                <h3 className="font-heading text-lg font-bold text-gray-900">
                   Editar Compromisso
                 </h3>
 
@@ -600,52 +708,61 @@ export default function AgendaPage() {
                     type="text"
                     value={editTitulo}
                     onChange={(e) => setEditTitulo(e.target.value)}
-                    className="input w-full"
-                    required
+                    className="input w-full font-semibold"
                   />
                 </div>
 
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className="text-xs font-semibold text-gray-700 block mb-1">
-                      Data:
+                      Data Início:
                     </label>
                     <input
                       type="date"
-                      value={editData}
-                      onChange={(e) => setEditData(e.target.value)}
+                      value={editDataInicio}
+                      onChange={(e) => setEditDataInicio(e.target.value)}
                       className="input w-full text-xs font-semibold"
-                      required
                     />
                   </div>
+
                   <div>
                     <label className="text-xs font-semibold text-gray-700 block mb-1">
-                      Horário:
+                      Data Término:
                     </label>
                     <input
-                      type="time"
-                      value={editHorario}
-                      onChange={(e) => setEditHorario(e.target.value)}
+                      type="date"
+                      value={editDataFim}
+                      onChange={(e) => setEditDataFim(e.target.value)}
                       className="input w-full text-xs font-semibold"
-                      required
+                      min={editDataInicio}
                     />
                   </div>
                 </div>
 
-                {/* Seletor de Fixo Mensal no Edit */}
                 <div>
-                  <label className="text-xs font-semibold text-gray-700 block mb-1 flex items-center gap-1.5">
-                    <Repeat className="w-3.5 h-3.5 text-accent" />
-                    Frequência / Repetição:
+                  <label className="text-xs font-semibold text-gray-700 block mb-1">
+                    Horário:
+                  </label>
+                  <input
+                    type="time"
+                    value={editHorario}
+                    onChange={(e) => setEditHorario(e.target.value)}
+                    className="input w-full text-xs font-semibold"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-xs font-semibold text-gray-700 block mb-1">
+                    Repetição:
                   </label>
                   <select
                     value={editRecorrencia}
                     onChange={(e) => setEditRecorrencia(e.target.value)}
-                    className="input w-full text-xs font-bold text-gray-800"
+                    className="input w-full text-xs font-bold"
                   >
                     <option value="unico">📌 Compromisso Único</option>
-                    <option value="mensal">🔁 Fixo Mensal (Todo mês neste dia)</option>
-                    <option value="semanal">🔄 Fixo Semanal (Toda semana)</option>
+                    <option value="mensal">🔁 Fixo Mensal</option>
+                    <option value="semanal">🔄 Fixo Semanal</option>
                   </select>
                 </div>
 
@@ -669,22 +786,20 @@ export default function AgendaPage() {
 
                 <div className="flex justify-end gap-2 pt-3 border-t border-gray-100">
                   <button
-                    type="button"
                     onClick={() => setEditando(false)}
-                    className="btn-neutral py-2 px-4 text-xs"
+                    className="btn-neutral py-2 px-4 text-xs font-bold"
                   >
                     Cancelar
                   </button>
                   <button
-                    type="submit"
+                    onClick={handleSalvarEdicao}
                     disabled={salvando}
-                    className="btn-primary py-2 px-5 text-xs flex items-center gap-1.5"
+                    className="btn-primary py-2 px-5 text-xs font-bold"
                   >
-                    <Save className="w-4 h-4" />
-                    <span>{salvando ? "Salvando..." : "Salvar Alterações"}</span>
+                    {salvando ? "Salvando..." : "Salvar Alterações"}
                   </button>
                 </div>
-              </form>
+              </div>
             )}
           </div>
         </div>
