@@ -159,12 +159,10 @@ export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
 
-    // Processa atualização do Telegram
     if (body.message) {
       const msg = body.message;
       const chatId = String(msg.chat?.id);
 
-      // Valida chat autorizado
       if (ALLOWED_CHAT_ID && chatId !== ALLOWED_CHAT_ID) {
         return NextResponse.json({ status: "ignored_unauthorized" });
       }
@@ -179,14 +177,13 @@ export async function POST(req: NextRequest) {
       else if (photoMsg) tipoMidia = "foto";
       else if (textContent.includes("http://") || textContent.includes("https://")) tipoMidia = "link";
 
-      // 1. Salva em Inbox (idempotência)
       let inboxItem;
       try {
         inboxItem = await prisma.inboxItem.create({
           data: {
             origem: "telegram",
             tipoMidia,
-            conteudoBruto: textContent || "[Mídia recebida]",
+            conteudoBruto: textContent || "[Mídia de Áudio Recebida]",
             telegramMessageId: telegramMsgId,
             status: "pendente",
           },
@@ -197,17 +194,37 @@ export async function POST(req: NextRequest) {
 
       let textoParaClassificar = textContent;
 
-      // Se for áudio, busca transcrição se possível
-      if (voiceMsg && msg.voice?.file_id) {
+      // 🎤 Transcrição Inteligente de Áudio de Voz via Groq Whisper API
+      if (voiceMsg && voiceMsg.file_id) {
         try {
-          const fileRes = await fetch(`https://api.telegram.org/bot${TELEGRAM_TOKEN}/getFile?file_id=${msg.voice.file_id}`);
+          const fileRes = await fetch(`https://api.telegram.org/bot${TELEGRAM_TOKEN}/getFile?file_id=${voiceMsg.file_id}`);
           const fileData = await fileRes.json();
-          if (fileData.ok && fileData.result.file_path) {
-            // Nota: Se a chave Groq estiver ativa, transcrição pode usar Whisper API
-            textoParaClassificar = "[Áudio Recebido pelo Telegram]";
+
+          if (fileData.ok && fileData.result.file_path && groq) {
+            const downloadUrl = `https://api.telegram.org/file/bot${TELEGRAM_TOKEN}/${fileData.result.file_path}`;
+            const audioBufferRes = await fetch(downloadUrl);
+            const arrayBuf = await audioBufferRes.arrayBuffer();
+            const buffer = Buffer.from(arrayBuf);
+
+            const audioFile = await OpenAI.toFile(buffer, "voice.ogg");
+            const transcription = await groq.audio.transcriptions.create({
+              file: audioFile,
+              model: "whisper-large-v3-turbo",
+              language: "pt",
+            });
+
+            if (transcription && transcription.text) {
+              textoParaClassificar = transcription.text.trim();
+              console.log("🎤 Transcrição do Áudio:", textoParaClassificar);
+
+              await prisma.inboxItem.update({
+                where: { id: inboxItem.id },
+                data: { transcricao: textoParaClassificar },
+              });
+            }
           }
         } catch (err) {
-          console.error("[Telegram Webhook Audio Error]:", err);
+          console.error("[Groq Whisper Audio Error]:", err);
         }
       }
 
@@ -327,9 +344,10 @@ export async function POST(req: NextRequest) {
         data: { status: "processado" },
       });
 
-      // Envia resposta no Telegram 24/7
+      // Se foi mensagem de áudio, inclui a transcrição na resposta para o usuário saber o que foi entendido
+      const sufixoAudio = voiceMsg && textoParaClassificar ? `\n\n🎙️ _" ${textoParaClassificar} "_` : "";
       const msgLinhas = itemsClassificados.map((c: any) => c.confirmacao || `✓ ${c.tipo}: ${c.titulo}`);
-      const confirmText = msgLinhas.join("\n");
+      const confirmText = msgLinhas.join("\n") + sufixoAudio;
 
       await fetch(`https://api.telegram.org/bot${TELEGRAM_TOKEN}/sendMessage`, {
         method: "POST",
