@@ -110,6 +110,103 @@ Responda APENAS um array JSON válido:
   return classificadorFallback(mensagem, agora);
 }
 
+const MESES_MAP: Record<string, number> = {
+  janeiro: 0, jan: 0,
+  fevereiro: 1, fev: 1,
+  março: 2, marco: 2, mar: 2,
+  abril: 3, abr: 3,
+  maio: 4, mai: 4,
+  junho: 5, jun: 5,
+  julho: 6, jul: 6,
+  agosto: 7, ago: 7,
+  setembro: 8, set: 8,
+  outubro: 9, out: 9,
+  novembro: 10, nov: 10,
+  dezembro: 11, dez: 11,
+};
+
+function extrairDataEMensagem(mensagem: string, agora: Date) {
+  const msgTrim = mensagem.trim();
+  let dataCalculada: Date | null = null;
+  let tituloLimpo = msgTrim;
+  let ehDataExplicita = false;
+
+  // 1. "12 de Setembro", "15 de Outubro", "3 de maio", "20 de agosto"
+  const regexMesExtenso = /(\d{1,2})\s+de\s+(janeiro|fevereiro|março|marco|abril|maio|junho|julho|agosto|setembro|outubro|novembro|dezembro|jan|fev|mar|abr|mai|jun|jul|ago|set|out|nov|dez)/i;
+  const matchMesExt = msgTrim.match(regexMesExtenso);
+
+  if (matchMesExt) {
+    const diaNum = parseInt(matchMesExt[1], 10);
+    const mesNome = matchMesExt[2].toLowerCase();
+    const mesIdx = MESES_MAP[mesNome];
+
+    if (mesIdx !== undefined && diaNum >= 1 && diaNum <= 31) {
+      let ano = agora.getFullYear();
+      if (mesIdx < agora.getMonth() || (mesIdx === agora.getMonth() && diaNum < agora.getDate())) {
+        if (agora.getMonth() > mesIdx) {
+          ano += 1;
+        }
+      }
+      dataCalculada = new Date(ano, mesIdx, diaNum, 9, 0, 0, 0);
+      ehDataExplicita = true;
+      tituloLimpo = msgTrim.replace(matchMesExt[0], "").replace(/^[\s\-_:]+/, "").replace(/[\s\-_:]+$/, "").trim();
+    }
+  }
+
+  // 2. "12/09", "15/10/2026"
+  if (!dataCalculada) {
+    const regexBarra = /(\d{1,2})\/(\d{1,2})(?:\/(\d{2,4}))?/;
+    const matchBarra = msgTrim.match(regexBarra);
+    if (matchBarra) {
+      const diaNum = parseInt(matchBarra[1], 10);
+      const mesNum = parseInt(matchBarra[2], 10) - 1;
+      let ano = matchBarra[3] ? parseInt(matchBarra[3], 10) : agora.getFullYear();
+      if (ano < 100) ano += 2000;
+
+      if (mesNum >= 0 && mesNum <= 11 && diaNum >= 1 && diaNum <= 31) {
+        dataCalculada = new Date(ano, mesNum, diaNum, 9, 0, 0, 0);
+        ehDataExplicita = true;
+        tituloLimpo = msgTrim.replace(matchBarra[0], "").replace(/^[\s\-_:]+/, "").replace(/[\s\-_:]+$/, "").trim();
+      }
+    }
+  }
+
+  // 3. "amanhã" / "amanha" / "hoje"
+  if (!dataCalculada) {
+    const msgLower = msgTrim.toLowerCase();
+    if (msgLower.includes("amanhã") || msgLower.includes("amanha")) {
+      const d = new Date(agora);
+      d.setDate(d.getDate() + 1);
+      d.setHours(9, 0, 0, 0);
+      dataCalculada = d;
+      ehDataExplicita = true;
+      tituloLimpo = msgTrim.replace(/(?:para|pra)?\s*(?:amanhã|amanha)/gi, "").replace(/^[\s\-_:]+/, "").replace(/[\s\-_:]+$/, "").trim();
+    } else if (msgLower.includes("hoje")) {
+      const d = new Date(agora);
+      d.setHours(18, 0, 0, 0);
+      dataCalculada = d;
+      tituloLimpo = msgTrim.replace(/(?:para|pra)?\s*hoje/gi, "").replace(/^[\s\-_:]+/, "").replace(/[\s\-_:]+$/, "").trim();
+    }
+  }
+
+  // Limpeza final do título
+  tituloLimpo = tituloLimpo
+    .replace(/(?:,?\s*)?(?:coloque|colocar|põe|bota|adicione|salve|salvar)?\s*(?:na|pra|para)?\s*agenda/gi, "")
+    .replace(/^(agendar|marcar|criar|fazer|preciso|tenho que)\s+/gi, "")
+    .replace(/^[,\s\-_:]+/, "")
+    .replace(/[,\s\-_:]+$/, "")
+    .trim();
+
+  if (!tituloLimpo) tituloLimpo = msgTrim;
+  tituloLimpo = tituloLimpo.charAt(0).toUpperCase() + tituloLimpo.slice(1);
+
+  return {
+    data: dataCalculada,
+    tituloLimpo,
+    ehDataExplicita,
+  };
+}
+
 // ⚡ Algoritmo de classificação local instantâneo (~2ms)
 function tentarClassificacaoInstantanea(
   mensagem: string,
@@ -199,7 +296,7 @@ function tentarClassificacaoInstantanea(
   }
 
   // Detecta se é agendamento / evento de agenda
-  const isEvento =
+  const isEventoKeyword =
     msgLower.includes("agenda") ||
     msgLower.includes("agendar") ||
     msgLower.includes("marcar") ||
@@ -232,61 +329,15 @@ function tentarClassificacaoInstantanea(
     }
   }
 
-  let prazo: Date | null = null;
-  let tituloLimpo = msgTrim;
+  // Processa extração de data e título limpo
+  const parsedData = extrairDataEMensagem(msgTrim, agora);
+  const prazo = parsedData.data;
+  const tituloLimpo = parsedData.tituloLimpo;
 
-  const regexSegunda = /(?:para|pra|em|na)?\s*(segunda(?:-feira)?)/i;
-  const regexTerca = /(?:para|pra|em|na)?\s*(terça(?:-feira)?|terca(?:-feira)?)/i;
-  const regexQuarta = /(?:para|pra|em|na)?\s*(quarta(?:-feira)?)/i;
-  const regexQuinta = /(?:para|pra|em|na)?\s*(quinta(?:-feira)?)/i;
-  const regexSexta = /(?:para|pra|em|na)?\s*(sexta(?:-feira)?)/i;
-  const regexSabado = /(?:para|pra|em|no)?\s*(sábado|sabado)/i;
-  const regexDomingo = /(?:para|pra|em|no)?\s*(domingo)/i;
-  const regexAmanha = /(?:para|pra)?\s*(amanhã|amanha)/i;
-  const regexHoje = /(?:para|pra)?\s*(hoje)/i;
-
-  const alvos: [RegExp, number | string][] = [
-    [regexAmanha, "amanha"],
-    [regexHoje, "hoje"],
-    [regexDomingo, 0],
-    [regexSegunda, 1],
-    [regexTerca, 2],
-    [regexQuarta, 3],
-    [regexQuinta, 4],
-    [regexSexta, 5],
-    [regexSabado, 6],
-  ];
-
-  for (const [regex, target] of alvos) {
-    if (regex.test(msgLower)) {
-      const d = new Date(agora);
-      if (target === "hoje") {
-        d.setHours(18, 0, 0, 0);
-      } else if (target === "amanha") {
-        d.setDate(d.getDate() + 1);
-        d.setHours(18, 0, 0, 0);
-      } else if (typeof target === "number") {
-        let diff = target - d.getDay();
-        if (diff <= 0) diff += 7;
-        d.setDate(d.getDate() + diff);
-        d.setHours(18, 0, 0, 0);
-      }
-      prazo = d;
-      tituloLimpo = msgTrim.replace(regex, "").replace(/\s+/g, " ").trim();
-      break;
-    }
-  }
-
-  tituloLimpo = tituloLimpo
-    .replace(/(?:,?\s*)?(?:coloque|colocar|põe|bota|adicione|salve|salvar)?\s*(?:na|pra|para)?\s*agenda/gi, "")
-    .replace(/^(agendar|marcar|criar|fazer|preciso|tenho que)\s+/gi, "")
-    .replace(/,\s*$/, "")
-    .trim();
-
-  if (!tituloLimpo) tituloLimpo = msgTrim;
-  tituloLimpo = tituloLimpo.charAt(0).toUpperCase() + tituloLimpo.slice(1);
-
+  const isEvento = isEventoKeyword || (parsedData.ehDataExplicita && !isVideo);
   const tipoFinal = isEvento ? "evento" : isVideo ? "video" : "tarefa";
+
+  const dtStr = prazo ? prazo.toLocaleDateString("pt-BR") : "";
 
   return [
     {
@@ -296,7 +347,7 @@ function tentarClassificacaoInstantanea(
       prazo: prazo ? prazo.toISOString() : undefined,
       formato: msgLower.includes("vsl") ? "vsl" : msgLower.includes("reels") ? "reels" : "outro",
       confianca: 0.95,
-      confirmacao: `✓ ${tipoFinal === "video" ? "Vídeo adicionado no Pipeline" : tipoFinal === "evento" ? "Compromisso agendado na Agenda" : "Tarefa criada"}: "${tituloLimpo}"${prazo ? ` (${prazo.toLocaleDateString("pt-BR")})` : ""}`,
+      confirmacao: `✓ ${tipoFinal === "video" ? "Vídeo adicionado no Pipeline" : tipoFinal === "evento" ? "Compromisso agendado na Agenda" : "Tarefa criada"}: "${tituloLimpo}"${dtStr ? ` (${dtStr})` : ""}`,
     },
   ];
 }
