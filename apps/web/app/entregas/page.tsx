@@ -363,56 +363,59 @@ export default function ControleEntregasPage() {
           Adicionar Vídeo ao Controle de {MESES[mesSelecionado - 1]}
         </label>
 
-        <form onSubmit={handleAdicionar} className="flex flex-col md:flex-row items-stretch md:items-center gap-3">
-          {/* Input principal destacado */}
-          <div className="relative flex-1">
+        <form onSubmit={handleAdicionar} className="flex flex-col gap-3">
+          {/* Input principal em linha própria com 100% de largura */}
+          <div className="relative w-full">
             <input
               type="text"
               value={novoTitulo}
               onChange={(e) => setNovoTitulo(e.target.value)}
-              placeholder="Digite o título do vídeo (Ex: Corte 1, VSL Nações, Criativo 2)..."
-              className="input w-full py-3 px-4 text-sm font-semibold border-gray-300 rounded-xl bg-gray-50/40 focus:bg-white focus:border-accent text-gray-900 placeholder:text-gray-400 shadow-xs"
+              placeholder="Digite aqui o nome do vídeo (Ex: Corte 1 - Video 2, VSL Nações, Criativo Ads)..."
+              className="input w-full py-3.5 px-4 text-sm font-semibold border-gray-300 rounded-xl bg-gray-50/50 focus:bg-white focus:border-accent text-gray-900 placeholder:text-gray-400 shadow-xs"
             />
-            {novoTitulo && (
-              <span className="absolute right-3 top-3 text-[10px] font-bold text-gray-400 bg-gray-200 px-1.5 py-0.5 rounded">
-                Pressione Enter ↵
-              </span>
-            )}
           </div>
 
-          {/* Formato */}
-          <select
-            value={novoFormato}
-            onChange={(e) => setNovoFormato(e.target.value)}
-            className="input py-3 text-xs font-bold rounded-xl border-gray-300 bg-gray-50/40 cursor-pointer md:w-44"
-          >
-            {FORMATOS.map((f) => (
-              <option key={f.value} value={f.value}>
-                {f.label}
-              </option>
-            ))}
-          </select>
+          {/* Opções e Botão na linha inferior */}
+          <div className="flex flex-wrap items-center justify-between gap-3 pt-1">
+            <div className="flex flex-wrap items-center gap-3">
+              {/* Formato */}
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-bold text-gray-500">Formato:</span>
+                <select
+                  value={novoFormato}
+                  onChange={(e) => setNovoFormato(e.target.value)}
+                  className="input py-2 px-3 text-xs font-bold rounded-xl border-gray-300 bg-gray-50 cursor-pointer min-w-[150px]"
+                >
+                  {FORMATOS.map((f) => (
+                    <option key={f.value} value={f.value}>
+                      {f.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
 
-          {/* Status inicial */}
-          <label className="flex items-center gap-2 text-xs font-bold text-gray-700 px-3 py-3 rounded-xl border border-gray-200 bg-gray-50/40 cursor-pointer select-none hover:bg-gray-100 transition-all">
-            <input
-              type="checkbox"
-              checked={novoConcluido}
-              onChange={(e) => setNovoConcluido(e.target.checked)}
-              className="rounded text-accent focus:ring-accent w-4 h-4 cursor-pointer"
-            />
-            <span>Já Entregue</span>
-          </label>
+              {/* Status inicial */}
+              <label className="flex items-center gap-2 text-xs font-bold text-gray-700 px-3 py-2 rounded-xl border border-gray-200 bg-gray-50 cursor-pointer select-none hover:bg-gray-100 transition-all">
+                <input
+                  type="checkbox"
+                  checked={novoConcluido}
+                  onChange={(e) => setNovoConcluido(e.target.checked)}
+                  className="rounded text-accent focus:ring-accent w-4 h-4 cursor-pointer"
+                />
+                <span>Marcar como Já Entregue</span>
+              </label>
+            </div>
 
-          {/* Botão Adicionar */}
-          <button
-            type="submit"
-            disabled={!novoTitulo.trim()}
-            className="btn-primary text-xs py-3 px-6 rounded-xl flex items-center justify-center gap-2 font-bold cursor-pointer flex-shrink-0 disabled:opacity-40 shadow-sm transition-all hover:scale-[1.02]"
-          >
-            <Plus className="w-4 h-4" />
-            <span>Adicionar Vídeo</span>
-          </button>
+            {/* Botão Adicionar */}
+            <button
+              type="submit"
+              disabled={!novoTitulo.trim()}
+              className="btn-primary text-xs py-2.5 px-6 rounded-xl flex items-center justify-center gap-2 font-bold cursor-pointer disabled:opacity-40 shadow-sm transition-all hover:scale-[1.02] sm:ml-auto w-full sm:w-auto"
+            >
+              <Plus className="w-4 h-4" />
+              <span>Adicionar Vídeo</span>
+            </button>
+          </div>
         </form>
       </div>
 
