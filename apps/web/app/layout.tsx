@@ -29,8 +29,8 @@ export const metadata: Metadata = {
     title: "Assessor",
   },
   icons: {
-    icon: "/favicon.svg",
-    apple: "/apple-touch-icon.svg",
+    icon: "/icon.png",
+    apple: "/apple-touch-icon.png",
   },
 };
 
