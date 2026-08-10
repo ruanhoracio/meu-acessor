@@ -102,10 +102,10 @@ export function Sidebar() {
     >
       {/* Logo oficial Meu Assessor */}
       <div
-        className="px-5 h-[72px] flex items-center border-b"
+        className="px-4 h-[76px] flex items-center border-b"
         style={{ borderColor: "var(--border)" }}
       >
-        <div className="relative w-[150px] h-[45px]">
+        <div className="relative w-[195px] h-[56px]">
           <Image
             src="/logo-header.png"
             alt="Meu Assessor"
