@@ -36,8 +36,8 @@ export function ModalBusca({ isOpen, onClose }: { isOpen: boolean; onClose: () =
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center pt-20 p-4 bg-black/50 backdrop-blur-sm animate-fade-in-up">
-      <div className="card w-full max-w-xl p-4 relative bg-white shadow-elevated">
+    <div className="fixed inset-0 z-50 flex items-start justify-center pt-20 p-4 bg-black/60 backdrop-blur-sm overflow-y-auto">
+      <div className="card w-full max-w-xl p-4 relative bg-white shadow-2xl rounded-2xl animate-fade-in">
         <div className="flex items-center gap-3 border-b pb-3 px-2" style={{ borderColor: "var(--border)" }}>
           <Search className="w-5 h-5 text-gray-400" />
           <input
