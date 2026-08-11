@@ -89,6 +89,8 @@ function extrairDataEMensagem(mensagem: string, agora: Date) {
 
   // Limpeza final do título
   tituloLimpo = tituloLimpo
+    .replace(/^(?:adicione|adicionar|criar|fazer|coloque|colocar|põe|bota)?\s*(?:uma\s*)?(?:tarefa|tarefas)?\s*(?:para|pra|que\s*é)?\s*/gi, "")
+    .replace(/^tarefa\s*(?:pra|para|de)?\s*/gi, "")
     .replace(/(?:,?\s*)?(?:coloque|colocar|põe|bota|adicione|salve|salvar)?\s*(?:na|pra|para)?\s*agenda/gi, "")
     .replace(/^(agendar|marcar|criar|fazer|preciso|tenho que)\s+/gi, "")
     .replace(/^[,\s\-_:]+/, "")
@@ -180,7 +182,22 @@ function tentarClassificacaoInstantanea(mensagem: string, agora: Date, projetosA
     ];
   }
 
-  const isEventoKeyword =
+  // 1. Palavras-chave explícitas de TAREFA (Prioridade Máxima)
+  const isExplicitTarefa =
+    msgLower.includes("tarefa") ||
+    msgLower.includes("fazer") ||
+    msgLower.includes("afazer");
+
+  // 2. Palavras-chave explícitas de VÍDEO / PIPELINE
+  const isExplicitVideo =
+    msgLower.includes("vídeo") ||
+    msgLower.includes("video") ||
+    msgLower.includes("vsl") ||
+    msgLower.includes("reels") ||
+    msgLower.includes("corte");
+
+  // 3. Palavras-chave explícitas de EVENTO DE AGENDA
+  const isExplicitEvento =
     msgLower.includes("agenda") ||
     msgLower.includes("agendar") ||
     msgLower.includes("marcar") ||
@@ -197,13 +214,6 @@ function tentarClassificacaoInstantanea(mensagem: string, agora: Date, projetosA
     msgLower.includes("ir ao") ||
     msgLower.includes("ir para");
 
-  const isVideo =
-    msgLower.includes("vídeo") ||
-    msgLower.includes("video") ||
-    msgLower.includes("vsl") ||
-    msgLower.includes("reels") ||
-    msgLower.includes("corte");
-
   let projetoEncontrado: string | undefined;
   for (const proj of projetosAtivos) {
     if (msgLower.includes(proj.toLowerCase())) {
@@ -217,9 +227,21 @@ function tentarClassificacaoInstantanea(mensagem: string, agora: Date, projetosA
   const prazo = parsedData.data;
   const tituloLimpo = parsedData.tituloLimpo;
 
-  // Se houver uma data explícita (ex: 12 de Setembro) ou palavra-chave de evento, classifica como "evento" (Agenda)
-  const isEvento = isEventoKeyword || (parsedData.ehDataExplicita && !isVideo);
-  const tipoFinal = isEvento ? "evento" : isVideo ? "video" : "tarefa";
+  // HIERARQUIA DE DECISÃO IMPRESCINDÍVEL: Palavras explícitas SEMPRE vencem
+  let tipoFinal: "video" | "tarefa" | "evento" = "tarefa";
+
+  if (isExplicitTarefa) {
+    tipoFinal = "tarefa";
+  } else if (isExplicitVideo) {
+    tipoFinal = "video";
+  } else if (isExplicitEvento) {
+    tipoFinal = "evento";
+  } else if (parsedData.ehDataExplicita) {
+    // Se há data explícita (ex: 12 de Setembro) mas NENHUMA palavra "tarefa" ou "vídeo", aí sim vira evento de agenda
+    tipoFinal = "evento";
+  } else {
+    tipoFinal = "tarefa";
+  }
 
   const dtStr = prazo ? prazo.toLocaleDateString("pt-BR") : "";
 
