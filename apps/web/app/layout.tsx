@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Inter, DM_Sans, Bricolage_Grotesque, Space_Mono } from "next/font/google";
+import { Inter, DM_Sans, Space_Mono } from "next/font/google";
 import "./globals.css";
 import { Sidebar } from "@/components/layout/sidebar";
 import { BottomNav } from "@/components/layout/bottom-nav";
@@ -15,13 +15,6 @@ const inter = Inter({
 const dmSans = DM_Sans({
   subsets: ["latin"],
   variable: "--font-dm-sans",
-  display: "swap",
-  weight: ["300", "400", "500", "600", "700"],
-});
-
-const bricolage = Bricolage_Grotesque({
-  subsets: ["latin"],
-  variable: "--font-bricolage",
   display: "swap",
   weight: ["300", "400", "500", "600", "700"],
 });
@@ -66,7 +59,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="pt-BR" className={`${inter.variable} ${dmSans.variable} ${bricolage.variable} ${spaceMono.variable}`}>
+    <html lang="pt-BR" className={`${inter.variable} ${dmSans.variable} ${spaceMono.variable}`}>
       <head>
         <meta name="mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
