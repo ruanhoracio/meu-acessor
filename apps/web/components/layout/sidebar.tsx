@@ -121,9 +121,6 @@ export function Sidebar() {
             priority
           />
         </Link>
-        <span className="font-mono text-[9px] font-bold text-[#c6f91f] px-2 py-0.5 rounded border border-[#c6f91f]/30 bg-[#c6f91f]/10 uppercase tracking-widest">
-          VOLT 2.0
-        </span>
         <div className="absolute bottom-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-[#c6f91f]/40 to-transparent" />
       </div>
 
