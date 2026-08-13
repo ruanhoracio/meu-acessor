@@ -193,11 +193,11 @@ export default function ControleEntregasPage() {
       {/* ── Topo & Filtros ────────────────────────────────────────── */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="font-heading text-2xl font-bold tracking-tight text-gray-900 flex items-center gap-2">
+          <h1 className="font-heading text-2xl font-bold tracking-tight text-gray-900 dark:text-zinc-100 flex items-center gap-2">
             <Film className="w-7 h-7 text-accent" />
             Controle de Vídeos Entregues
           </h1>
-          <p className="text-xs text-gray-500 mt-1">
+          <p className="text-xs text-gray-500 dark:text-zinc-400 mt-1">
             Selecione o cliente, defina a meta mensal e marque os vídeos concluídos.
           </p>
         </div>
@@ -222,14 +222,14 @@ export default function ControleEntregasPage() {
       </div>
 
       {/* ── Barra de Seleção de Cliente e Mês ───────────────────────── */}
-      <div className="card p-4 bg-white/90 backdrop-blur-md rounded-2xl border border-gray-200/80 shadow-xs flex flex-wrap items-center gap-3">
+      <div className="card p-4 bg-white/90 dark:bg-zinc-900/90 backdrop-blur-md rounded-2xl border border-gray-200/80 dark:border-zinc-800 shadow-xs flex flex-wrap items-center gap-3">
         {/* Filtro Cliente */}
         <div className="flex items-center gap-2 flex-1 min-w-[200px]">
           <User className="w-4 h-4 text-accent flex-shrink-0" />
           <select
             value={projetoSelecionado}
             onChange={(e) => setProjetoSelecionado(e.target.value)}
-            className="input w-full py-2.5 text-xs font-bold rounded-xl border-gray-200 cursor-pointer bg-gray-50/50"
+            className="input w-full py-2.5 text-xs font-bold rounded-xl border-gray-200 dark:border-zinc-700 cursor-pointer bg-gray-50/50 dark:bg-zinc-800 text-gray-900 dark:text-zinc-100"
           >
             <option value="todos">🌐 Todos os Clientes</option>
             {projetos.map((p) => (
@@ -246,7 +246,7 @@ export default function ControleEntregasPage() {
           <select
             value={mesSelecionado}
             onChange={(e) => setMesSelecionado(Number(e.target.value))}
-            className="input w-full py-2.5 text-xs font-bold rounded-xl border-gray-200 cursor-pointer bg-gray-50/50"
+            className="input w-full py-2.5 text-xs font-bold rounded-xl border-gray-200 dark:border-zinc-700 cursor-pointer bg-gray-50/50 dark:bg-zinc-800 text-gray-900 dark:text-zinc-100"
           >
             {MESES.map((m, idx) => (
               <option key={idx} value={idx + 1}>
@@ -261,7 +261,7 @@ export default function ControleEntregasPage() {
           <select
             value={anoSelecionado}
             onChange={(e) => setAnoSelecionado(Number(e.target.value))}
-            className="input py-2.5 text-xs font-bold rounded-xl border-gray-200 cursor-pointer bg-gray-50/50"
+            className="input py-2.5 text-xs font-bold rounded-xl border-gray-200 dark:border-zinc-700 cursor-pointer bg-gray-50/50 dark:bg-zinc-800 text-gray-900 dark:text-zinc-100"
           >
             <option value={2025}>2025</option>
             <option value={2026}>2026</option>
@@ -356,22 +356,16 @@ export default function ControleEntregasPage() {
         </div>
       </div>
 
-      {/* ── Campo Melhorado de Adicionar Vídeo ────────────────────── */}
-      <div className="card p-5 bg-white border border-gray-200 shadow-sm rounded-2xl space-y-3">
-        <label className="font-heading text-xs font-bold text-gray-800 tracking-wide uppercase flex items-center gap-1.5">
-          <Plus className="w-4 h-4 text-accent" />
-          Adicionar Vídeo ao Controle de {MESES[mesSelecionado - 1]}
-        </label>
-
-        <form onSubmit={handleAdicionar} className="flex flex-col gap-3">
-          {/* Input principal em linha própria com 100% de largura */}
-          <div className="relative w-full">
+      {/* ── Form Adicionar Novo Vídeo ─────────────────────────────── */}
+      <div className="card p-4 sm:p-5 bg-white dark:bg-zinc-900 rounded-2xl border border-gray-200 dark:border-zinc-800 shadow-xs">
+        <form onSubmit={handleAdicionar} className="space-y-3">
+          <div className="flex flex-col gap-1">
             <input
               type="text"
               value={novoTitulo}
               onChange={(e) => setNovoTitulo(e.target.value)}
               placeholder="Digite aqui o nome do vídeo (Ex: Corte 1 - Video 2, VSL Nações, Criativo Ads)..."
-              className="input w-full py-3.5 px-4 text-sm font-semibold border-gray-300 rounded-xl bg-gray-50/50 focus:bg-white focus:border-accent text-gray-900 placeholder:text-gray-400 shadow-xs"
+              className="input w-full py-3.5 px-4 text-sm font-semibold border-gray-300 dark:border-zinc-700 rounded-xl bg-gray-50/50 dark:bg-zinc-800 focus:bg-white dark:focus:bg-zinc-900 focus:border-accent text-gray-900 dark:text-zinc-100 placeholder:text-gray-400 dark:placeholder:text-zinc-500 shadow-xs"
             />
           </div>
 
@@ -380,11 +374,11 @@ export default function ControleEntregasPage() {
             <div className="flex flex-wrap items-center gap-3">
               {/* Formato */}
               <div className="flex items-center gap-2">
-                <span className="text-xs font-bold text-gray-500">Formato:</span>
+                <span className="text-xs font-bold text-gray-500 dark:text-zinc-400">Formato:</span>
                 <select
                   value={novoFormato}
                   onChange={(e) => setNovoFormato(e.target.value)}
-                  className="input py-2 px-3 text-xs font-bold rounded-xl border-gray-300 bg-gray-50 cursor-pointer min-w-[150px]"
+                  className="input py-2 px-3 text-xs font-bold rounded-xl border-gray-300 dark:border-zinc-700 bg-gray-50 dark:bg-zinc-800 text-gray-900 dark:text-zinc-100 cursor-pointer min-w-[150px]"
                 >
                   {FORMATOS.map((f) => (
                     <option key={f.value} value={f.value}>
@@ -395,7 +389,7 @@ export default function ControleEntregasPage() {
               </div>
 
               {/* Status inicial */}
-              <label className="flex items-center gap-2 text-xs font-bold text-gray-700 px-3 py-2 rounded-xl border border-gray-200 bg-gray-50 cursor-pointer select-none hover:bg-gray-100 transition-all">
+              <label className="flex items-center gap-2 text-xs font-bold text-gray-700 dark:text-zinc-300 px-3 py-2 rounded-xl border border-gray-200 dark:border-zinc-700 bg-gray-50 dark:bg-zinc-800 cursor-pointer select-none hover:bg-gray-100 dark:hover:bg-zinc-700 transition-all">
                 <input
                   type="checkbox"
                   checked={novoConcluido}
@@ -420,20 +414,20 @@ export default function ControleEntregasPage() {
       </div>
 
       {/* ── Lista / Checklist de Vídeos ──────────────────────────── */}
-      <div className="card p-0 bg-white rounded-2xl border border-gray-200 overflow-hidden shadow-xs">
+      <div className="card p-0 bg-white dark:bg-zinc-900 rounded-2xl border border-gray-200 dark:border-zinc-800 overflow-hidden shadow-xs">
         {carregando ? (
-          <div className="p-12 text-center text-gray-400">
+          <div className="p-12 text-center text-gray-400 dark:text-zinc-500">
             <Loader2 className="w-6 h-6 animate-spin mx-auto mb-2 text-accent" />
             <p className="text-xs font-semibold">Carregando vídeos de {MESES[mesSelecionado - 1]}...</p>
           </div>
         ) : videos.length === 0 ? (
-          <div className="p-12 text-center text-gray-400">
+          <div className="p-12 text-center text-gray-400 dark:text-zinc-500">
             <Film className="w-8 h-8 mx-auto mb-2 opacity-40 text-accent" />
-            <p className="text-sm font-semibold text-gray-700">Nenhum vídeo cadastrado em {MESES[mesSelecionado - 1]}</p>
-            <p className="text-xs text-gray-400 mt-1">Use o campo acima para adicionar os vídeos editados deste mês.</p>
+            <p className="text-sm font-semibold text-gray-700 dark:text-zinc-300">Nenhum vídeo cadastrado em {MESES[mesSelecionado - 1]}</p>
+            <p className="text-xs text-gray-400 dark:text-zinc-500 mt-1">Use o campo acima para adicionar os vídeos editados deste mês.</p>
           </div>
         ) : (
-          <div className="divide-y divide-gray-100">
+          <div className="divide-y divide-gray-100 dark:divide-zinc-800">
             {videos.map((video) => {
               const isDone = video.concluido === true || video.estagio === "entregue" || video.estagio === "aprovado";
               const formatoObj = FORMATOS.find((f) => f.value === video.formato) || FORMATOS[5];
@@ -441,8 +435,10 @@ export default function ControleEntregasPage() {
               return (
                 <div
                   key={video.id}
-                  className={`flex items-center justify-between p-3.5 sm:px-5 transition-all hover:bg-gray-50/80 ${
-                    isDone ? "bg-gray-50/50" : "bg-white"
+                  className={`flex items-center justify-between p-3.5 sm:px-5 transition-all ${
+                    isDone
+                      ? "bg-gray-50/70 dark:bg-zinc-900/60"
+                      : "bg-white dark:bg-zinc-900 hover:bg-gray-50 dark:hover:bg-zinc-800/80"
                   }`}
                 >
                   <div className="flex items-center gap-3.5 flex-1 min-w-0">
@@ -450,19 +446,21 @@ export default function ControleEntregasPage() {
                     <button
                       type="button"
                       onClick={() => handleToggle(video.id, isDone)}
-                      className="cursor-pointer text-gray-400 hover:text-emerald-600 transition-colors flex-shrink-0"
+                      className="cursor-pointer text-gray-400 dark:text-zinc-500 hover:text-emerald-600 dark:hover:text-emerald-400 transition-colors flex-shrink-0"
                     >
                       {isDone ? (
-                        <CheckSquare className="w-5.5 h-5.5 text-emerald-600" />
+                        <CheckSquare className="w-5.5 h-5.5 text-emerald-600 dark:text-emerald-400" />
                       ) : (
-                        <Square className="w-5.5 h-5.5 text-gray-300 hover:text-gray-400" />
+                        <Square className="w-5.5 h-5.5 text-gray-300 dark:text-zinc-600 hover:text-gray-400 dark:hover:text-zinc-400" />
                       )}
                     </button>
 
                     {/* Título com tachado se concluído */}
                     <span
-                      className={`text-sm font-medium text-gray-900 truncate ${
-                        isDone ? "line-through text-gray-400 font-normal" : "font-semibold text-gray-900"
+                      className={`text-sm font-medium truncate ${
+                        isDone
+                          ? "line-through text-gray-400 dark:text-zinc-500 font-normal"
+                          : "font-semibold text-gray-900 dark:text-zinc-100"
                       }`}
                     >
                       {video.titulo}
@@ -477,7 +475,7 @@ export default function ControleEntregasPage() {
 
                     {/* Tag de Projeto se "Todos os Clientes" estiver selecionado */}
                     {projetoSelecionado === "todos" && video.projeto && (
-                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-gray-100 text-gray-600 flex-shrink-0">
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-gray-100 dark:bg-zinc-800 text-gray-600 dark:text-zinc-300 flex-shrink-0">
                         {video.projeto.nome}
                       </span>
                     )}
@@ -487,7 +485,7 @@ export default function ControleEntregasPage() {
                   <button
                     type="button"
                     onClick={() => handleExcluir(video.id)}
-                    className="p-1.5 text-gray-300 hover:text-red-500 rounded-lg hover:bg-red-50 transition-colors cursor-pointer ml-2"
+                    className="p-1.5 text-gray-300 dark:text-zinc-600 hover:text-red-500 dark:hover:text-red-400 rounded-lg hover:bg-red-50 dark:hover:bg-red-950/40 transition-colors cursor-pointer ml-2"
                     title="Excluir vídeo do controle"
                   >
                     <Trash2 className="w-4 h-4" />

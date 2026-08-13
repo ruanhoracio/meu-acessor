@@ -44,10 +44,16 @@ function getCorEvento(ev: any) {
 }
 
 export default function AgendaPage() {
-  const [dataAtual, setDataAtual] = useState(new Date());
+  const [mounted, setMounted] = useState(false);
+  const [dataAtual, setDataAtual] = useState<Date | null>(null);
   const [eventos, setEventos] = useState<any[]>([]);
   const [projetos, setProjetos] = useState<any[]>([]);
   const [carregando, setCarregando] = useState(true);
+
+  useEffect(() => {
+    setMounted(true);
+    setDataAtual(new Date());
+  }, []);
 
   // Modal Novo Evento
   const [modalOpen, setModalOpen] = useState(false);
@@ -69,10 +75,9 @@ export default function AgendaPage() {
   const [editProjetoId, setEditProjetoId] = useState("");
   const [editRecorrencia, setEditRecorrencia] = useState("unico");
 
-  const [isPending, startTransition] = useTransition();
-
   // Carregar eventos da grade
   const recarregarEventos = async () => {
+    if (!dataAtual) return;
     setCarregando(true);
 
     const ano = dataAtual.getFullYear();
@@ -109,8 +114,10 @@ export default function AgendaPage() {
   };
 
   useEffect(() => {
-    recarregarEventos();
-  }, [dataAtual]);
+    if (mounted && dataAtual) {
+      recarregarEventos();
+    }
+  }, [mounted, dataAtual]);
 
   // Arrastar e Soltar (Drag & Drop) compromisso em outro dia do calendário
   const handleDropNoDia = async (e: React.DragEvent, diaAlvo: Date) => {
@@ -168,9 +175,11 @@ export default function AgendaPage() {
 
   // Navegar entre meses
   const mesAnterior = () => {
+    if (!dataAtual) return;
     setDataAtual(new Date(dataAtual.getFullYear(), dataAtual.getMonth() - 1, 1));
   };
   const proximoMes = () => {
+    if (!dataAtual) return;
     setDataAtual(new Date(dataAtual.getFullYear(), dataAtual.getMonth() + 1, 1));
   };
   const irParaHoje = () => {
@@ -299,6 +308,14 @@ export default function AgendaPage() {
   };
 
   // Gerar dias da grade
+  if (!mounted || !dataAtual) {
+    return (
+      <div className="flex min-h-[400px] items-center justify-center">
+        <div className="w-8 h-8 rounded-full border-2 border-accent border-t-transparent animate-spin" />
+      </div>
+    );
+  }
+
   const ano = dataAtual.getFullYear();
   const mes = dataAtual.getMonth();
 
