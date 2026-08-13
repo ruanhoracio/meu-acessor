@@ -102,8 +102,10 @@ export function ModalEditarTarefa({
 
   return (
     <ModalPortal isOpen={isOpen && !!tarefa}>
-      <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm overflow-y-auto">
-        <div className="card w-full max-w-md p-6 bg-white shadow-2xl relative rounded-2xl animate-fade-in my-auto max-h-[90vh] overflow-y-auto">
+      {/* Container Fixo na Tela (Viewport Locks - NUNCA ROLA) */}
+      <div className="fixed inset-0 z-[999999] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+        {/* Card do Modal com Rolagem Interna Caso Necessário */}
+        <div className="card w-full max-w-md p-6 bg-white shadow-2xl relative rounded-2xl animate-fade-in max-h-[85vh] overflow-y-auto">
           <button
             onClick={onClose}
             className="absolute top-4 right-4 p-2 rounded-full hover:bg-black/5 text-gray-500 cursor-pointer"

@@ -265,7 +265,7 @@ export default function TarefasTodoistPage() {
   };
 
   return (
-    <div className="animate-fade-in-up space-y-6 pb-16 max-w-5xl mx-auto">
+    <div className="space-y-6 pb-16 max-w-5xl mx-auto">
       {/* Modais */}
       <ModalEditarTarefa
         isOpen={!!tarefaParaEditar}
