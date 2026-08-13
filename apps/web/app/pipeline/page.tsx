@@ -150,14 +150,14 @@ export default function PipelineKanbanPage() {
           return (
             <div
               key={col.key}
-              className="flex flex-col bg-gray-50/70 dark:bg-zinc-900/40 p-3.5 rounded-2xl border border-gray-200 dark:border-zinc-800/80 min-h-[420px]"
+              className="flex flex-col bg-surface p-3.5 rounded border border-border min-h-[420px]"
             >
               {/* Header da coluna */}
-              <div className="flex items-center justify-between mb-3 pb-2 border-b border-gray-200 dark:border-zinc-800 px-1">
-                <h3 className="text-xs font-bold tracking-wider" style={{ color: col.cor }}>
+              <div className="flex items-center justify-between mb-3 pb-2 border-b border-border px-1">
+                <h3 className="font-tech-mono text-xs font-bold tracking-widest uppercase" style={{ color: col.cor }}>
                   {col.titulo}
                 </h3>
-                <span className="w-5 h-5 rounded-full bg-gray-200 dark:bg-zinc-800 flex items-center justify-center text-[10px] font-bold text-gray-700 dark:text-zinc-300">
+                <span className="w-5 h-5 rounded bg-card border border-border flex items-center justify-center font-mono text-[10px] font-bold text-secondary">
                   {videosCol.length}
                 </span>
               </div>
@@ -174,31 +174,32 @@ export default function PipelineKanbanPage() {
                     <div
                       key={video.id}
                       onClick={() => setVideoParaEditar(video)}
-                      className="card p-4 bg-white dark:bg-zinc-900 rounded-xl border border-gray-200 dark:border-zinc-800 hover:border-gray-400 dark:hover:border-zinc-700 transition-all shadow-xs cursor-pointer group relative"
+                      className="card card-ticks p-4 cursor-pointer group relative"
                       style={
                         travado
-                          ? { borderColor: "#ef4444", background: "rgba(239, 68, 68, 0.08)" }
+                          ? { borderColor: "var(--danger)", background: "var(--danger-subtle)" }
                           : {}
                       }
                     >
+                      <div className="card-scan" />
                       {/* Top Bar: Cliente + Formato */}
                       <div className="flex items-center justify-between mb-2">
                         <div className="flex items-center gap-1.5 min-w-0">
                           <span
-                            className="w-2.5 h-2.5 rounded-full flex-shrink-0"
-                            style={{ background: video.projeto?.cor || "#ff5a3d" }}
+                            className="w-2 h-2 rounded-full flex-shrink-0"
+                            style={{ background: video.projeto?.cor || "var(--accent)" }}
                           />
-                          <span className="text-[11px] font-bold text-gray-700 dark:text-zinc-300 truncate max-w-[120px]">
+                          <span className="font-mono text-[10px] font-bold text-secondary truncate max-w-[120px]">
                             {video.projeto?.nome || "Sem cliente"}
                           </span>
                         </div>
-                        <span className="badge badge-neutral text-[9px] font-bold dark:bg-zinc-800 dark:text-zinc-300">
+                        <span className="badge badge-neutral text-[9px] font-mono font-bold">
                           {FORMATO_LABELS[video.formato] || video.formato}
                         </span>
                       </div>
 
                       {/* Title */}
-                      <p className="text-sm font-bold text-gray-900 dark:text-zinc-100 mb-3 leading-snug">
+                      <p className="font-mono text-xs font-bold text-primary mb-3 leading-snug">
                         {video.titulo}
                       </p>
 
@@ -207,7 +208,7 @@ export default function PipelineKanbanPage() {
                         <select
                           value={video.estagio}
                           onChange={(e) => handleMoverEstagio(video.id, video.estagio, e)}
-                          className="w-full text-[11px] font-bold py-1 px-2 rounded-lg bg-gray-100 dark:bg-zinc-800 text-gray-700 dark:text-zinc-200 border border-gray-200 dark:border-zinc-700 cursor-pointer hover:bg-gray-200 dark:hover:bg-zinc-700 transition-colors"
+                          className="input py-1 px-2 text-[10px] font-mono font-bold cursor-pointer"
                         >
                           <option value="briefing">📋 BRIEFING</option>
                           <option value="cortando">✂️ EDITANDO</option>
@@ -217,11 +218,11 @@ export default function PipelineKanbanPage() {
                       </div>
 
                       {/* Meta row */}
-                      <div className="flex items-center justify-between text-[10px] text-gray-500 dark:text-zinc-400 pt-2 border-t border-gray-100 dark:border-zinc-800">
+                      <div className="flex items-center justify-between font-mono text-[10px] text-muted pt-2 border-t border-border">
                         <div className="flex items-center gap-2">
                           {video.prazoEntrega && (
-                            <span className="flex items-center gap-1 font-medium">
-                              <Clock className="w-3 h-3 text-gray-400" />
+                            <span className="flex items-center gap-1">
+                              <Clock className="w-3 h-3 text-muted" />
                               {new Date(video.prazoEntrega).toLocaleDateString("pt-BR", {
                                 day: "numeric",
                                 month: "short",
@@ -229,7 +230,7 @@ export default function PipelineKanbanPage() {
                             </span>
                           )}
                           {video.estimativaHoras && (
-                            <span className="font-semibold">{horasParaTexto(video.estimativaHoras)}</span>
+                            <span className="font-bold text-accent">{horasParaTexto(video.estimativaHoras)}</span>
                           )}
                         </div>
 

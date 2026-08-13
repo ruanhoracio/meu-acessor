@@ -624,21 +624,22 @@ function RenderItemTodoist({
   return (
     <div
       onClick={onEditar}
-      className={`group flex items-center justify-between gap-3 p-2.5 rounded-xl border transition-all cursor-pointer ${
+      className={`card card-ticks group flex items-center justify-between gap-3 p-2.5 transition-all cursor-pointer ${
         concluido
-          ? "opacity-60 bg-gray-50/50 dark:bg-zinc-900/40 border-gray-200 dark:border-zinc-800"
-          : "bg-white dark:bg-zinc-900/90 border-gray-200/80 dark:border-zinc-800/80 hover:border-gray-300 dark:hover:border-zinc-700 shadow-2xs"
+          ? "opacity-50 bg-surface border-border"
+          : "bg-card border-border hover:border-accent"
       }`}
     >
-      {/* Esquerda: Checkbox Redondo Todoist + Título da Tarefa */}
-      <div className="flex items-center gap-3 min-w-0 flex-1">
+      <div className="card-scan" />
+      {/* Esquerda: Checkbox Redondo Vektor + Título */}
+      <div className="flex items-center gap-3 min-w-0 flex-1 relative z-10">
         <button
           type="button"
           onClick={(e) => onToggle(item.id, isVideo ? item.estagio : item.status, isVideo, e)}
-          className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all cursor-pointer flex-shrink-0 ${
+          className={`w-4.5 h-4.5 rounded flex items-center justify-center transition-all cursor-pointer flex-shrink-0 border ${
             concluido
-              ? "border-gray-400 dark:border-zinc-600 bg-gray-400 dark:bg-zinc-600 text-white"
-              : corCheckRing
+              ? "border-accent bg-accent text-ink"
+              : "border-border hover:border-accent bg-surface text-accent"
           }`}
           title={concluido ? "Marcar como não concluído" : "Concluir tarefa"}
         >
@@ -647,10 +648,10 @@ function RenderItemTodoist({
 
         <div className="min-w-0 flex-1">
           <p
-            className={`text-sm font-semibold truncate leading-snug ${
+            className={`font-mono text-xs font-bold truncate leading-snug ${
               concluido
-                ? "line-through text-gray-400 dark:text-zinc-500 font-normal"
-                : "text-gray-900 dark:text-zinc-100"
+                ? "line-through text-muted font-normal"
+                : "text-primary"
             }`}
           >
             {item.titulo}
@@ -658,7 +659,7 @@ function RenderItemTodoist({
 
           {/* Subtítulo ou tags secundárias */}
           {item.descricao && (
-            <p className="text-xs text-gray-400 dark:text-zinc-500 truncate mt-0.5">{item.descricao}</p>
+            <p className="font-mono text-[10px] text-muted truncate mt-0.5">{item.descricao}</p>
           )}
         </div>
       </div>

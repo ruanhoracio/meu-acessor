@@ -33,17 +33,17 @@ export function ThemeToggle() {
     <button
       type="button"
       onClick={toggleTheme}
-      className="p-2 rounded-xl border border-gray-200 dark:border-zinc-800 hover:bg-gray-100 dark:hover:bg-zinc-800 text-gray-700 dark:text-zinc-200 transition-all cursor-pointer flex items-center justify-center gap-2 text-xs font-semibold"
+      className="p-1.5 px-3 rounded border border-border bg-surface text-secondary hover:text-primary hover:border-accent transition-all cursor-pointer flex items-center justify-center gap-2 text-[10px] font-mono font-bold tracking-wider uppercase"
       title={isDark ? "Mudar para Modo Claro" : "Mudar para Modo Escuro"}
     >
       {isDark ? (
         <>
-          <Sun className="w-4 h-4 text-amber-400" />
+          <Sun className="w-3.5 h-3.5 text-accent" />
           <span className="hidden sm:inline">Modo Claro</span>
         </>
       ) : (
         <>
-          <Moon className="w-4 h-4 text-zinc-600" />
+          <Moon className="w-3.5 h-3.5 text-secondary" />
           <span className="hidden sm:inline">Modo Escuro</span>
         </>
       )}

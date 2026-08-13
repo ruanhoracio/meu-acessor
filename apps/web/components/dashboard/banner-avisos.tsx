@@ -139,40 +139,38 @@ export function BannerAvisos() {
 
   return (
     <div
-      className="card p-5 relative overflow-hidden transition-all shadow-xs bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-800"
+      className="card card-ticks p-5 relative overflow-hidden transition-all shadow-xs"
       style={{
-        borderLeft: `5px solid ${atual.cor}`,
+        borderLeft: `4px solid ${atual.cor}`,
       }}
     >
-      <div className="flex items-start justify-between gap-4">
+      <div className="card-scan" />
+      <div className="flex items-start justify-between gap-4 relative z-10">
         <div className="flex gap-4 items-center">
           <div
-            className="w-10 h-10 rounded-2xl flex items-center justify-center flex-shrink-0 shadow-xs"
-            style={{ background: atual.cor }}
+            className="w-10 h-10 rounded flex items-center justify-center flex-shrink-0 shadow-xs font-mono font-bold"
+            style={{ background: atual.cor, color: "#080808" }}
           >
             {atual.icon}
           </div>
           <div>
-            <div className="flex items-center gap-2 mb-0.5">
+            <div className="flex items-center gap-2 mb-1">
               <span
-                className="badge text-[11px] font-bold"
-                style={{
-                  background: `${atual.cor}18`,
-                  color: atual.cor,
-                }}
+                className="section-kicker text-[10px]"
+                style={{ color: atual.cor }}
               >
                 {atual.badge}
               </span>
               {avisos.length > 1 && (
-                <span className="text-[11px] font-medium text-gray-400 dark:text-zinc-500">
-                  {index + 1} de {avisos.length}
+                <span className="text-[10px] font-mono text-muted">
+                  [{index + 1}/{avisos.length}]
                 </span>
               )}
             </div>
-            <h3 className="font-heading text-base font-bold text-gray-900 dark:text-zinc-100">
+            <h3 className="font-serif-italic text-lg text-primary leading-tight">
               {atual.titulo}
             </h3>
-            <p className="text-xs text-gray-600 dark:text-zinc-300 leading-relaxed max-w-2xl">
+            <p className="text-xs font-mono text-secondary leading-relaxed max-w-2xl mt-1">
               {atual.descricao}
             </p>
           </div>
@@ -182,13 +180,13 @@ export function BannerAvisos() {
           <div className="flex items-center gap-1">
             <button
               onClick={anterior}
-              className="p-1.5 rounded-full bg-gray-100 dark:bg-zinc-800 text-gray-600 dark:text-zinc-300 hover:bg-gray-200 dark:hover:bg-zinc-700 transition-colors"
+              className="w-7 h-7 rounded border border-border bg-surface text-secondary hover:text-primary hover:border-accent flex items-center justify-center transition-all cursor-pointer"
             >
               <ChevronLeft className="w-4 h-4" />
             </button>
             <button
               onClick={proximo}
-              className="p-1.5 rounded-full bg-gray-100 dark:bg-zinc-800 text-gray-600 dark:text-zinc-300 hover:bg-gray-200 dark:hover:bg-zinc-700 transition-colors"
+              className="w-7 h-7 rounded border border-border bg-surface text-secondary hover:text-primary hover:border-accent flex items-center justify-center transition-all cursor-pointer"
             >
               <ChevronRight className="w-4 h-4" />
             </button>
@@ -197,13 +195,13 @@ export function BannerAvisos() {
       </div>
 
       {avisos.length > 1 && (
-        <div className="flex justify-center gap-1.5 mt-3">
+        <div className="flex justify-center gap-1.5 mt-4 relative z-10">
           {avisos.map((_, i) => (
             <button
               key={i}
               onClick={() => setIndex(i)}
-              className={`h-1.5 rounded-full transition-all ${
-                i === index ? "w-5 bg-accent" : "w-1.5 bg-gray-300 dark:bg-zinc-700"
+              className={`h-1 transition-all cursor-pointer rounded-full ${
+                i === index ? "w-6 bg-accent" : "w-1.5 bg-border"
               }`}
             />
           ))}

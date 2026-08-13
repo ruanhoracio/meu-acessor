@@ -95,18 +95,18 @@ export function Sidebar() {
 
   return (
     <aside
-      className="fixed top-0 left-0 h-screen w-[260px] border-r flex flex-col z-30 hide-mobile"
+      className="fixed top-0 left-0 h-screen w-[260px] border-r flex flex-col z-30 hide-mobile transition-all"
       style={{
         background: "var(--bg-sidebar)",
         borderColor: "var(--border)",
       }}
     >
-      {/* Logo vetorial oficial Meu Assessor */}
+      {/* Logo vetorial oficial Meu Assessor com marca d'água Vektor */}
       <div
-        className="px-5 h-[76px] flex items-center border-b"
+        className="px-5 h-[76px] flex items-center justify-between border-b relative overflow-hidden"
         style={{ borderColor: "var(--border)" }}
       >
-        <div className="relative w-[185px] h-[52px]">
+        <div className="relative w-[150px] h-[48px]">
           <Image
             src="/logo-header.svg"
             alt="Meu Assessor"
@@ -115,6 +115,10 @@ export function Sidebar() {
             priority
           />
         </div>
+        <span className="font-mono text-[9px] font-bold text-accent px-1.5 py-0.5 rounded border border-accent/30 bg-accent/10 uppercase tracking-widest">
+          v2.5
+        </span>
+        <div className="absolute bottom-0 left-0 right-0 h-[1px] bg-gradient-to-r from-accent/50 via-accent to-transparent" />
       </div>
 
       {/* Nav */}
@@ -131,14 +135,14 @@ export function Sidebar() {
               href={item.href}
               className={`sidebar-link ${isActive ? "active" : ""}`}
             >
-              <Icon className="w-[18px] h-[18px]" strokeWidth={isActive ? 2.2 : 1.8} />
-              {item.label}
+              <Icon className="w-[16px] h-[16px]" strokeWidth={isActive ? 2.4 : 1.8} />
+              <span className="tracking-widest uppercase font-mono text-[11px] font-bold">{item.label}</span>
               {item.href === "/inbox" && inboxCount > 0 && (
                 <span
-                  className="ml-auto text-[11px] font-bold py-0.5 px-2 rounded-full transition-all"
+                  className="ml-auto text-[10px] font-mono font-bold py-0.5 px-2 rounded transition-all"
                   style={{
-                    background: isActive ? "rgba(255,255,255,0.25)" : "var(--accent)",
-                    color: "#fff",
+                    background: "var(--accent)",
+                    color: "#080808",
                   }}
                 >
                   {inboxCount}
@@ -155,12 +159,12 @@ export function Sidebar() {
           <ThemeToggle />
         </div>
         <Link href="/config" className={`sidebar-link ${pathname === "/config" ? "active" : ""}`}>
-          <Settings className="w-[18px] h-[18px]" strokeWidth={1.8} />
-          Configurações
+          <Settings className="w-[16px] h-[16px]" strokeWidth={1.8} />
+          <span className="tracking-widest uppercase font-mono text-[11px] font-bold">Configurações</span>
         </Link>
 
         {/* User avatar com redimensionador de foto */}
-        <div className="mt-5 mx-3 flex items-center gap-3">
+        <div className="mt-4 mx-2 p-2.5 rounded-lg border border-border bg-card flex items-center gap-3">
           <input
             type="file"
             ref={fileInputRef}
@@ -172,7 +176,7 @@ export function Sidebar() {
           <button
             type="button"
             onClick={() => fileInputRef.current?.click()}
-            className="relative group w-10 h-10 rounded-full overflow-hidden flex-shrink-0 cursor-pointer border-2 hover:opacity-90 transition-all shadow-xs"
+            className="relative group w-9 h-9 rounded overflow-hidden flex-shrink-0 cursor-pointer border hover:opacity-90 transition-all shadow-xs"
             style={{ borderColor: "var(--accent)" }}
             title="Clique para escolher e redimensionar foto do seu computador"
           >
@@ -180,21 +184,25 @@ export function Sidebar() {
               <img src={userAvatar} alt="Foto de perfil" className="w-full h-full object-cover" />
             ) : (
               <div
-                className="w-full h-full flex items-center justify-center text-sm font-bold text-white"
+                className="w-full h-full flex items-center justify-center text-xs font-mono font-bold text-ink"
                 style={{
-                  background: "linear-gradient(135deg, var(--accent), #c22f16)",
+                  background: "var(--accent)",
                 }}
               >
                 {nomeUsuario.charAt(0).toUpperCase()}
               </div>
             )}
             <div className="absolute inset-0 bg-black/50 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity">
-              <Camera className="w-4 h-4 text-white" />
+              <Camera className="w-3.5 h-3.5 text-white" />
             </div>
           </button>
-          <div className="min-w-0">
-            <p className="text-[13px] font-semibold truncate" style={{ color: "var(--text-primary)" }}>{nomeUsuario}</p>
-            <p className="text-[11px] truncate" style={{ color: "var(--text-muted)" }}>Editor de Vídeo</p>
+
+          <div className="min-w-0 flex-1">
+            <div className="flex items-center gap-1.5">
+              <span className="w-1.5 h-1.5 rounded-full bg-accent pulse-dot flex-shrink-0" />
+              <p className="text-[12px] font-mono font-bold truncate text-primary">{nomeUsuario}</p>
+            </div>
+            <p className="text-[10px] font-mono text-muted truncate">Editor / Producer</p>
           </div>
         </div>
       </div>

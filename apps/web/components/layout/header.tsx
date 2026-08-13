@@ -38,23 +38,21 @@ export function Header() {
   return (
     <>
       <header
-        className="sticky top-0 z-20 h-[64px] flex items-center justify-between px-4 md:px-8 relative"
+        className="sticky top-0 z-20 h-[64px] flex items-center justify-between px-4 md:px-8 relative backdrop-blur-md transition-all"
         style={{
           background: "var(--bg-primary)",
-          backdropFilter: "blur(20px)",
-          WebkitBackdropFilter: "blur(20px)",
-          borderBottom: "1px solid var(--border)",
+          borderBottom: "0.5px solid var(--border)",
         }}
       >
         <div>
           <h1
-            className="font-heading text-xl font-bold"
-            style={{ color: "var(--text-primary)", letterSpacing: "-0.03em" }}
+            className="font-heading text-lg font-bold uppercase tracking-wider"
+            style={{ color: "var(--text-primary)" }}
           >
             {title}
           </h1>
           {pathname === "/" && (
-            <p className="text-[12px] capitalize -mt-0.5" style={{ color: "var(--text-muted)" }}>
+            <p className="text-[11px] font-mono capitalize -mt-0.5" style={{ color: "var(--text-muted)" }}>
               {dateStr}
             </p>
           )}
@@ -67,37 +65,36 @@ export function Header() {
           {/* Botão Pesquisar */}
           <button
             onClick={() => setModalBuscaOpen(true)}
-            className="w-9 h-9 rounded-xl flex items-center justify-center transition-all cursor-pointer hover:bg-white"
+            className="w-8 h-8 rounded flex items-center justify-center transition-all cursor-pointer hover:border-accent"
             style={{
               background: "var(--bg-card)",
               color: "var(--text-secondary)",
-              border: "1px solid var(--border)",
+              border: "0.5px solid var(--border)",
               boxShadow: "var(--shadow-xs)",
             }}
             title="Pesquisar (Cmd+K)"
           >
-            <Search className="w-4 h-4" strokeWidth={1.8} />
+            <Search className="w-3.5 h-3.5" strokeWidth={1.8} />
           </button>
 
           {/* Botão Notificações */}
           <button
             onClick={() => setPopoverNotifOpen(!popoverNotifOpen)}
-            className="w-9 h-9 rounded-xl flex items-center justify-center relative transition-all cursor-pointer hover:bg-white"
+            className="w-8 h-8 rounded flex items-center justify-center relative transition-all cursor-pointer hover:border-accent"
             style={{
               background: "var(--bg-card)",
               color: "var(--text-secondary)",
-              border: "1px solid var(--border)",
+              border: "0.5px solid var(--border)",
               boxShadow: "var(--shadow-xs)",
             }}
             title="Notificações"
           >
-            <Bell className="w-4 h-4" strokeWidth={1.8} />
+            <Bell className="w-3.5 h-3.5" strokeWidth={1.8} />
             <span
-              className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full pulse-dot"
+              className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full pulse-dot"
               style={{
                 background: "var(--accent)",
                 boxShadow: "0 0 8px var(--accent-glow)",
-                border: "2px solid var(--bg-primary)",
               }}
             />
           </button>
@@ -105,9 +102,9 @@ export function Header() {
           {/* Botão + Novo */}
           <button
             onClick={() => setModalNovoOpen(true)}
-            className="btn-primary flex items-center gap-1.5 text-[13px] py-2.5 px-5 cursor-pointer"
+            className="btn-primary flex items-center gap-1.5 text-[11px] font-mono font-bold py-2 px-4 cursor-pointer"
           >
-            <Plus className="w-4 h-4" strokeWidth={2.2} />
+            <Plus className="w-3.5 h-3.5" strokeWidth={2.4} />
             <span className="hide-mobile">Novo</span>
           </button>
         </div>

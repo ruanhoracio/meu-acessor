@@ -340,12 +340,12 @@ export default function AgendaPage() {
       {/* ── Topo do Calendário ─────────────────────────────────────── */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="font-heading text-2xl font-bold tracking-tight text-gray-900 dark:text-zinc-100 flex items-center gap-2">
-            <CalendarIcon className="w-7 h-7 text-accent" />
+          <h1 className="font-heading text-2xl font-bold tracking-tight text-primary flex items-center gap-2">
+            <CalendarIcon className="w-6 h-6 text-accent" />
             Agenda & Compromissos
           </h1>
-          <p className="text-xs text-gray-500 dark:text-zinc-400 mt-1">
-            Arraste os compromissos para mudar os dias. Crie eventos de múltiplos dias ou fixos.
+          <p className="text-xs font-mono text-muted mt-1">
+            Arraste os compromissos para reordenar dias ou criar eventos recorrentes.
           </p>
         </div>
 
@@ -353,24 +353,24 @@ export default function AgendaPage() {
         <div className="flex items-center gap-2 self-start md:self-auto">
           <button
             onClick={irParaHoje}
-            className="px-3 py-1.5 text-xs font-bold rounded-xl border border-gray-200 dark:border-zinc-700 bg-white dark:bg-zinc-900 hover:bg-gray-50 dark:hover:bg-zinc-800 text-gray-800 dark:text-zinc-200 transition-colors shadow-xs"
+            className="btn-ghost text-xs py-1.5 px-3 font-mono font-bold"
           >
             Hoje
           </button>
-          <div className="flex items-center bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-700 rounded-xl p-1 shadow-xs">
+          <div className="flex items-center bg-card border border-border rounded p-0.5 shadow-xs">
             <button
               onClick={mesAnterior}
-              className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-zinc-800 transition-colors text-gray-700 dark:text-zinc-300"
+              className="p-1 rounded hover:bg-surface transition-colors text-secondary"
               title="Mês anterior"
             >
               <ChevronLeft className="w-4 h-4" />
             </button>
-            <span className="font-heading text-sm font-bold px-3 min-w-[140px] text-center text-gray-900 dark:text-zinc-100">
+            <span className="font-mono text-xs font-bold px-3 min-w-[140px] text-center text-primary uppercase">
               {MESES[mes]} {ano}
             </span>
             <button
               onClick={proximoMes}
-              className="p-1.5 rounded-lg hover:bg-gray-100 dark:hover:bg-zinc-800 transition-colors text-gray-700 dark:text-zinc-300"
+              className="p-1 rounded hover:bg-surface transition-colors text-secondary"
               title="Próximo mês"
             >
               <ChevronRight className="w-4 h-4" />
@@ -379,19 +379,20 @@ export default function AgendaPage() {
 
           <button
             onClick={() => abrirModalNovoNoDia(new Date())}
-            className="btn-primary text-xs py-2 px-4 rounded-xl flex items-center gap-1.5 font-bold shadow-sm"
+            className="btn-primary text-xs py-1.5 px-3 flex items-center gap-1.5 font-mono font-bold"
           >
             <Plus className="w-4 h-4" />
-            <span>Novo Compromisso</span>
+            <span>Novo</span>
           </button>
         </div>
       </div>
 
       {/* ── Grade Mensal do Calendário ──────────────────────── */}
-      <div className="card p-0 overflow-hidden bg-white dark:bg-zinc-900 border shadow-card rounded-2xl">
+      <div className="card card-ticks p-0 overflow-hidden bg-card border border-border shadow-card rounded">
+        <div className="card-scan" />
         {/* Cabeçalho com dias da semana */}
         <div
-          className="grid grid-cols-7 border-b bg-gray-50/80 dark:bg-zinc-800/60 text-center py-2.5 text-xs font-bold text-gray-600 dark:text-zinc-400 uppercase tracking-wider"
+          className="grid grid-cols-7 border-b bg-surface text-center py-2 text-[10px] font-mono font-bold text-muted uppercase tracking-widest relative z-10"
           style={{ borderColor: "var(--border)" }}
         >
           {DIAS_SEMANA.map((dia) => (
@@ -399,8 +400,8 @@ export default function AgendaPage() {
           ))}
         </div>
 
-        {/* Grade de 35 células (5 semanas x 7 dias) */}
-        <div className="grid grid-cols-7 auto-rows-fr bg-gray-200 dark:bg-zinc-800 gap-[1px]">
+        {/* Grade de 35 células */}
+        <div className="grid grid-cols-7 auto-rows-fr bg-border gap-[0.5px] relative z-10">
           {diasGrade.map((dia, idx) => {
             const ehMesAtual = dia.getMonth() === dataAtual.getMonth();
             const ehHoje =
@@ -408,7 +409,7 @@ export default function AgendaPage() {
               dia.getMonth() === hoje.getMonth() &&
               dia.getFullYear() === hoje.getFullYear();
 
-            // Filtra eventos do dia (incluindo compromissos de múltiplos dias!)
+            // Filtra eventos do dia
             const inicioDia = new Date(dia.getFullYear(), dia.getMonth(), dia.getDate(), 0, 0, 0, 0);
             const fimDia = new Date(dia.getFullYear(), dia.getMonth(), dia.getDate(), 23, 59, 59, 999);
 
@@ -428,21 +429,20 @@ export default function AgendaPage() {
                   e.dataTransfer.dropEffect = "move";
                 }}
                 onDrop={(e) => handleDropNoDia(e, dia)}
-                className={`min-h-[120px] p-1.5 bg-white dark:bg-zinc-900 flex flex-col justify-start transition-all hover:bg-gray-50/90 dark:hover:bg-zinc-800/60 cursor-pointer group relative ${
-                  !ehMesAtual ? "bg-gray-50/50 dark:bg-zinc-950/50 opacity-60" : ""
+                className={`min-h-[110px] p-1.5 bg-card flex flex-col justify-start transition-all hover:bg-surface cursor-pointer group relative ${
+                  !ehMesAtual ? "opacity-35" : ""
                 }`}
               >
                 {/* Número do Dia */}
                 <div className="flex items-center justify-between mb-1 px-1">
                   <span
-                    className={`text-xs font-bold inline-flex items-center justify-center w-6 h-6 rounded-full transition-all ${
+                    className={`text-[10px] font-mono font-bold inline-flex items-center justify-center w-5 h-5 rounded transition-all ${
                       ehHoje
-                        ? "bg-accent text-white shadow-xs"
+                        ? "bg-accent text-ink shadow-xs font-extrabold"
                         : ehMesAtual
-                        ? "text-gray-800 dark:text-zinc-200"
-                        : "text-gray-400 dark:text-zinc-600"
+                        ? "text-primary"
+                        : "text-muted"
                     }`}
-                    style={ehHoje ? { background: "var(--accent)" } : {}}
                   >
                     {dia.getDate() === 1
                       ? `${dia.getDate()} ${MESES[dia.getMonth()].slice(0, 3).toLowerCase()}.`
