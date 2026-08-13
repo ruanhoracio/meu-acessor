@@ -139,9 +139,8 @@ export function BannerAvisos() {
 
   return (
     <div
-      className="card p-5 relative overflow-hidden transition-all shadow-xs"
+      className="card p-5 relative overflow-hidden transition-all shadow-xs bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-800"
       style={{
-        background: "linear-gradient(135deg, #ffffff 0%, #fafafa 100%)",
         borderLeft: `5px solid ${atual.cor}`,
       }}
     >
@@ -165,51 +164,47 @@ export function BannerAvisos() {
                 {atual.badge}
               </span>
               {avisos.length > 1 && (
-                <span className="text-[11px] font-medium text-gray-400">
+                <span className="text-[11px] font-medium text-gray-400 dark:text-zinc-500">
                   {index + 1} de {avisos.length}
                 </span>
               )}
             </div>
-            <h3 className="font-heading text-base font-bold text-gray-900">
+            <h3 className="font-heading text-base font-bold text-gray-900 dark:text-zinc-100">
               {atual.titulo}
             </h3>
-            <p className="text-xs text-gray-600 leading-relaxed max-w-2xl">
+            <p className="text-xs text-gray-600 dark:text-zinc-300 leading-relaxed max-w-2xl">
               {atual.descricao}
             </p>
           </div>
         </div>
 
-        {/* Controles do carrossel */}
         {avisos.length > 1 && (
-          <div className="flex items-center gap-1.5 flex-shrink-0 self-center">
+          <div className="flex items-center gap-1">
             <button
               onClick={anterior}
-              className="w-8 h-8 rounded-full flex items-center justify-center border hover:bg-gray-100 transition-all cursor-pointer border-gray-200"
+              className="p-1.5 rounded-full bg-gray-100 dark:bg-zinc-800 text-gray-600 dark:text-zinc-300 hover:bg-gray-200 dark:hover:bg-zinc-700 transition-colors"
             >
-              <ChevronLeft className="w-4 h-4 text-gray-600" />
+              <ChevronLeft className="w-4 h-4" />
             </button>
             <button
               onClick={proximo}
-              className="w-8 h-8 rounded-full flex items-center justify-center border hover:bg-gray-100 transition-all cursor-pointer border-gray-200"
+              className="p-1.5 rounded-full bg-gray-100 dark:bg-zinc-800 text-gray-600 dark:text-zinc-300 hover:bg-gray-200 dark:hover:bg-zinc-700 transition-colors"
             >
-              <ChevronRight className="w-4 h-4 text-gray-600" />
+              <ChevronRight className="w-4 h-4" />
             </button>
           </div>
         )}
       </div>
 
-      {/* Indicadores de bolinhas */}
       {avisos.length > 1 && (
         <div className="flex justify-center gap-1.5 mt-3">
           {avisos.map((_, i) => (
             <button
               key={i}
               onClick={() => setIndex(i)}
-              className="h-1.5 rounded-full transition-all cursor-pointer"
-              style={{
-                width: i === index ? "20px" : "6px",
-                background: i === index ? atual.cor : "#e5e7eb",
-              }}
+              className={`h-1.5 rounded-full transition-all ${
+                i === index ? "w-5 bg-accent" : "w-1.5 bg-gray-300 dark:bg-zinc-700"
+              }`}
             />
           ))}
         </div>

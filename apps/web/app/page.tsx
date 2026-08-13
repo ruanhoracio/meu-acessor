@@ -178,11 +178,11 @@ export default function HojePage() {
       </div>
 
       {/* ── Capacidade da semana ────────────────────── */}
-      <div className="card p-5 animate-fade-in-up-delay-1">
+      <div className="card p-5 animate-fade-in-up-delay-1 bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-800">
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
-            <TrendingUp className="w-4 h-4 text-gray-500" />
-            <span className="text-sm font-semibold text-gray-700">
+            <TrendingUp className="w-4 h-4 text-gray-500 dark:text-zinc-400" />
+            <span className="text-sm font-semibold text-gray-700 dark:text-zinc-300">
               Capacidade da semana
             </span>
           </div>
@@ -193,7 +193,7 @@ export default function HojePage() {
             {horasParaTexto(horasComprometidas)} / {horasParaTexto(horasDisponiveis)}
           </span>
         </div>
-        <div className="progress-track">
+        <div className="progress-track bg-gray-100 dark:bg-zinc-800">
           <div
             className="progress-fill"
             style={{
@@ -203,7 +203,7 @@ export default function HojePage() {
             }}
           />
         </div>
-        <p className="text-xs mt-2 text-gray-500">
+        <p className="text-xs mt-2 text-gray-500 dark:text-zinc-400">
           {estourada
             ? `⚠️ Semana estourada em ${horasParaTexto(horasComprometidas - horasDisponiveis)}`
             : `${horasParaTexto(horasDisponiveis - horasComprometidas)} disponíveis`}
@@ -212,13 +212,13 @@ export default function HojePage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* ── Agenda do dia ────────────────────────── */}
-        <div className="card p-5 animate-fade-in-up-delay-1">
+        <div className="card p-5 animate-fade-in-up-delay-1 bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-800">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="font-heading text-base font-bold tracking-tight text-gray-900 flex items-center gap-2">
+            <h2 className="font-heading text-base font-bold tracking-tight text-gray-900 dark:text-zinc-100 flex items-center gap-2">
               <Clock className="w-4 h-4 text-accent" />
               Agenda Hoje ({eventosHoje.length})
             </h2>
-            <Link href="/agenda" className="text-xs font-semibold text-gray-500 hover:text-gray-900 flex items-center gap-1">
+            <Link href="/agenda" className="text-xs font-semibold text-gray-500 dark:text-zinc-400 hover:text-gray-900 dark:hover:text-zinc-100 flex items-center gap-1">
               Ver tudo <ChevronRight className="w-3 h-3" />
             </Link>
           </div>
@@ -229,12 +229,12 @@ export default function HojePage() {
               return (
                 <div
                   key={evento.id}
-                  className="flex gap-3 p-3 rounded-xl bg-gray-50 transition-colors border-l-4"
+                  className="flex gap-3 p-3 rounded-xl bg-gray-50 dark:bg-zinc-800/80 transition-colors border-l-4"
                   style={{ borderColor: evento.projeto?.cor || "var(--accent)" }}
                 >
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold text-gray-900 truncate">{evento.titulo}</p>
-                    <p className="text-xs text-gray-500 mt-0.5">
+                    <p className="text-sm font-semibold text-gray-900 dark:text-zinc-100 truncate">{evento.titulo}</p>
+                    <p className="text-xs text-gray-500 dark:text-zinc-400 mt-0.5">
                       {inicio.toLocaleTimeString("pt-BR", {
                         hour: "2-digit",
                         minute: "2-digit",
@@ -251,7 +251,7 @@ export default function HojePage() {
             })}
 
             {eventosHoje.length === 0 && (
-              <p className="text-xs py-4 text-center text-gray-400">
+              <p className="text-xs py-4 text-center text-gray-400 dark:text-zinc-500">
                 Nenhum compromisso marcado para hoje
               </p>
             )}
@@ -259,13 +259,13 @@ export default function HojePage() {
         </div>
 
         {/* ── Tarefas do dia (Estritamente de HOJE) ───────────────────────── */}
-        <div className="card p-5 animate-fade-in-up-delay-2">
+        <div className="card p-5 animate-fade-in-up-delay-2 bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-800">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="font-heading text-base font-bold tracking-tight text-gray-900 flex items-center gap-2">
+            <h2 className="font-heading text-base font-bold tracking-tight text-gray-900 dark:text-zinc-100 flex items-center gap-2">
               <CheckCircle2 className="w-4 h-4 text-accent" />
               Tarefas de Hoje ({tarefasHoje.length})
             </h2>
-            <Link href="/tarefas" className="text-xs font-semibold text-gray-500 hover:text-gray-900 flex items-center gap-1">
+            <Link href="/tarefas" className="text-xs font-semibold text-gray-500 dark:text-zinc-400 hover:text-gray-900 dark:hover:text-zinc-100 flex items-center gap-1">
               Ver tudo <ChevronRight className="w-3 h-3" />
             </Link>
           </div>
@@ -274,7 +274,7 @@ export default function HojePage() {
               <div
                 key={t.id}
                 onClick={() => toggleTarefa(t.id, t.status)}
-                className="flex items-center gap-3 py-2.5 px-3 rounded-xl bg-gray-50 hover:bg-gray-100 transition-colors cursor-pointer"
+                className="flex items-center gap-3 py-2.5 px-3 rounded-xl bg-gray-50 dark:bg-zinc-800/80 hover:bg-gray-100 dark:hover:bg-zinc-800 transition-colors cursor-pointer"
               >
                 <Circle
                   className={`w-4 h-4 flex-shrink-0 ${
@@ -282,11 +282,11 @@ export default function HojePage() {
                       ? "text-red-500"
                       : t.prioridade === "alta"
                       ? "text-amber-500"
-                      : "text-gray-400"
+                      : "text-gray-400 dark:text-zinc-500"
                   }`}
                 />
                 <div className="flex-1 min-w-0">
-                  <span className="text-sm font-semibold text-gray-900 truncate block">{t.titulo}</span>
+                  <span className="text-sm font-semibold text-gray-900 dark:text-zinc-100 truncate block">{t.titulo}</span>
                   {t.projeto && (
                     <span className="text-[11px] font-bold" style={{ color: t.projeto.cor }}>
                       {t.projeto.nome}
@@ -306,14 +306,14 @@ export default function HojePage() {
                 className="flex items-center gap-3 py-2 px-3 rounded-lg opacity-50 cursor-pointer hover:opacity-75 transition-opacity"
               >
                 <CheckCircle2 className="w-4 h-4 flex-shrink-0 text-green-500" />
-                <span className="text-sm line-through text-gray-400 truncate">
+                <span className="text-sm line-through text-gray-400 dark:text-zinc-500 truncate">
                   {t.titulo}
                 </span>
               </div>
             ))}
 
             {tarefasHoje.length === 0 && tarefasConcluidasHoje.length === 0 && (
-              <p className="text-xs py-4 text-center text-gray-400">
+              <p className="text-xs py-4 text-center text-gray-400 dark:text-zinc-500">
                 Nenhuma tarefa pendente para hoje
               </p>
             )}
@@ -321,13 +321,13 @@ export default function HojePage() {
         </div>
 
         {/* ── Vídeos prioritários ──────────────────── */}
-        <div className="card p-5 animate-fade-in-up-delay-3">
+        <div className="card p-5 animate-fade-in-up-delay-3 bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-800">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="font-heading text-base font-bold tracking-tight text-gray-900 flex items-center gap-2">
+            <h2 className="font-heading text-base font-bold tracking-tight text-gray-900 dark:text-zinc-100 flex items-center gap-2">
               <Video className="w-4 h-4 text-accent" />
               Vídeos Ativos ({videosAtivos.length})
             </h2>
-            <Link href="/pipeline" className="text-xs font-semibold text-gray-500 hover:text-gray-900 flex items-center gap-1">
+            <Link href="/pipeline" className="text-xs font-semibold text-gray-500 dark:text-zinc-400 hover:text-gray-900 dark:hover:text-zinc-100 flex items-center gap-1">
               Ver tudo <ChevronRight className="w-3 h-3" />
             </Link>
           </div>
@@ -341,19 +341,19 @@ export default function HojePage() {
                 <Link
                   key={v.id}
                   href={`/pipeline/${v.id}`}
-                  className="block p-3 rounded-xl bg-gray-50 hover:bg-gray-100 transition-all border-l-4"
+                  className="block p-3 rounded-xl bg-gray-50 dark:bg-zinc-800/80 hover:bg-gray-100 dark:hover:bg-zinc-800 transition-all border-l-4"
                   style={{
                     borderColor: v.projeto?.cor || "var(--accent)",
                   }}
                 >
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0">
-                      <p className="text-sm font-semibold text-gray-900 truncate">{v.titulo}</p>
+                      <p className="text-sm font-semibold text-gray-900 dark:text-zinc-100 truncate">{v.titulo}</p>
                       <div className="flex items-center gap-2 mt-1">
-                        <span className="badge badge-neutral text-[10px]">
+                        <span className="badge badge-neutral text-[10px] dark:bg-zinc-700/60 dark:text-zinc-300">
                           {FORMATO_LABELS[v.formato] || v.formato}
                         </span>
-                        <span className="badge badge-neutral text-[10px] uppercase font-bold text-accent">
+                        <span className="badge badge-neutral text-[10px] uppercase font-bold text-accent dark:bg-zinc-700/60">
                           {ESTAGIO_LABELS[v.estagio] || v.estagio}
                         </span>
                       </div>
@@ -364,11 +364,11 @@ export default function HojePage() {
                           {diasParado}d parado
                         </span>
                       )}
-                      <div className="flex items-center gap-1 text-[11px] text-gray-500">
+                      <div className="flex items-center gap-1 text-[11px] text-gray-500 dark:text-zinc-400">
                         {v.aguardando === "cliente" || v.aguardando === "aprovacao" ? (
-                          <Users className="w-3 h-3 text-gray-400" />
+                          <Users className="w-3 h-3 text-gray-400 dark:text-zinc-500" />
                         ) : (
-                          <User className="w-3 h-3 text-gray-400" />
+                          <User className="w-3 h-3 text-gray-400 dark:text-zinc-500" />
                         )}
                         {AGUARDANDO_LABELS[v.aguardando || "eu"]}
                       </div>
@@ -379,7 +379,7 @@ export default function HojePage() {
             })}
 
             {videosAtivos.length === 0 && (
-              <p className="text-xs py-4 text-center text-gray-400">
+              <p className="text-xs py-4 text-center text-gray-400 dark:text-zinc-500">
                 Nenhum vídeo em edição
               </p>
             )}
@@ -413,7 +413,7 @@ function StatCard({
           : {}
       }
     >
-      <div className="flex items-center gap-2 text-gray-500">
+      <div className="flex items-center gap-2 text-gray-500 dark:text-zinc-400">
         {icon}
         <span className="text-xs font-semibold">{label}</span>
       </div>

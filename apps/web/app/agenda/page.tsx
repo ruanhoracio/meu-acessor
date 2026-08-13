@@ -87,8 +87,14 @@ export default function AgendaPage() {
     fimGrade.setDate(fimGrade.getDate() + (6 - ultimoDia.getDay()));
     fimGrade.setHours(23, 59, 59, 999);
 
-    const resEvts = await getEventos(inicioGrade, fimGrade);
-    setEventos(resEvts);
+    try {
+      const resEvts = await fetch(
+        `/api/eventos?inicio=${inicioGrade.toISOString()}&fim=${fimGrade.toISOString()}`
+      ).then((r) => r.json());
+      if (Array.isArray(resEvts)) setEventos(resEvts);
+    } catch (e) {
+      console.error("Erro ao carregar eventos da agenda:", e);
+    }
 
     // Buscar lista de projetos
     try {
@@ -145,13 +151,19 @@ export default function AgendaPage() {
       )
     );
 
-    startTransition(async () => {
-      await atualizarEvento(targetId, {
-        inicio: novoInicio,
-        fim: novoFim,
+    try {
+      await fetch(`/api/eventos/${targetId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          inicio: novoInicio.toISOString(),
+          fim: novoFim.toISOString(),
+        }),
       });
       recarregarEventos();
-    });
+    } catch (err) {
+      console.error(err);
+    }
   };
 
   // Navegar entre meses
@@ -192,18 +204,26 @@ export default function AgendaPage() {
       fim.setHours(inicio.getHours() + 1);
     }
 
-    const res = await criarEvento({
-      titulo: novoTitulo,
-      inicio,
-      fim,
-      projetoId: novoProjetoId || undefined,
-      recorrencia: novaRecorrencia,
-    });
-
-    setSalvando(false);
-    if (res.success) {
-      setModalOpen(false);
-      recarregarEventos();
+    try {
+      const res = await fetch("/api/eventos", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          titulo: novoTitulo,
+          inicio: inicio.toISOString(),
+          fim: fim.toISOString(),
+          projetoId: novoProjetoId || undefined,
+          recorrencia: novaRecorrencia,
+        }),
+      });
+      if (res.ok) {
+        setModalOpen(false);
+        recarregarEventos();
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setSalvando(false);
     }
   };
 
@@ -221,19 +241,29 @@ export default function AgendaPage() {
       fim.setHours(inicio.getHours() + 1);
     }
 
-    const res = await atualizarEvento(eventoSelecionado.id, {
-      titulo: editTitulo,
-      inicio,
-      fim,
-      projetoId: editProjetoId || null,
-      recorrencia: editRecorrencia,
-    });
+    const targetId = eventoSelecionado.idOriginal || eventoSelecionado.id;
 
-    setSalvando(false);
-    if (res.success) {
-      setEventoSelecionado(null);
-      setEditando(false);
-      recarregarEventos();
+    try {
+      const res = await fetch(`/api/eventos/${targetId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          titulo: editTitulo,
+          inicio: inicio.toISOString(),
+          fim: fim.toISOString(),
+          projetoId: editProjetoId || null,
+          recorrencia: editRecorrencia,
+        }),
+      });
+      if (res.ok) {
+        setEventoSelecionado(null);
+        setEditando(false);
+        recarregarEventos();
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setSalvando(false);
     }
   };
 
@@ -241,10 +271,13 @@ export default function AgendaPage() {
   const handleExcluirEvento = async (id: string) => {
     setEventos((prev) => prev.filter((e) => e.id !== id));
     setEventoSelecionado(null);
-    startTransition(async () => {
-      await excluirEvento(id);
+    const targetId = id.includes("_") ? id.split("_")[0] : id;
+    try {
+      await fetch(`/api/eventos/${targetId}`, { method: "DELETE" });
       recarregarEventos();
-    });
+    } catch (err) {
+      console.error(err);
+    }
   };
 
   // Abrir Detalhes
