@@ -112,10 +112,10 @@ export default function PipelineKanbanPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="font-heading text-2xl font-bold tracking-tight text-gray-900 dark:text-zinc-100 flex items-center gap-2">
+          <h1 className="font-heading text-2xl font-bold tracking-tight text-primary flex items-center gap-2">
             Pipeline de Vídeos
           </h1>
-          <p className="text-xs text-gray-500 dark:text-zinc-400 mt-0.5">
+          <p className="text-xs text-muted mt-0.5">
             4 estágios simples: Briefing ➔ Editando ➔ Editado ➔ Enviado.
           </p>
         </div>
@@ -241,7 +241,7 @@ export default function PipelineKanbanPage() {
                               e.stopPropagation();
                               setVideoParaEditar(video);
                             }}
-                            className="p-1 rounded hover:bg-gray-100 text-gray-600 cursor-pointer"
+                            className="p-1 rounded hover:bg-surface-hover text-secondary cursor-pointer"
                             title="Editar vídeo"
                           >
                             <Edit3 className="w-3.5 h-3.5" />
@@ -250,7 +250,7 @@ export default function PipelineKanbanPage() {
                           <button
                             type="button"
                             onClick={(e) => handleExcluirVideo(video.id, video.titulo, e)}
-                            className="p-1 rounded hover:bg-red-50 text-red-500 cursor-pointer"
+                            className="p-1 rounded hover:bg-danger-subtle text-danger cursor-pointer"
                             title="Apagar vídeo"
                           >
                             <Trash2 className="w-3.5 h-3.5" />
@@ -260,7 +260,7 @@ export default function PipelineKanbanPage() {
 
                       {/* Alerta de Vídeo Parado */}
                       {travado && (
-                        <div className="mt-2.5 flex items-center gap-1.5 text-[10px] font-bold text-red-600">
+                        <div className="mt-2.5 flex items-center gap-1.5 text-[10px] font-bold text-danger">
                           <AlertTriangle className="w-3 h-3 flex-shrink-0" />
                           <span>{diasParado} dias parado neste estágio</span>
                         </div>
@@ -270,7 +270,7 @@ export default function PipelineKanbanPage() {
                 })}
 
                 {videosCol.length === 0 && (
-                  <div className="border-2 border-dashed border-gray-200 rounded-xl p-8 text-center text-gray-400 text-xs font-medium">
+                  <div className="border-2 border-dashed border-border rounded-xl p-8 text-center text-muted text-xs font-medium">
                     Vazio
                   </div>
                 )}

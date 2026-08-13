@@ -4,29 +4,29 @@ import { useEffect, useState } from "react";
 import { Sun, Moon } from "lucide-react";
 
 export function ThemeToggle() {
-  const [isDark, setIsDark] = useState(false);
+  const [isDark, setIsDark] = useState(true);
 
   useEffect(() => {
-    const savedTheme = localStorage.getItem("theme");
-    if (savedTheme === "light") {
-      setIsDark(false);
-      document.documentElement.classList.remove("dark");
-    } else {
-      setIsDark(true);
-      document.documentElement.classList.add("dark");
-    }
+    const sync = () => {
+      const savedTheme = localStorage.getItem("theme");
+      const dark = savedTheme !== "light";
+      setIsDark(dark);
+      document.documentElement.classList.toggle("dark", dark);
+    };
+
+    sync();
+
+    // Mantém as instâncias do toggle (header + sidebar) sincronizadas
+    window.addEventListener("theme_changed", sync);
+    return () => window.removeEventListener("theme_changed", sync);
   }, []);
 
   const toggleTheme = () => {
-    if (isDark) {
-      document.documentElement.classList.remove("dark");
-      localStorage.setItem("theme", "light");
-      setIsDark(false);
-    } else {
-      document.documentElement.classList.add("dark");
-      localStorage.setItem("theme", "dark");
-      setIsDark(true);
-    }
+    const novoDark = !isDark;
+    localStorage.setItem("theme", novoDark ? "dark" : "light");
+    document.documentElement.classList.toggle("dark", novoDark);
+    setIsDark(novoDark);
+    window.dispatchEvent(new Event("theme_changed"));
   };
 
   return (

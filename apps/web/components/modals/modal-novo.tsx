@@ -88,10 +88,10 @@ export function ModalNovo({ isOpen, onClose }: ModalNovoProps) {
       {/* Container Fixo na Tela Alinhado ao Topo Visível (Red Box Position) */}
       <div className="fixed inset-0 z-[999999] flex items-start justify-center pt-8 sm:pt-16 px-4 pb-12 bg-black/70 backdrop-blur-md overflow-y-auto">
         {/* Card do Modal */}
-        <div className="card w-full max-w-lg p-6 bg-white dark:bg-zinc-900 shadow-2xl relative rounded-2xl animate-fade-in max-h-[85vh] overflow-y-auto border border-gray-200 dark:border-zinc-800">
+        <div className="card w-full max-w-lg p-6 bg-card shadow-2xl relative rounded-2xl animate-fade-in max-h-[85vh] overflow-y-auto border border-border">
           <button
             onClick={onClose}
-            className="absolute top-4 right-4 p-2 rounded-full hover:bg-black/5 text-gray-500 cursor-pointer"
+            className="absolute top-4 right-4 p-2 rounded-full hover:bg-black/5 text-muted cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>
@@ -106,7 +106,7 @@ export function ModalNovo({ isOpen, onClose }: ModalNovoProps) {
               type="button"
               onClick={() => setTipo("video")}
               className={`flex-1 py-2 px-4 rounded-xl text-sm font-bold flex items-center justify-center gap-2 transition-all cursor-pointer ${
-                tipo === "video" ? "bg-white shadow-xs text-black" : "text-gray-500"
+                tipo === "video" ? "bg-card shadow-xs text-primary" : "text-muted"
               }`}
             >
               <Clapperboard className="w-4 h-4" />
@@ -116,7 +116,7 @@ export function ModalNovo({ isOpen, onClose }: ModalNovoProps) {
               type="button"
               onClick={() => setTipo("tarefa")}
               className={`flex-1 py-2 px-4 rounded-xl text-sm font-bold flex items-center justify-center gap-2 transition-all cursor-pointer ${
-                tipo === "tarefa" ? "bg-white shadow-xs text-black" : "text-gray-500"
+                tipo === "tarefa" ? "bg-card shadow-xs text-primary" : "text-muted"
               }`}
             >
               <CheckSquare className="w-4 h-4" />
@@ -126,7 +126,7 @@ export function ModalNovo({ isOpen, onClose }: ModalNovoProps) {
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label className="text-xs font-bold text-gray-500 block mb-1">Título</label>
+              <label className="text-xs font-bold text-muted block mb-1">Título</label>
               <input
                 type="text"
                 placeholder={tipo === "video" ? "ex: VSL do produto novo" : "ex: Revisar corte final"}
@@ -140,7 +140,7 @@ export function ModalNovo({ isOpen, onClose }: ModalNovoProps) {
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <div className="flex items-center justify-between mb-1">
-                  <label className="text-xs font-bold text-gray-500">Cliente / Projeto</label>
+                  <label className="text-xs font-bold text-muted">Cliente / Projeto</label>
                   <button
                     type="button"
                     onClick={() => setCriandoCliente(!criandoCliente)}
@@ -176,7 +176,7 @@ export function ModalNovo({ isOpen, onClose }: ModalNovoProps) {
 
               {tipo === "video" ? (
                 <div>
-                  <label className="text-xs font-bold text-gray-500 block mb-1">Formato</label>
+                  <label className="text-xs font-bold text-muted block mb-1">Formato</label>
                   <select
                     value={formato}
                     onChange={(e) => setFormato(e.target.value)}
@@ -192,7 +192,7 @@ export function ModalNovo({ isOpen, onClose }: ModalNovoProps) {
                 </div>
               ) : (
                 <div>
-                  <label className="text-xs font-bold text-gray-500 block mb-1">Prioridade</label>
+                  <label className="text-xs font-bold text-muted block mb-1">Prioridade</label>
                   <select
                     value={prioridade}
                     onChange={(e) => setPrioridade(e.target.value)}
@@ -209,7 +209,7 @@ export function ModalNovo({ isOpen, onClose }: ModalNovoProps) {
 
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="text-xs font-bold text-gray-500 block mb-1">Prazo</label>
+                <label className="text-xs font-bold text-muted block mb-1">Prazo</label>
                 <input
                   type="date"
                   value={prazo}
@@ -220,7 +220,7 @@ export function ModalNovo({ isOpen, onClose }: ModalNovoProps) {
 
               {tipo === "video" && (
                 <div>
-                  <label className="text-xs font-bold text-gray-500 block mb-1">Horas estimadas</label>
+                  <label className="text-xs font-bold text-muted block mb-1">Horas estimadas</label>
                   <input
                     type="number"
                     value={estimativaHoras}
@@ -233,7 +233,7 @@ export function ModalNovo({ isOpen, onClose }: ModalNovoProps) {
               )}
             </div>
 
-            <div className="pt-2 flex justify-end gap-2 border-t border-gray-100 mt-4">
+            <div className="pt-2 flex justify-end gap-2 border-t border-border mt-4">
               <button type="button" onClick={onClose} className="btn-ghost text-xs py-2.5 px-4 cursor-pointer">
                 Cancelar
               </button>

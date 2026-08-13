@@ -85,7 +85,7 @@ export default function VideoDetalhePage({
     return (
       <div className="card p-12 text-center flex flex-col items-center justify-center gap-2 animate-fade-in-up">
         <Loader2 className="w-6 h-6 animate-spin text-accent" />
-        <p className="text-xs text-gray-500">Carregando vídeo do Supabase...</p>
+        <p className="text-xs text-muted">Carregando vídeo do Supabase...</p>
       </div>
     );
   }
@@ -93,7 +93,7 @@ export default function VideoDetalhePage({
   if (!video) {
     return (
       <div className="card p-12 text-center space-y-4 animate-fade-in-up">
-        <p className="text-sm font-semibold text-gray-700">Vídeo não encontrado</p>
+        <p className="text-sm font-semibold text-secondary">Vídeo não encontrado</p>
         <Link href="/pipeline" className="btn-primary inline-flex text-xs px-4 py-2">
           Voltar ao Pipeline
         </Link>
@@ -117,7 +117,7 @@ export default function VideoDetalhePage({
       {/* Voltar */}
       <Link
         href="/pipeline"
-        className="inline-flex items-center gap-2 text-sm text-gray-500 hover:text-gray-900 transition-colors font-semibold"
+        className="inline-flex items-center gap-2 text-sm text-muted hover:text-primary transition-colors font-semibold"
       >
         <ArrowLeft className="w-4 h-4" />
         Voltar ao Pipeline
@@ -136,7 +136,7 @@ export default function VideoDetalhePage({
             </span>
             <span className="badge badge-neutral text-xs capitalize">{video.formato || "Vídeo"}</span>
           </div>
-          <h1 className="font-heading text-3xl font-bold tracking-tight text-gray-900">
+          <h1 className="font-heading text-3xl font-bold tracking-tight text-primary">
             {video.titulo}
           </h1>
         </div>
@@ -154,7 +154,7 @@ export default function VideoDetalhePage({
           <button
             type="button"
             onClick={handleExcluirVideo}
-            className="px-4 py-2.5 rounded-full border border-red-200 text-red-600 hover:bg-red-50 text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer"
+            className="px-4 py-2.5 rounded-full border border-danger/30 text-danger hover:bg-danger-subtle text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer"
           >
             <Trash2 className="w-4 h-4" />
             Apagar Vídeo
@@ -164,7 +164,7 @@ export default function VideoDetalhePage({
 
       {/* Estágios — Mudar Estágio com 1 Clique */}
       <div className="card p-6">
-        <h2 className="font-heading text-base font-semibold tracking-tight mb-4 text-gray-900">
+        <h2 className="font-heading text-base font-semibold tracking-tight mb-4 text-primary">
           Progresso no Pipeline (Clique para alterar estágio)
         </h2>
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
@@ -180,8 +180,8 @@ export default function VideoDetalhePage({
                   isCurrent
                     ? "bg-accent text-white border-accent shadow-md"
                     : isDone
-                    ? "bg-green-50 text-green-700 border-green-200 hover:bg-green-100"
-                    : "bg-gray-50 text-gray-600 border-gray-200 hover:bg-gray-100"
+                    ? "bg-success-subtle text-success border-success/30 hover:bg-success-subtle"
+                    : "bg-surface text-secondary border-border hover:bg-surface-hover"
                 }`}
               >
                 {stg.label}
@@ -195,17 +195,17 @@ export default function VideoDetalhePage({
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {/* Info */}
         <div className="card p-6 space-y-4">
-          <h2 className="font-heading text-base font-semibold tracking-tight text-gray-900 border-b pb-2">
+          <h2 className="font-heading text-base font-semibold tracking-tight text-primary border-b pb-2">
             Informações do Projeto
           </h2>
           <div className="space-y-3 text-xs">
-            <div className="flex justify-between py-1.5 border-b border-gray-100">
-              <span className="text-gray-500">Cliente/Projeto:</span>
-              <span className="font-bold text-gray-900">{video.projeto?.nome || "Sem cliente"}</span>
+            <div className="flex justify-between py-1.5 border-b border-border">
+              <span className="text-muted">Cliente/Projeto:</span>
+              <span className="font-bold text-primary">{video.projeto?.nome || "Sem cliente"}</span>
             </div>
-            <div className="flex justify-between py-1.5 border-b border-gray-100">
-              <span className="text-gray-500">Prazo de entrega:</span>
-              <span className="font-bold text-gray-900">
+            <div className="flex justify-between py-1.5 border-b border-border">
+              <span className="text-muted">Prazo de entrega:</span>
+              <span className="font-bold text-primary">
                 {video.prazoEntrega
                   ? new Date(video.prazoEntrega).toLocaleDateString("pt-BR", {
                       weekday: "short",
@@ -215,27 +215,27 @@ export default function VideoDetalhePage({
                   : "Sem prazo"}
               </span>
             </div>
-            <div className="flex justify-between py-1.5 border-b border-gray-100">
-              <span className="text-gray-500">Estimativa de horas:</span>
-              <span className="font-bold text-gray-900">
+            <div className="flex justify-between py-1.5 border-b border-border">
+              <span className="text-muted">Estimativa de horas:</span>
+              <span className="font-bold text-primary">
                 {video.estimativaHoras ? horasParaTexto(video.estimativaHoras) : "—"}
               </span>
             </div>
-            <div className="flex justify-between py-1.5 border-b border-gray-100">
-              <span className="text-gray-500">Aguardando por:</span>
-              <span className="font-bold text-gray-900 capitalize">{video.aguardando || "eu"}</span>
+            <div className="flex justify-between py-1.5 border-b border-border">
+              <span className="text-muted">Aguardando por:</span>
+              <span className="font-bold text-primary capitalize">{video.aguardando || "eu"}</span>
             </div>
           </div>
         </div>
 
         {/* Links */}
         <div className="card p-6 space-y-4">
-          <h2 className="font-heading text-base font-semibold tracking-tight text-gray-900 border-b pb-2">
+          <h2 className="font-heading text-base font-semibold tracking-tight text-primary border-b pb-2">
             Links do Projeto
           </h2>
           <div className="space-y-3">
-            <div className="p-3 rounded-xl bg-gray-50 flex items-center justify-between">
-              <span className="text-xs font-semibold text-gray-600">Material Bruto:</span>
+            <div className="p-3 rounded-xl bg-surface flex items-center justify-between">
+              <span className="text-xs font-semibold text-secondary">Material Bruto:</span>
               {video.linkBruto ? (
                 <a
                   href={video.linkBruto}
@@ -246,12 +246,12 @@ export default function VideoDetalhePage({
                   Abrir Link <ExternalLink className="w-3 h-3" />
                 </a>
               ) : (
-                <span className="text-xs text-gray-400">Não informado</span>
+                <span className="text-xs text-muted">Não informado</span>
               )}
             </div>
 
-            <div className="p-3 rounded-xl bg-gray-50 flex items-center justify-between">
-              <span className="text-xs font-semibold text-gray-600">Entrega Final:</span>
+            <div className="p-3 rounded-xl bg-surface flex items-center justify-between">
+              <span className="text-xs font-semibold text-secondary">Entrega Final:</span>
               {video.linkEntrega ? (
                 <a
                   href={video.linkEntrega}
@@ -262,7 +262,7 @@ export default function VideoDetalhePage({
                   Abrir Link <ExternalLink className="w-3 h-3" />
                 </a>
               ) : (
-                <span className="text-xs text-gray-400">Não informado</span>
+                <span className="text-xs text-muted">Não informado</span>
               )}
             </div>
           </div>

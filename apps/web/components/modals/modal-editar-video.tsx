@@ -117,25 +117,25 @@ export function ModalEditarVideo({
       {/* Container Fixo na Tela Alinhado ao Topo Visível (Red Box Position) */}
       <div className="fixed inset-0 z-[999999] flex items-start justify-center pt-8 sm:pt-16 px-4 pb-12 bg-black/70 backdrop-blur-md overflow-y-auto">
         {/* Card do Modal */}
-        <div className="card w-full max-w-lg p-6 bg-white dark:bg-zinc-900 shadow-2xl relative rounded-2xl animate-fade-in max-h-[85vh] overflow-y-auto border border-gray-200 dark:border-zinc-800">
+        <div className="card w-full max-w-lg p-6 bg-card shadow-2xl relative rounded-2xl animate-fade-in max-h-[85vh] overflow-y-auto border border-border">
           <button
             onClick={onClose}
-            className="absolute top-4 right-4 p-2 rounded-full hover:bg-black/5 text-gray-500 cursor-pointer"
+            className="absolute top-4 right-4 p-2 rounded-full hover:bg-black/5 text-muted cursor-pointer"
           >
             <X className="w-5 h-5" />
           </button>
 
-          <h2 className="font-heading text-xl font-bold mb-1 text-gray-900 flex items-center gap-2">
+          <h2 className="font-heading text-xl font-bold mb-1 text-primary flex items-center gap-2">
             <Clapperboard className="w-5 h-5 text-accent" />
             Editar Vídeo do Pipeline
           </h2>
-          <p className="text-xs text-gray-500 mb-5">
+          <p className="text-xs text-muted mb-5">
             Atualize os detalhes, altere o cliente, mude de estágio ou apague este vídeo.
           </p>
 
           <form onSubmit={handleSalvar} className="space-y-4">
             <div>
-              <label className="text-xs font-bold text-gray-600 block mb-1">Título do Vídeo</label>
+              <label className="text-xs font-bold text-secondary block mb-1">Título do Vídeo</label>
               <input
                 type="text"
                 value={titulo}
@@ -148,7 +148,7 @@ export function ModalEditarVideo({
 
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="text-xs font-bold text-gray-600 block mb-1">Cliente / Projeto</label>
+                <label className="text-xs font-bold text-secondary block mb-1">Cliente / Projeto</label>
                 <select
                   value={projetoId}
                   onChange={(e) => setProjetoId(e.target.value)}
@@ -164,7 +164,7 @@ export function ModalEditarVideo({
               </div>
 
               <div>
-                <label className="text-xs font-bold text-gray-600 block mb-1">Formato</label>
+                <label className="text-xs font-bold text-secondary block mb-1">Formato</label>
                 <select
                   value={formato}
                   onChange={(e) => setFormato(e.target.value)}
@@ -182,7 +182,7 @@ export function ModalEditarVideo({
 
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="text-xs font-bold text-gray-600 block mb-1">Estágio do Pipeline</label>
+                <label className="text-xs font-bold text-secondary block mb-1">Estágio do Pipeline</label>
                 <select
                   value={estagio}
                   onChange={(e) => setEstagio(e.target.value)}
@@ -199,7 +199,7 @@ export function ModalEditarVideo({
               </div>
 
               <div>
-                <label className="text-xs font-bold text-gray-600 block mb-1">Prazo de Entrega</label>
+                <label className="text-xs font-bold text-secondary block mb-1">Prazo de Entrega</label>
                 <input
                   type="date"
                   value={prazoEntrega}
@@ -210,7 +210,7 @@ export function ModalEditarVideo({
             </div>
 
             <div>
-              <label className="text-xs font-bold text-gray-600 block mb-1">Link da Pasta (Drive / Dropbox)</label>
+              <label className="text-xs font-bold text-secondary block mb-1">Link da Pasta (Drive / Dropbox)</label>
               <input
                 type="url"
                 value={driveUrl}
@@ -220,12 +220,12 @@ export function ModalEditarVideo({
               />
             </div>
 
-            <div className="flex items-center justify-between pt-4 border-t border-gray-100 mt-4">
+            <div className="flex items-center justify-between pt-4 border-t border-border mt-4">
               <button
                 type="button"
                 onClick={handleExcluir}
                 disabled={excluindo}
-                className="px-3 py-2 text-xs font-bold text-red-600 hover:bg-red-50 rounded-xl transition-colors flex items-center gap-1.5 cursor-pointer"
+                className="px-3 py-2 text-xs font-bold text-danger hover:bg-danger-subtle rounded-xl transition-colors flex items-center gap-1.5 cursor-pointer"
               >
                 {excluindo ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Trash2 className="w-4 h-4" />}
                 <span>Excluir Vídeo</span>

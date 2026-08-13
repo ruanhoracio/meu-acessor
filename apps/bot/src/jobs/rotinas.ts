@@ -115,15 +115,17 @@ export function iniciarRotinasAgendadas(bot: Bot) {
     } catch (err) {
       console.error("[Jobs] Erro no resumo matinal:", err);
     }
-  });
+  }, { timezone: "America/Sao_Paulo" });
 
-  // 2. Checagem das 14:00
-  cron.schedule("0 14 * * *", async () => {
-    console.log("[Jobs] Executando checagem das 14:00...");
+  // 2. Lembrete de tarefas do dia às 16:00
+  cron.schedule("0 16 * * *", async () => {
+    console.log("[Jobs] Executando lembrete de tarefas das 16:00...");
     try {
       const hojeStr = getDiaString(new Date());
       const todasTarefas = await prisma.tarefa.findMany({
-        where: { status: "aberta" },
+        where: { status: { in: ["aberta", "fazendo"] } },
+        include: { projeto: true },
+        orderBy: { prioridade: "asc" },
       });
 
       const tarefasHoje = todasTarefas.filter((t) => {
@@ -133,15 +135,25 @@ export function iniciarRotinasAgendadas(bot: Bot) {
       });
 
       if (tarefasHoje.length > 0) {
+        let text = `⚡ *Checagem da tarde (16:00):* Você ainda tem *${tarefasHoje.length} tarefa${tarefasHoje.length > 1 ? "s" : ""} pendente${tarefasHoje.length > 1 ? "s" : ""} para hoje:*\n\n`;
+        tarefasHoje.slice(0, 8).forEach((t) => {
+          text += `  • *${t.titulo}*${t.projeto ? ` (_${t.projeto.nome}_)` : ""}\n`;
+        });
+        if (tarefasHoje.length > 8) text += `  _...e mais ${tarefasHoje.length - 8} tarefas._\n`;
+        text += `\n💪 *Reta final do dia — bora fechar essas!*`;
+
+        await bot.api.sendMessage(chatId, text, { parse_mode: "Markdown" });
+      } else {
         await bot.api.sendMessage(
           chatId,
-          `⚡ *Checagem da tarde:* Você ainda tem *${tarefasHoje.length} tarefas pendentes para hoje* no seu painel.`
+          `🎉 *Checagem da tarde (16:00):* Nenhuma tarefa pendente para hoje. Dia em dia!`,
+          { parse_mode: "Markdown" }
         );
       }
     } catch (err) {
       console.error("[Jobs] Erro na checagem da tarde:", err);
     }
-  });
+  }, { timezone: "America/Sao_Paulo" });
 
   // 3. Alertas a cada hora (vídeos travados há >3 dias)
   cron.schedule("0 * * * *", async () => {
@@ -219,5 +231,5 @@ export function iniciarRotinasAgendadas(bot: Bot) {
     }
   });
 
-  console.log("⏰ Rotinas agendadas (08:00 matinal, 14:00 checagem, alertas por hora, lembretes 5 min antes) iniciadas.");
+  console.log("⏰ Rotinas agendadas (08:00 resumo do dia, 16:00 checagem de tarefas, alertas por hora, lembretes 5 min antes) iniciadas.");
 }

@@ -338,8 +338,8 @@ export default function TarefasTodoistPage() {
       </div>
 
       {/* ── Filtro de Clientes / Projetos ───────────────────────────────────── */}
-      <div className="flex items-center gap-2 overflow-x-auto pb-1 border-b border-gray-200 dark:border-zinc-800">
-        <span className="text-xs font-bold text-gray-400 dark:text-zinc-500 flex items-center gap-1 flex-shrink-0">
+      <div className="flex items-center gap-2 overflow-x-auto pb-1 border-b border-border">
+        <span className="text-xs font-bold text-muted flex items-center gap-1 flex-shrink-0">
           <Filter className="w-3.5 h-3.5" />
           Projetos:
         </span>
@@ -347,8 +347,8 @@ export default function TarefasTodoistPage() {
           onClick={() => setFiltroProjeto(null)}
           className={`px-3 py-1 text-xs font-semibold rounded-full transition-all flex-shrink-0 ${
             filtroProjeto === null
-              ? "bg-gray-900 dark:bg-zinc-100 text-white dark:text-zinc-900 font-bold"
-              : "bg-gray-100 dark:bg-zinc-800 text-gray-600 dark:text-zinc-300 hover:bg-gray-200 dark:hover:bg-zinc-700"
+              ? "bg-primary text-inverse font-bold"
+              : "bg-surface text-secondary hover:bg-surface-hover"
           }`}
         >
           Todos
@@ -376,9 +376,9 @@ export default function TarefasTodoistPage() {
            ═════════════════════════════════════════════════════════════════════ */
         <div className="space-y-6">
           {/* ── Barra Superior de Calendário Todoist (Mês & Dias) ─────────────── */}
-          <div className="card p-4 bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-800 shadow-sm rounded-2xl space-y-3">
+          <div className="card p-4 bg-card border border-border shadow-sm rounded-2xl space-y-3">
             <div className="flex items-center justify-between">
-              <span className="font-heading text-sm font-bold text-gray-900 dark:text-zinc-100">
+              <span className="font-heading text-sm font-bold text-primary">
                 {MESES_ABREV[dataSelecionadaBarra.getMonth()]} de {dataSelecionadaBarra.getFullYear()} ›
               </span>
 
@@ -389,13 +389,13 @@ export default function TarefasTodoistPage() {
                     d.setDate(d.getDate() - 7);
                     setDataSelecionadaBarra(d);
                   }}
-                  className="p-1 rounded-lg hover:bg-gray-100 dark:hover:bg-zinc-800 text-gray-600 dark:text-zinc-400"
+                  className="p-1 rounded-lg hover:bg-surface-hover text-secondary"
                 >
                   <ChevronLeft className="w-4 h-4" />
                 </button>
                 <button
                   onClick={() => setDataSelecionadaBarra(new Date())}
-                  className="px-2.5 py-1 text-xs font-bold rounded-lg border border-gray-200 dark:border-zinc-700 hover:bg-gray-50 dark:hover:bg-zinc-800 text-gray-700 dark:text-zinc-300"
+                  className="px-2.5 py-1 text-xs font-bold rounded-lg border border-border hover:bg-surface-hover text-secondary"
                 >
                   Hoje
                 </button>
@@ -405,7 +405,7 @@ export default function TarefasTodoistPage() {
                     d.setDate(d.getDate() + 7);
                     setDataSelecionadaBarra(d);
                   }}
-                  className="p-1 rounded-lg hover:bg-gray-100 dark:hover:bg-zinc-800 text-gray-600 dark:text-zinc-400"
+                  className="p-1 rounded-lg hover:bg-surface-hover text-secondary"
                 >
                   <ChevronRight className="w-4 h-4" />
                 </button>
@@ -422,9 +422,9 @@ export default function TarefasTodoistPage() {
                   <button
                     key={i}
                     onClick={() => setDataSelecionadaBarra(d)}
-                    className="flex flex-col items-center py-1.5 rounded-xl transition-all cursor-pointer hover:bg-gray-100 dark:hover:bg-zinc-800"
+                    className="flex flex-col items-center py-1.5 rounded-xl transition-all cursor-pointer hover:bg-surface-hover"
                   >
-                    <span className="text-[11px] font-bold text-gray-400 dark:text-zinc-500 uppercase">
+                    <span className="text-[11px] font-bold text-muted uppercase">
                       {DIAS_SEMANA_SIGLAS[d.getDay()]}
                     </span>
                     <span
@@ -432,8 +432,8 @@ export default function TarefasTodoistPage() {
                         ehHoje
                           ? "bg-accent text-white shadow-xs"
                           : ehSelecionado
-                          ? "border-2 border-gray-900 dark:border-zinc-100 text-gray-900 dark:text-zinc-100"
-                          : "text-gray-700 dark:text-zinc-300"
+                          ? "border-2 border-primary text-primary"
+                          : "text-secondary"
                       }`}
                     >
                       {d.getDate()}
@@ -447,14 +447,14 @@ export default function TarefasTodoistPage() {
           {/* ── 1. SEÇÃO DE TAREFAS ATRASADAS (Red Alert Header) ──────────────── */}
           {itensAtrasados.length > 0 && (
             <div className="space-y-2">
-              <div className="flex items-center justify-between pb-1.5 border-b border-red-200">
-                <h3 className="font-heading text-sm font-bold text-red-600 flex items-center gap-1.5">
-                  <AlertCircle className="w-4 h-4 text-red-600" />
+              <div className="flex items-center justify-between pb-1.5 border-b border-danger/30">
+                <h3 className="font-heading text-sm font-bold text-danger flex items-center gap-1.5">
+                  <AlertCircle className="w-4 h-4 text-danger" />
                   Atrasada
                 </h3>
                 <button
                   onClick={handleReagendarAtrasadas}
-                  className="text-xs font-bold text-red-600 hover:text-red-800 hover:underline cursor-pointer"
+                  className="text-xs font-bold text-danger hover:text-danger hover:underline cursor-pointer"
                 >
                   Reagendar para Hoje ➔
                 </button>
@@ -478,12 +478,12 @@ export default function TarefasTodoistPage() {
           {diasFeed.map((dia) => (
             <div key={dia.dtStr} className="space-y-2 pt-2">
               {/* Header do Dia Todoist: "10 ago. · Hoje · Segunda-feira" */}
-              <div className="pb-1.5 border-b border-gray-200 dark:border-zinc-800 flex items-center justify-between">
-                <h3 className="font-heading text-sm font-bold text-gray-900 dark:text-zinc-100 tracking-tight">
+              <div className="pb-1.5 border-b border-border flex items-center justify-between">
+                <h3 className="font-heading text-sm font-bold text-primary tracking-tight">
                   {dia.label}
                 </h3>
                 {dia.itens.length > 0 && (
-                  <span className="text-xs font-semibold text-gray-400 dark:text-zinc-500">
+                  <span className="text-xs font-semibold text-muted">
                     {dia.itens.length} {dia.itens.length === 1 ? "tarefa" : "tarefas"}
                   </span>
                 )}
@@ -503,13 +503,13 @@ export default function TarefasTodoistPage() {
                   ))}
                 </div>
               ) : (
-                <p className="text-xs text-gray-400 dark:text-zinc-500 italic py-1 pl-2">Nenhuma tarefa agendada.</p>
+                <p className="text-xs text-muted italic py-1 pl-2">Nenhuma tarefa agendada.</p>
               )}
 
               {/* Botão Inline Todoist: "+ Adicionar tarefa" */}
               <button
                 onClick={() => abrirModalComData(dia.dtStr)}
-                className="flex items-center gap-2 text-xs font-semibold text-gray-500 dark:text-zinc-400 hover:text-accent dark:hover:text-accent py-1.5 px-2 rounded-lg hover:bg-gray-100 dark:hover:bg-zinc-800/60 transition-colors cursor-pointer w-full text-left group"
+                className="flex items-center gap-2 text-xs font-semibold text-muted hover:text-accent dark:hover:text-accent py-1.5 px-2 rounded-lg hover:bg-surface-hover transition-colors cursor-pointer w-full text-left group"
               >
                 <Plus className="w-4 h-4 text-accent transition-transform group-hover:scale-110" />
                 <span>Adicionar tarefa</span>
@@ -519,8 +519,8 @@ export default function TarefasTodoistPage() {
 
           {/* ── 3. SEÇÃO DE CONCLUÍDAS ──────────────────────────────────────── */}
           {itensConcluidos.length > 0 && (
-            <div className="pt-6 border-t border-gray-200 space-y-2">
-              <h3 className="font-heading text-xs font-bold text-gray-400 uppercase tracking-wider">
+            <div className="pt-6 border-t border-border space-y-2">
+              <h3 className="font-heading text-xs font-bold text-muted uppercase tracking-wider">
                 Concluídas ({itensConcluidos.length})
               </h3>
               <div className="space-y-1">
@@ -568,12 +568,12 @@ export default function TarefasTodoistPage() {
               itens: itensConcluidos,
             },
           ].map((col) => (
-            <div key={col.key} className="flex flex-col bg-gray-50/70 p-3.5 rounded-2xl border border-gray-200 min-h-[350px]">
-              <div className="flex items-center justify-between mb-3 pb-2 border-b border-gray-200 px-1">
+            <div key={col.key} className="flex flex-col bg-surface p-3.5 rounded-2xl border border-border min-h-[350px]">
+              <div className="flex items-center justify-between mb-3 pb-2 border-b border-border px-1">
                 <h3 className="text-xs font-bold tracking-wider" style={{ color: col.cor }}>
                   {col.titulo}
                 </h3>
-                <span className="w-5 h-5 rounded-full bg-gray-200 flex items-center justify-center text-[10px] font-bold text-gray-700">
+                <span className="w-5 h-5 rounded-full bg-surface-hover flex items-center justify-center text-[10px] font-bold text-secondary">
                   {col.itens.length}
                 </span>
               </div>
@@ -616,7 +616,7 @@ function RenderItemTodoist({
   // Cores dos Anéis dos Checkboxes estilo Todoist por prioridade
   const corCheckRing =
     prio === "urgente"
-      ? "border-red-500 text-red-500 hover:bg-red-50"
+      ? "border-danger text-danger hover:bg-danger-subtle"
       : prio === "alta"
       ? "border-amber-500 text-amber-500 hover:bg-amber-50"
       : "border-blue-400 text-blue-400 hover:bg-blue-50";
@@ -637,7 +637,7 @@ function RenderItemTodoist({
           onClick={(e) => onToggle(item.id, isVideo ? item.estagio : item.status, isVideo, e)}
           className={`w-5 h-5 rounded-full flex items-center justify-center transition-all cursor-pointer flex-shrink-0 border ${
             concluido
-              ? "border-accent bg-accent text-emerald-950"
+              ? "border-accent bg-accent text-inverse"
               : "border-border hover:border-accent bg-surface text-accent"
           }`}
           title={concluido ? "Marcar como não concluído" : "Concluir tarefa"}
@@ -666,7 +666,7 @@ function RenderItemTodoist({
       {/* Direita: Tag do Cliente / Entrada + Ícones de Ações Rápidas no Hover */}
       <div className="flex items-center gap-2 flex-shrink-0">
         {/* Tag de Entrada ou Cliente estilo Todoist */}
-        <div className="flex items-center gap-1 text-[11px] font-bold text-gray-500 dark:text-zinc-400 bg-gray-100 dark:bg-zinc-800 px-2 py-0.5 rounded-lg group-hover:hidden">
+        <div className="flex items-center gap-1 text-[11px] font-bold text-muted bg-surface px-2 py-0.5 rounded-lg group-hover:hidden">
           {item.projeto ? (
             <>
               <span className="w-2 h-2 rounded-full" style={{ background: item.projeto.cor || "#ff5a3d" }} />
@@ -686,14 +686,14 @@ function RenderItemTodoist({
         <div className="hidden group-hover:flex items-center gap-1 transition-opacity">
           <button
             onClick={(e) => { e.stopPropagation(); onEditar(); }}
-            className="p-1 rounded-md text-gray-400 dark:text-zinc-500 hover:text-gray-700 dark:hover:text-zinc-200 hover:bg-gray-100 dark:hover:bg-zinc-800"
+            className="p-1 rounded-md text-muted hover:text-primary hover:bg-surface-hover"
             title="Editar"
           >
             <Edit3 className="w-3.5 h-3.5" />
           </button>
           <button
             onClick={(e) => onExcluir(item.id, isVideo, e)}
-            className="p-1 rounded-md text-gray-400 dark:text-zinc-500 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30"
+            className="p-1 rounded-md text-muted hover:text-danger hover:bg-danger-subtle"
             title="Excluir"
           >
             <Trash2 className="w-3.5 h-3.5" />

@@ -30,7 +30,7 @@ export function BarraCapturaIA({ onSucesso }: { onSucesso?: () => void }) {
   };
 
   return (
-    <div className="card p-3 relative overflow-hidden bg-white border shadow-card">
+    <div className="card p-3 relative overflow-hidden bg-card border border-border shadow-card">
       <form onSubmit={handleSubmit} className="flex items-center gap-3">
         <div
           className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
@@ -47,7 +47,7 @@ export function BarraCapturaIA({ onSucesso }: { onSucesso?: () => void }) {
           placeholder="Escreva algo em linguagem natural (ex: 'Criar VSL da Ana pra sexta 18h' ou 'Consulta dentista hoje 16:30')..."
           value={texto}
           onChange={(e) => setTexto(e.target.value)}
-          className="flex-1 bg-transparent border-none outline-none text-sm font-semibold text-gray-900 placeholder:text-gray-400"
+          className="flex-1 bg-transparent border-none outline-none text-sm font-semibold text-primary placeholder:text-muted"
           disabled={loading}
         />
 
@@ -71,8 +71,8 @@ export function BarraCapturaIA({ onSucesso }: { onSucesso?: () => void }) {
       </form>
 
       {feedback && (
-        <div className="mt-2 pt-2 border-t flex items-center gap-2 text-xs font-bold text-green-700 animate-fade-in-up" style={{ borderColor: "var(--border)" }}>
-          <CheckCircle2 className="w-4 h-4 text-green-600 flex-shrink-0" />
+        <div className="mt-2 pt-2 border-t flex items-center gap-2 text-xs font-bold text-success animate-fade-in-up" style={{ borderColor: "var(--border)" }}>
+          <CheckCircle2 className="w-4 h-4 text-success flex-shrink-0" />
           <span>{feedback}</span>
         </div>
       )}

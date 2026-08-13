@@ -164,13 +164,13 @@ export default function HojePage() {
           accent={false}
         />
         <StatCard
-          icon={<AlertTriangle className="w-4 h-4 text-red-500" />}
+          icon={<AlertTriangle className="w-4 h-4 text-danger" />}
           label="Vídeos travados"
           value={String(travadosCount)}
           accent={travadosCount > 0}
         />
         <StatCard
-          icon={<Timer className="w-4 h-4 text-green-500" />}
+          icon={<Timer className="w-4 h-4 text-success" />}
           label="Agenda hoje"
           value={String(eventosHoje.length)}
           accent={false}

@@ -121,18 +121,18 @@ export function ModalCropper({ isOpen, imageSrc, onClose, onCropSave }: ModalCro
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-md animate-fade-in-up">
-      <div className="card w-full max-w-md p-6 bg-white shadow-elevated relative overflow-hidden flex flex-col items-center">
+      <div className="card w-full max-w-md p-6 bg-card shadow-elevated relative overflow-hidden flex flex-col items-center">
         <button
           onClick={onClose}
-          className="absolute top-4 right-4 p-2 rounded-full hover:bg-black/5 text-gray-500 cursor-pointer z-10"
+          className="absolute top-4 right-4 p-2 rounded-full hover:bg-black/5 text-muted cursor-pointer z-10"
         >
           <X className="w-5 h-5" />
         </button>
 
-        <h3 className="font-heading text-lg font-bold mb-1 text-gray-900">
+        <h3 className="font-heading text-lg font-bold mb-1 text-primary">
           Ajustar & Enquadrar Foto
         </h3>
-        <p className="text-xs text-gray-500 mb-5 flex items-center gap-1">
+        <p className="text-xs text-muted mb-5 flex items-center gap-1">
           <Move className="w-3.5 h-3.5" />
           Arraste a foto e use o zoom para enquadrar no círculo
         </p>
@@ -147,7 +147,7 @@ export function ModalCropper({ isOpen, imageSrc, onClose, onCropSave }: ModalCro
           onTouchStart={handleTouchStart}
           onTouchMove={handleTouchMove}
           onTouchEnd={handleTouchEnd}
-          className="relative w-[240px] h-[240px] rounded-full overflow-hidden border-4 border-accent shadow-inner bg-gray-900 cursor-grab active:cursor-grabbing select-none flex items-center justify-center"
+          className="relative w-[240px] h-[240px] rounded-full overflow-hidden border-4 border-accent shadow-inner bg-black cursor-grab active:cursor-grabbing select-none flex items-center justify-center"
         >
           <img
             ref={imageRef}
@@ -169,7 +169,7 @@ export function ModalCropper({ isOpen, imageSrc, onClose, onCropSave }: ModalCro
         {/* Controles de Zoom */}
         <div className="w-full max-w-xs mt-6 space-y-3">
           <div className="flex items-center gap-3">
-            <ZoomOut className="w-4 h-4 text-gray-400" />
+            <ZoomOut className="w-4 h-4 text-muted" />
             <input
               type="range"
               min="1"
@@ -177,19 +177,19 @@ export function ModalCropper({ isOpen, imageSrc, onClose, onCropSave }: ModalCro
               step="0.05"
               value={zoom}
               onChange={(e) => setZoom(parseFloat(e.target.value))}
-              className="flex-1 accent-accent cursor-pointer h-2 bg-gray-200 rounded-lg"
+              className="flex-1 accent-accent cursor-pointer h-2 bg-surface-hover rounded-lg"
             />
-            <ZoomIn className="w-4 h-4 text-gray-400" />
-            <span className="text-xs font-bold text-gray-600 min-w-[32px] text-right">
+            <ZoomIn className="w-4 h-4 text-muted" />
+            <span className="text-xs font-bold text-secondary min-w-[32px] text-right">
               {zoom.toFixed(1)}x
             </span>
           </div>
 
-          <div className="flex justify-between items-center text-[11px] text-gray-400 px-1">
+          <div className="flex justify-between items-center text-[11px] text-muted px-1">
             <button
               type="button"
               onClick={() => { setZoom(1); setPosition({ x: 0, y: 0 }); }}
-              className="hover:underline text-gray-500 cursor-pointer"
+              className="hover:underline text-muted cursor-pointer"
             >
               Resetar Posição
             </button>
@@ -198,7 +198,7 @@ export function ModalCropper({ isOpen, imageSrc, onClose, onCropSave }: ModalCro
         </div>
 
         {/* Botões de Ação */}
-        <div className="flex gap-3 w-full mt-6 pt-4 border-t border-gray-100">
+        <div className="flex gap-3 w-full mt-6 pt-4 border-t border-border">
           <button
             type="button"
             onClick={onClose}

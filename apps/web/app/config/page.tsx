@@ -218,14 +218,14 @@ export default function ConfigPage() {
       />
 
       {mensagemSucesso && (
-        <div className="p-4 rounded-xl bg-green-50 border border-green-200 text-green-800 flex items-center gap-3 font-semibold text-sm shadow-xs animate-fade-in-up">
-          <CheckCircle2 className="w-5 h-5 text-green-600 flex-shrink-0" />
+        <div className="p-4 rounded-xl bg-success-subtle border border-success/30 text-success flex items-center gap-3 font-semibold text-sm shadow-xs animate-fade-in-up">
+          <CheckCircle2 className="w-5 h-5 text-success flex-shrink-0" />
           <span>{mensagemSucesso}</span>
         </div>
       )}
       {mensagemErro && (
-        <div className="p-4 rounded-xl bg-red-50 border border-red-200 text-red-800 flex items-center gap-3 font-semibold text-sm shadow-xs animate-fade-in-up">
-          <AlertCircle className="w-5 h-5 text-red-600 flex-shrink-0" />
+        <div className="p-4 rounded-xl bg-danger-subtle border border-danger/30 text-danger flex items-center gap-3 font-semibold text-sm shadow-xs animate-fade-in-up">
+          <AlertCircle className="w-5 h-5 text-danger flex-shrink-0" />
           <span>{mensagemErro}</span>
         </div>
       )}
@@ -312,7 +312,7 @@ export default function ConfigPage() {
 
         {/* Lista de projetos */}
         {loadingProjetos ? (
-          <div className="flex items-center justify-center py-6 text-sm text-gray-500 gap-2">
+          <div className="flex items-center justify-center py-6 text-sm text-muted gap-2">
             <Loader2 className="w-4 h-4 animate-spin" />
             <span>Carregando projetos do Supabase...</span>
           </div>
@@ -326,13 +326,13 @@ export default function ConfigPage() {
               >
                 <div className="flex items-center gap-3">
                   <span className="w-3.5 h-3.5 rounded-full flex-shrink-0 shadow-xs" style={{ background: p.cor || "#ff5a3d" }} />
-                  <span className="text-sm font-semibold text-gray-900">{p.nome}</span>
+                  <span className="text-sm font-semibold text-primary">{p.nome}</span>
                   <span className="badge badge-neutral text-[10px] capitalize">{p.tipo}</span>
                 </div>
                 <button
                   type="button"
                   onClick={() => handleExcluirProjeto(p.id, p.nome)}
-                  className="text-xs p-1.5 rounded-lg transition-colors hover:text-red-500 cursor-pointer"
+                  className="text-xs p-1.5 rounded-lg transition-colors hover:text-danger cursor-pointer"
                   style={{ color: "var(--text-muted)" }}
                   title="Excluir projeto"
                 >
@@ -345,7 +345,7 @@ export default function ConfigPage() {
 
         {/* Form novo projeto - LAYOUT EXPLÍCITO E SEM COLAPSO */}
         <form onSubmit={handleAddProjeto} className="pt-4 border-t space-y-3" style={{ borderColor: "var(--border)" }}>
-          <label className="text-xs font-bold text-gray-600 block">Adicionar Novo Cliente / Projeto:</label>
+          <label className="text-xs font-bold text-secondary block">Adicionar Novo Cliente / Projeto:</label>
           <div className="flex flex-col sm:flex-row gap-3">
             <div className="flex-1 min-w-[200px]">
               <input
@@ -373,7 +373,7 @@ export default function ConfigPage() {
                 type="color"
                 value={novaCor}
                 onChange={(e) => setNovaCor(e.target.value)}
-                className="w-10 h-10 rounded-xl cursor-pointer bg-transparent border border-gray-200 p-1 flex-shrink-0"
+                className="w-10 h-10 rounded-xl cursor-pointer bg-transparent border border-border p-1 flex-shrink-0"
                 title="Escolher cor da etiqueta"
               />
 
@@ -476,15 +476,15 @@ export default function ConfigPage() {
           <Shield className="w-5 h-5 text-accent" />
           Segurança do App (Better Auth)
         </h2>
-        <p className="text-xs mb-6 text-gray-500">
+        <p className="text-xs mb-6 text-muted">
           Proteja o seu painel com uma senha simples de acesso rápido.
         </p>
 
         <div className="space-y-4">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-xl bg-gray-50 border border-gray-200">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-xl bg-surface border border-border">
             <div>
-              <p className="text-sm font-bold text-gray-900">Senha de Acesso do App</p>
-              <p className="text-xs text-gray-500">Defina uma nova senha de segurança para proteger o acesso ao painel.</p>
+              <p className="text-sm font-bold text-primary">Senha de Acesso do App</p>
+              <p className="text-xs text-muted">Defina uma nova senha de segurança para proteger o acesso ao painel.</p>
             </div>
 
             <div className="flex items-center gap-2">
@@ -511,10 +511,10 @@ export default function ConfigPage() {
             </div>
           </div>
 
-          <div className="flex items-center justify-between p-4 rounded-xl bg-red-50 border border-red-200">
+          <div className="flex items-center justify-between p-4 rounded-xl bg-danger-subtle border border-danger/30">
             <div>
-              <p className="text-sm font-bold text-red-900">Sair e Bloquear App</p>
-              <p className="text-xs text-red-600">Exibe a tela de bloqueio e exige a senha para entrar novamente.</p>
+              <p className="text-sm font-bold text-danger">Sair e Bloquear App</p>
+              <p className="text-xs text-danger">Exibe a tela de bloqueio e exige a senha para entrar novamente.</p>
             </div>
             <button
               type="button"
@@ -522,7 +522,7 @@ export default function ConfigPage() {
                 localStorage.removeItem("assessor_auth_session");
                 window.location.reload();
               }}
-              className="px-4 py-2.5 rounded-xl bg-red-600 hover:bg-red-700 text-white text-xs font-bold transition-all cursor-pointer shadow-xs"
+              className="px-4 py-2.5 rounded-xl bg-danger hover:bg-danger/80 text-white text-xs font-bold transition-all cursor-pointer shadow-xs"
             >
               🔒 Bloquear App Agora
             </button>

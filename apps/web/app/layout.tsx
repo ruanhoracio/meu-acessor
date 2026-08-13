@@ -45,7 +45,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#0a0a0a",
+  themeColor: "#05080a",
   width: "device-width",
   initialScale: 1,
   maximumScale: 1,
@@ -59,8 +59,18 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="pt-BR" className={`dark ${inter.variable} ${geist.variable} ${spaceMono.variable}`}>
+    <html
+      lang="pt-BR"
+      className={`dark ${inter.variable} ${geist.variable} ${spaceMono.variable}`}
+      suppressHydrationWarning
+    >
       <head>
+        {/* Aplica o tema salvo ANTES da primeira pintura para evitar flash */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `try{if(localStorage.getItem("theme")==="light")document.documentElement.classList.remove("dark")}catch(e){}`,
+          }}
+        />
         <meta name="mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />

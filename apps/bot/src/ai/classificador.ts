@@ -66,12 +66,15 @@ export async function classificarComClaude(
 Data Atual: ${guiaDatas}
 Clientes Ativos: ${JSON.stringify(contexto.projetosAtivos)}
 
-REGRAS DE CLASSIFICAÇÃO:
-1. "lembrete": Se o usuário disser "me lembra de...", "me avise...", "lembrar que...".
+REGRAS DE CLASSIFICAÇÃO (em ordem de prioridade):
+1. Se a palavra "tarefa" aparecer explicitamente, o tipo é SEMPRE "tarefa".
+2. "video": Se mencionar vídeo, edição, VSL, Reels, corte ou criativo — mesmo com verbos como "fazer"/"adicionar" ("adicionar vídeo do Petron" = video, NÃO tarefa).
+3. "lembrete": Se o usuário disser "me lembra de...", "me avise...", "lembrar que...".
    - Calcule o horário exato pedido e defina prazo (horário alvo).
-2. "evento": Se pedir para "colocar na agenda", "agendar", "marcar reunião/call", "ir ao centro/médico".
-3. "video": Se mencionar edição de vídeo, VSL, Reels, Criativo.
-4. "tarefa": Afazeres gerais.
+4. "evento": Se pedir para "colocar na agenda", "agendar", "marcar reunião/call", "ir ao centro/médico".
+5. "nota": Se pedir para "anotar" uma ideia/informação sem ação nem prazo.
+6. "referencia": Links ou pedidos para "salvar referência/inspiração".
+7. "tarefa": Afazeres gerais (fallback).
 
 Responda APENAS um array JSON válido:
 [
@@ -243,8 +246,12 @@ function tentarClassificacaoInstantanea(
 
     const matchHora = msgLower.match(/(?:às|as|para\s*as|para\s*às)?\s*(\d{1,2})(?:h|:(\d{2}))?/i);
     if (matchHora) {
-      hora = parseInt(matchHora[1], 10);
-      if (matchHora[2]) minuto = parseInt(matchHora[2], 10);
+      const h = parseInt(matchHora[1], 10);
+      const m = matchHora[2] ? parseInt(matchHora[2], 10) : 0;
+      if (h >= 0 && h <= 23 && m >= 0 && m <= 59) {
+        hora = h;
+        minuto = m;
+      }
     }
 
     dataAlvo.setHours(hora, minuto, 0, 0);
@@ -297,11 +304,10 @@ function tentarClassificacaoInstantanea(
     ];
   }
 
-  // 1. Palavras-chave explícitas de TAREFA
-  const isExplicitTarefa =
-    msgLower.includes("tarefa") ||
-    msgLower.includes("fazer") ||
-    msgLower.includes("afazer");
+  // 1. Palavra-chave EXPLÍCITA de TAREFA (só a palavra "tarefa"/"afazeres" conta;
+  //    "fazer" sozinho é sinal fraco e não pode roubar mensagens de vídeo/evento)
+  const isExplicitTarefa = /\btarefas?\b|\bafazer/i.test(msgLower);
+  const isWeakTarefa = /\bfazer\b|\bpreciso\b|\btenho\s+(?:que|de)\b/i.test(msgLower);
 
   // 2. Palavras-chave explícitas de VÍDEO / PIPELINE
   const isExplicitVideo =
@@ -309,7 +315,11 @@ function tentarClassificacaoInstantanea(
     msgLower.includes("video") ||
     msgLower.includes("vsl") ||
     msgLower.includes("reels") ||
-    msgLower.includes("corte");
+    msgLower.includes("corte") ||
+    msgLower.includes("criativo") ||
+    msgLower.includes("editar") ||
+    msgLower.includes("edição") ||
+    msgLower.includes("edicao");
 
   // 3. Palavras-chave explícitas de EVENTO DE AGENDA
   const isExplicitEvento =
@@ -329,6 +339,10 @@ function tentarClassificacaoInstantanea(
     msgLower.includes("ir ao") ||
     msgLower.includes("ir para");
 
+  // 4. Palavras-chave explícitas de NOTA
+  const isExplicitNota =
+    /\banotar?\b|\banote\b|\bnota\s*:/i.test(msgLower) || msgLower.startsWith("nota ");
+
   let projetoEncontrado: string | undefined;
   for (const proj of projetosAtivos) {
     if (msgLower.includes(proj.toLowerCase())) {
@@ -342,8 +356,9 @@ function tentarClassificacaoInstantanea(
   const prazo = parsedData.data;
   const tituloLimpo = parsedData.tituloLimpo;
 
-  // HIERARQUIA DE DECISÃO IMPRESCINDÍVEL: Palavras explícitas SEMPRE vencem
-  let tipoFinal: "video" | "tarefa" | "evento" = "tarefa";
+  // HIERARQUIA DE DECISÃO: quem fala "tarefa" quer tarefa; quem fala "vídeo" quer vídeo.
+  // Sinais fracos ("fazer", "preciso") só decidem quando não há sinal explícito.
+  let tipoFinal: "video" | "tarefa" | "evento" | "nota";
 
   if (isExplicitTarefa) {
     tipoFinal = "tarefa";
@@ -351,13 +366,25 @@ function tentarClassificacaoInstantanea(
     tipoFinal = "video";
   } else if (isExplicitEvento) {
     tipoFinal = "evento";
+  } else if (isExplicitNota) {
+    tipoFinal = "nota";
   } else if (parsedData.ehDataExplicita) {
     tipoFinal = "evento";
-  } else {
+  } else if (isWeakTarefa) {
     tipoFinal = "tarefa";
+  } else {
+    // Nenhum sinal claro: deixa a IA (Groq/LLM) decidir em vez de chutar "tarefa"
+    return null;
   }
 
   const dtStr = prazo ? prazo.toLocaleDateString("pt-BR") : "";
+
+  const rotulos: Record<string, string> = {
+    video: "🎬 Vídeo adicionado no Pipeline",
+    evento: "📅 Compromisso agendado na Agenda",
+    nota: "📝 Nota salva",
+    tarefa: "✅ Tarefa criada",
+  };
 
   return [
     {
@@ -367,7 +394,7 @@ function tentarClassificacaoInstantanea(
       prazo: prazo ? prazo.toISOString() : undefined,
       formato: msgLower.includes("vsl") ? "vsl" : msgLower.includes("reels") ? "reels" : "outro",
       confianca: 0.95,
-      confirmacao: `✓ ${tipoFinal === "video" ? "Vídeo adicionado no Pipeline" : tipoFinal === "evento" ? "Compromisso agendado na Agenda" : "Tarefa criada"}: "${tituloLimpo}"${dtStr ? ` (${dtStr})` : ""}`,
+      confirmacao: `${rotulos[tipoFinal]}: "${tituloLimpo}"${dtStr ? ` (${dtStr})` : ""}`,
     },
   ];
 }

@@ -32,6 +32,7 @@ const CORES_EVENTO = [
 ];
 
 function getCorEvento(ev: any) {
+  if (!ev) return CORES_EVENTO[0];
   if (ev.projeto?.cor) return ev.projeto.cor;
   const key = ev.idOriginal || ev.id || ev.titulo || "";
   let hash = 0;
@@ -540,14 +541,14 @@ export default function AgendaPage() {
               <X className="w-5 h-5" />
             </button>
 
-            <h3 className="font-heading text-lg font-bold text-gray-900 dark:text-zinc-100 mb-4 flex items-center gap-2">
+            <h3 className="font-heading text-lg font-bold text-primary mb-4 flex items-center gap-2">
               <CalendarIcon className="w-5 h-5 text-accent" />
               Novo Compromisso na Agenda
             </h3>
 
             <form onSubmit={handleSalvarEvento} className="space-y-4">
               <div>
-                <label className="text-xs font-semibold text-gray-700 dark:text-zinc-300 block mb-1">
+                <label className="text-xs font-semibold text-secondary block mb-1">
                   Título do Compromisso:
                 </label>
                 <input
@@ -564,7 +565,7 @@ export default function AgendaPage() {
               {/* Data Início & Data Término (Múltiplos Dias!) */}
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="text-xs font-semibold text-gray-700 dark:text-zinc-300 block mb-1">
+                  <label className="text-xs font-semibold text-secondary block mb-1">
                     Data de Início:
                   </label>
                   <input
@@ -582,7 +583,7 @@ export default function AgendaPage() {
                 </div>
 
                 <div>
-                  <label className="text-xs font-semibold text-gray-700 dark:text-zinc-300 block mb-1">
+                  <label className="text-xs font-semibold text-secondary block mb-1">
                     Data de Término (Múltiplos Dias):
                   </label>
                   <input
@@ -598,7 +599,7 @@ export default function AgendaPage() {
 
               {/* Horário */}
               <div>
-                <label className="text-xs font-semibold text-gray-700 dark:text-zinc-300 block mb-1">
+                <label className="text-xs font-semibold text-secondary block mb-1">
                   Horário de Início:
                 </label>
                 <input
@@ -612,14 +613,14 @@ export default function AgendaPage() {
 
               {/* Repetição / Evento Fixo */}
               <div>
-                <label className="text-xs font-semibold text-gray-700 dark:text-zinc-300 block mb-1 flex items-center gap-1.5">
+                <label className="text-xs font-semibold text-secondary block mb-1 flex items-center gap-1.5">
                   <Repeat className="w-3.5 h-3.5 text-accent" />
                   Repetição / Evento Fixo:
                 </label>
                 <select
                   value={novaRecorrencia}
                   onChange={(e) => setNovaRecorrencia(e.target.value)}
-                  className="input w-full text-xs font-bold text-gray-800 dark:text-zinc-200"
+                  className="input w-full text-xs font-bold text-primary"
                 >
                   <option value="unico">📌 Compromisso Único</option>
                   <option value="mensal">🔁 Fixo Mensal (Repete todo mês)</option>
@@ -629,7 +630,7 @@ export default function AgendaPage() {
 
               {/* Projeto / Cliente */}
               <div>
-                <label className="text-xs font-semibold text-gray-700 dark:text-zinc-300 block mb-1">
+                <label className="text-xs font-semibold text-secondary block mb-1">
                   Vincular ao Cliente (Opcional):
                 </label>
                 <select
@@ -646,7 +647,7 @@ export default function AgendaPage() {
                 </select>
               </div>
 
-              <div className="flex justify-end gap-2 pt-3 border-t border-gray-100 dark:border-zinc-800">
+              <div className="flex justify-end gap-2 pt-3 border-t border-border">
                 <button
                   type="button"
                   onClick={() => setModalOpen(false)}
@@ -669,6 +670,7 @@ export default function AgendaPage() {
 
       {/* ── Modal Detalhes e Edição do Evento ───────────────── */}
       <ModalPortal isOpen={!!eventoSelecionado}>
+        {eventoSelecionado && (
         <div className="fixed inset-0 z-[999999] flex items-start justify-center pt-8 sm:pt-16 px-4 pb-12 bg-black/80 backdrop-blur-md overflow-y-auto">
           <div className="card p-6 w-full max-w-md bg-card border border-dashed border-border shadow-elevated relative rounded-2xl animate-fade-in max-h-[85vh] overflow-y-auto">
             <button
@@ -686,14 +688,14 @@ export default function AgendaPage() {
                       className="w-4 h-4 rounded-full flex-shrink-0"
                       style={{ background: getCorEvento(eventoSelecionado) }}
                     />
-                    <h3 className="font-heading text-lg font-bold text-gray-900 dark:text-zinc-100">
+                    <h3 className="font-heading text-lg font-bold text-primary">
                       {eventoSelecionado.titulo}
                     </h3>
                   </div>
 
                   <button
                     onClick={() => setEditando(true)}
-                    className="p-1.5 rounded-lg text-gray-500 hover:text-accent hover:bg-gray-100 transition-colors flex items-center gap-1 text-xs font-semibold cursor-pointer"
+                    className="p-1.5 rounded-lg text-muted hover:text-accent hover:bg-surface-hover transition-colors flex items-center gap-1 text-xs font-semibold cursor-pointer"
                     title="Editar compromisso"
                   >
                     <Edit2 className="w-4 h-4" />
@@ -701,9 +703,9 @@ export default function AgendaPage() {
                   </button>
                 </div>
 
-                <div className="space-y-3 text-sm text-gray-600 dark:text-zinc-300 mb-6">
+                <div className="space-y-3 text-sm text-secondary mb-6">
                   <div className="flex items-center gap-2">
-                    <Clock className="w-4 h-4 text-gray-400 flex-shrink-0" />
+                    <Clock className="w-4 h-4 text-muted flex-shrink-0" />
                     <span>
                       {new Date(eventoSelecionado.inicio).toLocaleDateString("pt-BR", {
                         weekday: "short",
@@ -729,7 +731,7 @@ export default function AgendaPage() {
                   </div>
 
                   {eventoSelecionado.projeto && (
-                    <div className="flex items-center gap-2 text-xs font-semibold text-gray-700 dark:text-zinc-300">
+                    <div className="flex items-center gap-2 text-xs font-semibold text-secondary">
                       <span className="w-2.5 h-2.5 rounded-full" style={{ background: eventoSelecionado.projeto.cor }} />
                       <span>Cliente: {eventoSelecionado.projeto.nome}</span>
                     </div>
@@ -747,10 +749,10 @@ export default function AgendaPage() {
                   )}
                 </div>
 
-                <div className="flex justify-between items-center pt-3 border-t border-gray-100 dark:border-zinc-800">
+                <div className="flex justify-between items-center pt-3 border-t border-border">
                   <button
                     onClick={() => handleExcluirEvento(eventoSelecionado.id)}
-                    className="p-2 text-red-500 hover:bg-red-50 rounded-xl text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer"
+                    className="p-2 text-danger hover:bg-danger-subtle rounded-xl text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer"
                   >
                     <Trash2 className="w-4 h-4" />
                     <span>Excluir</span>
@@ -767,12 +769,12 @@ export default function AgendaPage() {
             ) : (
               /* Formulário de Edição do Evento */
               <div className="space-y-4">
-                <h3 className="font-heading text-lg font-bold text-gray-900 dark:text-zinc-100">
+                <h3 className="font-heading text-lg font-bold text-primary">
                   Editar Compromisso
                 </h3>
 
                 <div>
-                  <label className="text-xs font-semibold text-gray-700 dark:text-zinc-300 block mb-1">
+                  <label className="text-xs font-semibold text-secondary block mb-1">
                     Título:
                   </label>
                   <input
@@ -785,7 +787,7 @@ export default function AgendaPage() {
 
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="text-xs font-semibold text-gray-700 dark:text-zinc-300 block mb-1">
+                    <label className="text-xs font-semibold text-secondary block mb-1">
                       Data Início:
                     </label>
                     <input
@@ -797,7 +799,7 @@ export default function AgendaPage() {
                   </div>
 
                   <div>
-                    <label className="text-xs font-semibold text-gray-700 dark:text-zinc-300 block mb-1">
+                    <label className="text-xs font-semibold text-secondary block mb-1">
                       Data Término:
                     </label>
                     <input
@@ -811,7 +813,7 @@ export default function AgendaPage() {
                 </div>
 
                 <div>
-                  <label className="text-xs font-semibold text-gray-700 dark:text-zinc-300 block mb-1">
+                  <label className="text-xs font-semibold text-secondary block mb-1">
                     Horário:
                   </label>
                   <input
@@ -823,7 +825,7 @@ export default function AgendaPage() {
                 </div>
 
                 <div>
-                  <label className="text-xs font-semibold text-gray-700 dark:text-zinc-300 block mb-1">
+                  <label className="text-xs font-semibold text-secondary block mb-1">
                     Repetição:
                   </label>
                   <select
@@ -838,7 +840,7 @@ export default function AgendaPage() {
                 </div>
 
                 <div>
-                  <label className="text-xs font-semibold text-gray-700 dark:text-zinc-300 block mb-1">
+                  <label className="text-xs font-semibold text-secondary block mb-1">
                     Cliente:
                   </label>
                   <select
@@ -855,7 +857,7 @@ export default function AgendaPage() {
                   </select>
                 </div>
 
-                <div className="flex justify-end gap-2 pt-3 border-t border-gray-100 dark:border-zinc-800">
+                <div className="flex justify-end gap-2 pt-3 border-t border-border">
                   <button
                     onClick={() => setEditando(false)}
                     className="btn-neutral py-2 px-4 text-xs font-bold"
@@ -874,6 +876,7 @@ export default function AgendaPage() {
             )}
           </div>
         </div>
+        )}
       </ModalPortal>
     </div>
   );

@@ -22,14 +22,9 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
       setAutenticado(false);
     }
 
-    // Carregar avatar do localStorage
-    const savedUser = localStorage.getItem("user_profile");
-    if (savedUser) {
-      try {
-        const u = JSON.parse(savedUser);
-        if (u.foto) setAvatar(u.foto);
-      } catch (e) {}
-    }
+    // Carregar avatar do localStorage (mesma chave usada na sidebar e na pagina Config)
+    const avatarSalvo = localStorage.getItem("ruan_user_avatar");
+    if (avatarSalvo) setAvatar(avatarSalvo);
   }, []);
 
   const handleLogin = (e: React.FormEvent) => {
@@ -54,7 +49,7 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
   // Se ainda estiver verificando a sessão
   if (autenticado === null) {
     return (
-      <div className="min-h-screen bg-[#ececea] flex items-center justify-center">
+      <div className="min-h-screen bg-background flex items-center justify-center">
         <div className="w-8 h-8 rounded-full border-2 border-accent border-t-transparent animate-spin" />
       </div>
     );
@@ -63,32 +58,32 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
   // Se NÃO estiver autenticado, exibe a Tela de Bloqueio (Lock Screen)
   if (!autenticado) {
     return (
-      <div className="min-h-screen bg-[#ececea] flex items-center justify-center p-4">
-        <div className="card w-full max-w-md p-8 bg-white/90 backdrop-blur-xl shadow-elevated relative rounded-3xl border border-white/60 animate-fade-in-up text-center">
+      <div className="min-h-screen bg-background flex items-center justify-center p-4">
+        <div className="card w-full max-w-md p-8 bg-card backdrop-blur-xl shadow-elevated relative rounded-3xl border border-border animate-fade-in-up text-center">
           {/* Avatar / Ícone */}
-          <div className="mx-auto w-20 h-20 rounded-full p-1 bg-gradient-to-tr from-accent to-orange-400 shadow-md mb-4 relative">
-            <div className="w-full h-full rounded-full overflow-hidden bg-gray-100 flex items-center justify-center">
+          <div className="mx-auto w-20 h-20 rounded-full p-1 bg-gradient-to-tr from-[#c6f91f] to-[#a3d900] shadow-volt mb-4 relative">
+            <div className="w-full h-full rounded-full overflow-hidden bg-surface flex items-center justify-center">
               {avatar ? (
                 <img src={avatar} alt="Ruan" className="w-full h-full object-cover" />
               ) : (
                 <Lock className="w-8 h-8 text-accent" />
               )}
             </div>
-            <div className="absolute bottom-0 right-0 bg-accent text-white p-1.5 rounded-full shadow-xs">
+            <div className="absolute bottom-0 right-0 bg-[#c6f91f] text-black p-1.5 rounded-full shadow-xs">
               <ShieldCheck className="w-3.5 h-3.5" />
             </div>
           </div>
 
-          <h1 className="font-heading text-2xl font-bold text-gray-900 mb-1">
+          <h1 className="font-heading text-2xl font-bold text-primary mb-1">
             Meu Assessor Pro
           </h1>
-          <p className="text-xs text-gray-500 mb-6">
+          <p className="text-xs text-muted mb-6">
             Digite sua senha de segurança para desbloquear o painel.
           </p>
 
           <form onSubmit={handleLogin} className="space-y-4">
             <div className="relative">
-              <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-gray-400">
+              <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-muted">
                 <KeyRound className="w-4 h-4" />
               </div>
               <input
@@ -99,21 +94,21 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
                   setErro(false);
                 }}
                 placeholder="Digite sua senha"
-                className="input w-full pl-10 pr-10 text-center font-bold tracking-widest text-lg py-3 rounded-2xl border-gray-200 focus:border-accent"
+                className="input w-full pl-10 pr-10 text-center font-bold tracking-widest text-lg py-3 rounded-2xl border-border focus:border-accent"
                 autoFocus
                 required
               />
               <button
                 type="button"
                 onClick={() => setMostrarSenha(!mostrarSenha)}
-                className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-gray-400 hover:text-gray-600 cursor-pointer"
+                className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-muted hover:text-primary cursor-pointer"
               >
                 {mostrarSenha ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
               </button>
             </div>
 
             {erro && (
-              <p className="text-xs font-bold text-red-500 animate-shake">
+              <p className="text-xs font-bold text-danger animate-shake">
                 Senha incorreta. Tente novamente.
               </p>
             )}
@@ -128,7 +123,7 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
             </button>
           </form>
 
-          <p className="text-[11px] text-gray-400 mt-6">
+          <p className="text-[11px] text-muted mt-6">
             Segurança ativa via Better Auth & Assessor Security
           </p>
         </div>

@@ -99,6 +99,50 @@
 @theme inline {
   --color-background: var(--bg-primary);
   --color-foreground: var(--text-primary);
+
+  /* Superfícies */
+  --color-card: var(--bg-card);
+  --color-surface: var(--bg-surface);
+  --color-surface-hover: var(--bg-surface-hover);
+  --color-elevated: var(--bg-elevated);
+  --color-sidebar: var(--bg-sidebar);
+
+  /* Texto */
+  --color-primary: var(--text-primary);
+  --color-secondary: var(--text-secondary);
+  --color-muted: var(--text-muted);
+  --color-inverse: var(--text-inverse);
+
+  /* Accent & estados */
+  --color-accent: var(--accent);
+  --color-accent-lime: var(--accent-lime);
+  --color-accent-subtle: var(--accent-subtle);
+  --color-success: var(--success);
+  --color-success-subtle: var(--success-subtle);
+  --color-warning: var(--warning);
+  --color-warning-subtle: var(--warning-subtle);
+  --color-danger: var(--danger);
+  --color-danger-subtle: var(--danger-subtle);
+  --color-info: var(--info);
+  --color-info-subtle: var(--info-subtle);
+
+  /* Bordas */
+  --color-border: var(--border);
+  --color-border-dashed: var(--border-dashed);
+  --color-border-hover: var(--border-hover);
+
+  /* Sombras */
+  --shadow-xs: var(--shadow-xs);
+  --shadow-card: var(--shadow-card);
+  --shadow-elevated: var(--shadow-elevated);
+  --shadow-volt: var(--shadow-volt);
+
+  /* Raios */
+  --radius-sm: var(--radius-sm);
+  --radius-md: var(--radius-md);
+  --radius-lg: var(--radius-lg);
+  --radius-xl: var(--radius-xl);
+
   --font-sans: var(--font-geist);
   --font-heading: var(--font-geist);
   --font-mono: var(--font-mono);
@@ -143,6 +187,8 @@ body {
 /* ══════════════════════════════════════════════════════════
    VOLT CARDS & DASHED SURFACES
    ══════════════════════════════════════════════════════════ */
+
+@layer components {
 
 .card {
   position: relative;
@@ -231,6 +277,30 @@ body {
   color: var(--text-primary);
   border-color: var(--accent);
   box-shadow: inset 0 0 10px 2px rgba(198, 249, 31, 0.1);
+}
+
+.btn-neutral {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  background: var(--bg-surface);
+  color: var(--text-primary);
+  font-family: var(--font-geist), sans-serif;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 9px 18px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--border);
+  cursor: pointer;
+  transition: all 0.25s ease;
+}
+
+.btn-neutral:hover {
+  background: var(--bg-surface-hover);
+  border-color: var(--border-hover);
 }
 
 /* ══════════════════════════════════════════════════════════
@@ -372,6 +442,8 @@ body {
   border-radius: var(--radius-full);
   transition: width 0.6s cubic-bezier(0.2, 0.8, 0.2, 1);
 }
+
+} /* fim @layer components */
 
 /* ══════════════════════════════════════════════════════════
    ANIMATIONS & VOLT GLOW

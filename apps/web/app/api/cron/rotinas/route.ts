@@ -11,7 +11,7 @@ function getDiaString(d: Date): string {
   return `${ano}-${mes}-${dia}`;
 }
 
-async function enviarResumoAgendado(tipo: "08" | "15" | "19") {
+async function enviarResumoAgendado(tipo: "08" | "16" | "19") {
   const hoje = new Date();
   const hojeStr = getDiaString(hoje);
   const chaveDigest = `digest_${tipo}_${hojeStr}`;
@@ -53,8 +53,8 @@ async function enviarResumoAgendado(tipo: "08" | "15" | "19") {
   const tituloHeader =
     tipo === "08"
       ? "☀️ *Resumo Matinal das 08:00*"
-      : tipo === "15"
-      ? "⚡ *Acompanhamento da Tarde das 15:00*"
+      : tipo === "16"
+      ? "⚡ *Acompanhamento da Tarde das 16:00*"
       : "🌙 *Resumo da Noite das 19:00*";
 
   let msg = `${tituloHeader}\n\n`;
@@ -145,12 +145,12 @@ export async function GET(req: NextRequest) {
       });
     }
 
-    // 2. Disparos dos Resumos Diários das 08:00, 15:00 e 19:00
-    if (horaBRT >= 8 && horaBRT < 15) {
+    // 2. Disparos dos Resumos Diários das 08:00, 16:00 e 19:00
+    if (horaBRT >= 8 && horaBRT < 16) {
       await enviarResumoAgendado("08");
     }
-    if (horaBRT >= 15 && horaBRT < 19) {
-      await enviarResumoAgendado("15");
+    if (horaBRT >= 16 && horaBRT < 19) {
+      await enviarResumoAgendado("16");
     }
     if (horaBRT >= 19) {
       await enviarResumoAgendado("19");

@@ -107,12 +107,16 @@ export function Sidebar() {
         className="px-5 h-[76px] flex items-center justify-between border-b border-dashed relative overflow-hidden"
         style={{ borderColor: "var(--border-dashed)" }}
       >
-        <Link href="/" className="relative w-[150px] h-[44px] flex items-center">
+        <Link
+          href="/"
+          className="relative w-[158px] h-[52px] flex items-center bg-[#05080a] dark:bg-transparent rounded-xl px-2 transition-colors"
+          title="Meu Assessor"
+        >
           <Image
             src="/logo-header-volt.svg"
             alt="Meu Assessor"
-            width={150}
-            height={44}
+            width={142}
+            height={42}
             className="object-contain object-left transition-all"
             priority
           />
