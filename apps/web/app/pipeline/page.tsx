@@ -150,14 +150,14 @@ export default function PipelineKanbanPage() {
           return (
             <div
               key={col.key}
-              className="flex flex-col bg-surface p-3.5 rounded border border-border min-h-[420px]"
+              className="flex flex-col bg-surface p-4 rounded-3xl border border-border min-h-[420px]"
             >
               {/* Header da coluna */}
               <div className="flex items-center justify-between mb-3 pb-2 border-b border-border px-1">
-                <h3 className="font-tech-mono text-xs font-bold tracking-widest uppercase" style={{ color: col.cor }}>
+                <h3 className="font-heading text-sm font-bold tracking-tight uppercase" style={{ color: col.cor }}>
                   {col.titulo}
                 </h3>
-                <span className="w-5 h-5 rounded bg-card border border-border flex items-center justify-center font-mono text-[10px] font-bold text-secondary">
+                <span className="w-5 h-5 rounded-full bg-card border border-border flex items-center justify-center font-mono text-[10px] font-bold text-secondary">
                   {videosCol.length}
                 </span>
               </div>
@@ -174,32 +174,31 @@ export default function PipelineKanbanPage() {
                     <div
                       key={video.id}
                       onClick={() => setVideoParaEditar(video)}
-                      className="card card-ticks p-4 cursor-pointer group relative"
+                      className="card p-4 cursor-pointer group relative rounded-2xl"
                       style={
                         travado
                           ? { borderColor: "var(--danger)", background: "var(--danger-subtle)" }
                           : {}
                       }
                     >
-                      <div className="card-scan" />
                       {/* Top Bar: Cliente + Formato */}
                       <div className="flex items-center justify-between mb-2">
                         <div className="flex items-center gap-1.5 min-w-0">
                           <span
-                            className="w-2 h-2 rounded-full flex-shrink-0"
+                            className="w-2.5 h-2.5 rounded-full flex-shrink-0"
                             style={{ background: video.projeto?.cor || "var(--accent)" }}
                           />
-                          <span className="font-mono text-[10px] font-bold text-secondary truncate max-w-[120px]">
+                          <span className="text-xs font-bold text-secondary truncate max-w-[120px]">
                             {video.projeto?.nome || "Sem cliente"}
                           </span>
                         </div>
-                        <span className="badge badge-neutral text-[9px] font-mono font-bold">
+                        <span className="badge badge-neutral text-[9px] font-bold">
                           {FORMATO_LABELS[video.formato] || video.formato}
                         </span>
                       </div>
 
                       {/* Title */}
-                      <p className="font-mono text-xs font-bold text-primary mb-3 leading-snug">
+                      <p className="font-heading text-sm font-medium text-primary mb-3 leading-snug">
                         {video.titulo}
                       </p>
 
@@ -208,7 +207,7 @@ export default function PipelineKanbanPage() {
                         <select
                           value={video.estagio}
                           onChange={(e) => handleMoverEstagio(video.id, video.estagio, e)}
-                          className="input py-1 px-2 text-[10px] font-mono font-bold cursor-pointer"
+                          className="input py-1 px-3 text-[11px] font-bold rounded-full cursor-pointer"
                         >
                           <option value="briefing">📋 BRIEFING</option>
                           <option value="cortando">✂️ EDITANDO</option>
@@ -218,7 +217,7 @@ export default function PipelineKanbanPage() {
                       </div>
 
                       {/* Meta row */}
-                      <div className="flex items-center justify-between font-mono text-[10px] text-muted pt-2 border-t border-border">
+                      <div className="flex items-center justify-between text-[11px] text-muted pt-2 border-t border-border">
                         <div className="flex items-center gap-2">
                           {video.prazoEntrega && (
                             <span className="flex items-center gap-1">

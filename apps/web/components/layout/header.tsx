@@ -46,55 +46,54 @@ export function Header() {
       >
         <div>
           <h1
-            className="font-heading text-lg font-bold uppercase tracking-wider"
+            className="font-heading text-xl font-light tracking-tight"
             style={{ color: "var(--text-primary)" }}
           >
             {title}
           </h1>
           {pathname === "/" && (
-            <p className="text-[11px] font-mono capitalize -mt-0.5" style={{ color: "var(--text-muted)" }}>
+            <p className="text-xs text-muted capitalize -mt-0.5" style={{ color: "var(--text-muted)" }}>
               {dateStr}
             </p>
           )}
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2.5">
           {/* Botão Alternar Tema */}
           <ThemeToggle />
 
           {/* Botão Pesquisar */}
           <button
             onClick={() => setModalBuscaOpen(true)}
-            className="w-8 h-8 rounded flex items-center justify-center transition-all cursor-pointer hover:border-accent"
+            className="w-9 h-9 rounded-full flex items-center justify-center transition-all cursor-pointer hover:border-accent"
             style={{
               background: "var(--bg-card)",
               color: "var(--text-secondary)",
-              border: "0.5px solid var(--border)",
+              border: "1px solid var(--border)",
               boxShadow: "var(--shadow-xs)",
             }}
             title="Pesquisar (Cmd+K)"
           >
-            <Search className="w-3.5 h-3.5" strokeWidth={1.8} />
+            <Search className="w-4 h-4" strokeWidth={1.8} />
           </button>
 
           {/* Botão Notificações */}
           <button
             onClick={() => setPopoverNotifOpen(!popoverNotifOpen)}
-            className="w-8 h-8 rounded flex items-center justify-center relative transition-all cursor-pointer hover:border-accent"
+            className="w-9 h-9 rounded-full flex items-center justify-center relative transition-all cursor-pointer hover:border-accent"
             style={{
               background: "var(--bg-card)",
               color: "var(--text-secondary)",
-              border: "0.5px solid var(--border)",
+              border: "1px solid var(--border)",
               boxShadow: "var(--shadow-xs)",
             }}
             title="Notificações"
           >
-            <Bell className="w-3.5 h-3.5" strokeWidth={1.8} />
+            <Bell className="w-4 h-4" strokeWidth={1.8} />
             <span
-              className="absolute -top-0.5 -right-0.5 w-2 h-2 rounded-full pulse-dot"
+              className="absolute top-0 right-0 w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"
               style={{
-                background: "var(--accent)",
-                boxShadow: "0 0 8px var(--accent-glow)",
+                boxShadow: "0 0 10px rgba(52, 211, 153, 0.6)",
               }}
             />
           </button>
@@ -102,10 +101,10 @@ export function Header() {
           {/* Botão + Novo */}
           <button
             onClick={() => setModalNovoOpen(true)}
-            className="btn-primary flex items-center gap-1.5 text-[11px] font-mono font-bold py-2 px-4 cursor-pointer"
+            className="btn-primary cursor-pointer"
           >
-            <Plus className="w-3.5 h-3.5" strokeWidth={2.4} />
-            <span className="hide-mobile">Novo</span>
+            <Plus className="w-4 h-4" strokeWidth={2.4} />
+            <span>Novo</span>
           </button>
         </div>
 

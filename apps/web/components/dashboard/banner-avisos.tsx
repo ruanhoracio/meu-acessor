@@ -139,54 +139,53 @@ export function BannerAvisos() {
 
   return (
     <div
-      className="card card-ticks p-5 relative overflow-hidden transition-all shadow-xs"
+      className="card p-6 relative overflow-hidden transition-all shadow-card"
       style={{
         borderLeft: `4px solid ${atual.cor}`,
       }}
     >
-      <div className="card-scan" />
       <div className="flex items-start justify-between gap-4 relative z-10">
         <div className="flex gap-4 items-center">
           <div
-            className="w-10 h-10 rounded flex items-center justify-center flex-shrink-0 shadow-xs font-mono font-bold"
-            style={{ background: atual.cor, color: "#080808" }}
+            className="w-11 h-11 rounded-2xl flex items-center justify-center flex-shrink-0 shadow-xs font-mono font-bold"
+            style={{ background: atual.cor, color: "#064e3b" }}
           >
             {atual.icon}
           </div>
           <div>
             <div className="flex items-center gap-2 mb-1">
               <span
-                className="section-kicker text-[10px]"
-                style={{ color: atual.cor }}
+                className="badge badge-accent text-[10px]"
+                style={{ background: `${atual.cor}25`, color: atual.cor }}
               >
                 {atual.badge}
               </span>
               {avisos.length > 1 && (
                 <span className="text-[10px] font-mono text-muted">
-                  [{index + 1}/{avisos.length}]
+                  0{index + 1} // SYSTEM
                 </span>
               )}
             </div>
-            <h3 className="font-serif-italic text-lg text-primary leading-tight">
+            <h3 className="font-heading text-xl font-light text-primary leading-snug">
               {atual.titulo}
             </h3>
-            <p className="text-xs font-mono text-secondary leading-relaxed max-w-2xl mt-1">
+            <p className="text-xs text-secondary leading-relaxed max-w-2xl mt-1">
               {atual.descricao}
             </p>
           </div>
         </div>
 
         {avisos.length > 1 && (
-          <div className="flex items-center gap-1">
+          <div className="flex items-center gap-1.5">
             <button
               onClick={anterior}
-              className="w-7 h-7 rounded border border-border bg-surface text-secondary hover:text-primary hover:border-accent flex items-center justify-center transition-all cursor-pointer"
+              className="w-8 h-8 rounded-full border border-border bg-surface text-secondary hover:text-primary hover:border-accent flex items-center justify-center transition-all cursor-pointer"
             >
               <ChevronLeft className="w-4 h-4" />
             </button>
             <button
               onClick={proximo}
-              className="w-7 h-7 rounded border border-border bg-surface text-secondary hover:text-primary hover:border-accent flex items-center justify-center transition-all cursor-pointer"
+              className="w-8 h-8 rounded-full border border-border bg-surface text-secondary hover:text-primary hover:border-accent flex items-center justify-center transition-all cursor-pointer"
             >
               <ChevronRight className="w-4 h-4" />
             </button>

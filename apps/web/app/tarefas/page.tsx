@@ -624,21 +624,20 @@ function RenderItemTodoist({
   return (
     <div
       onClick={onEditar}
-      className={`card card-ticks group flex items-center justify-between gap-3 p-2.5 transition-all cursor-pointer ${
+      className={`card group flex items-center justify-between gap-3 p-3 transition-all cursor-pointer rounded-2xl ${
         concluido
           ? "opacity-50 bg-surface border-border"
           : "bg-card border-border hover:border-accent"
       }`}
     >
-      <div className="card-scan" />
-      {/* Esquerda: Checkbox Redondo Vektor + Título */}
+      {/* Esquerda: Checkbox Redondo Emerald + Título */}
       <div className="flex items-center gap-3 min-w-0 flex-1 relative z-10">
         <button
           type="button"
           onClick={(e) => onToggle(item.id, isVideo ? item.estagio : item.status, isVideo, e)}
-          className={`w-4.5 h-4.5 rounded flex items-center justify-center transition-all cursor-pointer flex-shrink-0 border ${
+          className={`w-5 h-5 rounded-full flex items-center justify-center transition-all cursor-pointer flex-shrink-0 border ${
             concluido
-              ? "border-accent bg-accent text-ink"
+              ? "border-accent bg-accent text-emerald-950"
               : "border-border hover:border-accent bg-surface text-accent"
           }`}
           title={concluido ? "Marcar como não concluído" : "Concluir tarefa"}
@@ -648,7 +647,7 @@ function RenderItemTodoist({
 
         <div className="min-w-0 flex-1">
           <p
-            className={`font-mono text-xs font-bold truncate leading-snug ${
+            className={`text-xs font-bold truncate leading-snug ${
               concluido
                 ? "line-through text-muted font-normal"
                 : "text-primary"
@@ -659,7 +658,7 @@ function RenderItemTodoist({
 
           {/* Subtítulo ou tags secundárias */}
           {item.descricao && (
-            <p className="font-mono text-[10px] text-muted truncate mt-0.5">{item.descricao}</p>
+            <p className="text-[11px] text-muted truncate mt-0.5">{item.descricao}</p>
           )}
         </div>
       </div>

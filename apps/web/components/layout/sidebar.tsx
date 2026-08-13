@@ -164,7 +164,7 @@ export function Sidebar() {
         </Link>
 
         {/* User avatar com redimensionador de foto */}
-        <div className="mt-4 mx-2 p-2.5 rounded-lg border border-border bg-card flex items-center gap-3">
+        <div className="mt-3 mx-1 p-3 rounded-2xl border border-border bg-card flex items-center gap-3 shadow-xs">
           <input
             type="file"
             ref={fileInputRef}
@@ -176,17 +176,16 @@ export function Sidebar() {
           <button
             type="button"
             onClick={() => fileInputRef.current?.click()}
-            className="relative group w-9 h-9 rounded overflow-hidden flex-shrink-0 cursor-pointer border hover:opacity-90 transition-all shadow-xs"
-            style={{ borderColor: "var(--accent)" }}
+            className="relative group w-9 h-9 rounded-full overflow-hidden flex-shrink-0 cursor-pointer border border-accent/40 hover:border-accent transition-all shadow-xs"
             title="Clique para escolher e redimensionar foto do seu computador"
           >
             {userAvatar ? (
               <img src={userAvatar} alt="Foto de perfil" className="w-full h-full object-cover" />
             ) : (
               <div
-                className="w-full h-full flex items-center justify-center text-xs font-mono font-bold text-ink"
+                className="w-full h-full flex items-center justify-center text-xs font-bold text-emerald-950"
                 style={{
-                  background: "var(--accent)",
+                  background: "var(--accent-gradient)",
                 }}
               >
                 {nomeUsuario.charAt(0).toUpperCase()}
@@ -199,10 +198,10 @@ export function Sidebar() {
 
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-1.5">
-              <span className="w-1.5 h-1.5 rounded-full bg-accent pulse-dot flex-shrink-0" />
-              <p className="text-[12px] font-mono font-bold truncate text-primary">{nomeUsuario}</p>
+              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse flex-shrink-0" />
+              <p className="text-xs font-bold truncate text-primary">{nomeUsuario}</p>
             </div>
-            <p className="text-[10px] font-mono text-muted truncate">Editor / Producer</p>
+            <p className="text-[10px] text-muted truncate">Assessor Ativo</p>
           </div>
         </div>
       </div>

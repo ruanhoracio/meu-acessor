@@ -340,11 +340,11 @@ export default function AgendaPage() {
       {/* ── Topo do Calendário ─────────────────────────────────────── */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="font-heading text-2xl font-bold tracking-tight text-primary flex items-center gap-2">
+          <h1 className="font-heading text-2xl font-light tracking-tight text-primary flex items-center gap-2">
             <CalendarIcon className="w-6 h-6 text-accent" />
             Agenda & Compromissos
           </h1>
-          <p className="text-xs font-mono text-muted mt-1">
+          <p className="text-xs text-muted mt-1">
             Arraste os compromissos para reordenar dias ou criar eventos recorrentes.
           </p>
         </div>
@@ -353,24 +353,24 @@ export default function AgendaPage() {
         <div className="flex items-center gap-2 self-start md:self-auto">
           <button
             onClick={irParaHoje}
-            className="btn-ghost text-xs py-1.5 px-3 font-mono font-bold"
+            className="btn-ghost text-xs py-1.5 px-4 font-bold"
           >
             Hoje
           </button>
-          <div className="flex items-center bg-card border border-border rounded p-0.5 shadow-xs">
+          <div className="flex items-center bg-card border border-border rounded-full p-1 shadow-xs">
             <button
               onClick={mesAnterior}
-              className="p-1 rounded hover:bg-surface transition-colors text-secondary"
+              className="p-1.5 rounded-full hover:bg-surface transition-colors text-secondary"
               title="Mês anterior"
             >
               <ChevronLeft className="w-4 h-4" />
             </button>
-            <span className="font-mono text-xs font-bold px-3 min-w-[140px] text-center text-primary uppercase">
+            <span className="font-heading text-xs font-bold px-3 min-w-[140px] text-center text-primary uppercase">
               {MESES[mes]} {ano}
             </span>
             <button
               onClick={proximoMes}
-              className="p-1 rounded hover:bg-surface transition-colors text-secondary"
+              className="p-1.5 rounded-full hover:bg-surface transition-colors text-secondary"
               title="Próximo mês"
             >
               <ChevronRight className="w-4 h-4" />
@@ -379,7 +379,7 @@ export default function AgendaPage() {
 
           <button
             onClick={() => abrirModalNovoNoDia(new Date())}
-            className="btn-primary text-xs py-1.5 px-3 flex items-center gap-1.5 font-mono font-bold"
+            className="btn-primary text-xs py-2 px-5 flex items-center gap-1.5 font-bold cursor-pointer"
           >
             <Plus className="w-4 h-4" />
             <span>Novo</span>
@@ -388,11 +388,10 @@ export default function AgendaPage() {
       </div>
 
       {/* ── Grade Mensal do Calendário ──────────────────────── */}
-      <div className="card card-ticks p-0 overflow-hidden bg-card border border-border shadow-card rounded">
-        <div className="card-scan" />
+      <div className="card p-0 overflow-hidden bg-card border border-border shadow-card rounded-3xl">
         {/* Cabeçalho com dias da semana */}
         <div
-          className="grid grid-cols-7 border-b bg-surface text-center py-2 text-[10px] font-mono font-bold text-muted uppercase tracking-widest relative z-10"
+          className="grid grid-cols-7 border-b bg-surface text-center py-2.5 text-xs font-bold text-muted uppercase tracking-wider relative z-10"
           style={{ borderColor: "var(--border)" }}
         >
           {DIAS_SEMANA.map((dia) => (
@@ -401,7 +400,7 @@ export default function AgendaPage() {
         </div>
 
         {/* Grade de 35 células */}
-        <div className="grid grid-cols-7 auto-rows-fr bg-border gap-[0.5px] relative z-10">
+        <div className="grid grid-cols-7 auto-rows-fr bg-border gap-[1px] relative z-10">
           {diasGrade.map((dia, idx) => {
             const ehMesAtual = dia.getMonth() === dataAtual.getMonth();
             const ehHoje =
@@ -429,16 +428,16 @@ export default function AgendaPage() {
                   e.dataTransfer.dropEffect = "move";
                 }}
                 onDrop={(e) => handleDropNoDia(e, dia)}
-                className={`min-h-[110px] p-1.5 bg-card flex flex-col justify-start transition-all hover:bg-surface cursor-pointer group relative ${
+                className={`min-h-[115px] p-2 bg-card flex flex-col justify-start transition-all hover:bg-surface cursor-pointer group relative ${
                   !ehMesAtual ? "opacity-35" : ""
                 }`}
               >
                 {/* Número do Dia */}
                 <div className="flex items-center justify-between mb-1 px-1">
                   <span
-                    className={`text-[10px] font-mono font-bold inline-flex items-center justify-center w-5 h-5 rounded transition-all ${
+                    className={`text-xs font-bold inline-flex items-center justify-center w-6 h-6 rounded-full transition-all ${
                       ehHoje
-                        ? "bg-accent text-ink shadow-xs font-extrabold"
+                        ? "bg-accent-gradient text-emerald-950 shadow-xs font-extrabold"
                         : ehMesAtual
                         ? "text-primary"
                         : "text-muted"

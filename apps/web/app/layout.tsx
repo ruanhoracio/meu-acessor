@@ -1,5 +1,5 @@
 import type { Metadata, Viewport } from "next";
-import { Inter, Urbanist, Space_Mono, Playfair_Display } from "next/font/google";
+import { Inter, DM_Sans, Bricolage_Grotesque, Space_Mono } from "next/font/google";
 import "./globals.css";
 import { Sidebar } from "@/components/layout/sidebar";
 import { BottomNav } from "@/components/layout/bottom-nav";
@@ -12,11 +12,18 @@ const inter = Inter({
   display: "swap",
 });
 
-const urbanist = Urbanist({
+const dmSans = DM_Sans({
   subsets: ["latin"],
-  variable: "--font-urbanist",
+  variable: "--font-dm-sans",
   display: "swap",
-  weight: ["300", "400", "500", "600", "700", "800"],
+  weight: ["300", "400", "500", "600", "700"],
+});
+
+const bricolage = Bricolage_Grotesque({
+  subsets: ["latin"],
+  variable: "--font-bricolage",
+  display: "swap",
+  weight: ["300", "400", "500", "600", "700"],
 });
 
 const spaceMono = Space_Mono({
@@ -24,14 +31,6 @@ const spaceMono = Space_Mono({
   variable: "--font-mono",
   display: "swap",
   weight: ["400", "700"],
-});
-
-const playfair = Playfair_Display({
-  subsets: ["latin"],
-  variable: "--font-serif",
-  display: "swap",
-  weight: ["400", "600", "700"],
-  style: ["normal", "italic"],
 });
 
 export const metadata: Metadata = {
@@ -67,7 +66,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="pt-BR" className={`${inter.variable} ${urbanist.variable} ${spaceMono.variable} ${playfair.variable}`}>
+    <html lang="pt-BR" className={`${inter.variable} ${dmSans.variable} ${bricolage.variable} ${spaceMono.variable}`}>
       <head>
         <meta name="mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
