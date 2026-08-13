@@ -16,6 +16,7 @@ import {
   Settings,
   Camera,
 } from "lucide-react";
+import { ThemeToggle } from "@/components/theme-toggle";
 
 const NAV_ITEMS = [
   { href: "/", label: "Hoje", icon: LayoutDashboard },
@@ -149,7 +150,10 @@ export function Sidebar() {
       </nav>
 
       {/* Footer */}
-      <div className="px-3 py-4 border-t" style={{ borderColor: "var(--border)" }}>
+      <div className="px-3 py-4 border-t space-y-2" style={{ borderColor: "var(--border)" }}>
+        <div className="px-1">
+          <ThemeToggle />
+        </div>
         <Link href="/config" className={`sidebar-link ${pathname === "/config" ? "active" : ""}`}>
           <Settings className="w-[18px] h-[18px]" strokeWidth={1.8} />
           Configurações

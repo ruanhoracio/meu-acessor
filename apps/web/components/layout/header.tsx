@@ -6,6 +6,7 @@ import { Bell, Search, Plus } from "lucide-react";
 import { ModalNovo } from "@/components/modals/modal-novo";
 import { ModalBusca } from "@/components/modals/modal-busca";
 import { PopoverNotificacoes } from "@/components/modals/popover-notificacoes";
+import { ThemeToggle } from "@/components/theme-toggle";
 
 const PAGE_TITLES: Record<string, string> = {
   "/": "Hoje",
@@ -60,6 +61,9 @@ export function Header() {
         </div>
 
         <div className="flex items-center gap-2">
+          {/* Botão Alternar Tema */}
+          <ThemeToggle />
+
           {/* Botão Pesquisar */}
           <button
             onClick={() => setModalBuscaOpen(true)}

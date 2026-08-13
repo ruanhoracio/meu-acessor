@@ -461,8 +461,8 @@ export default function AgendaPage() {
 
       {/* ── Modal Criar Novo Evento ─────────────────────────── */}
       <ModalPortal isOpen={modalOpen}>
-        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm overflow-y-auto">
-          <div className="card p-6 w-full max-w-md bg-white shadow-2xl relative rounded-2xl animate-fade-in my-auto max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 z-[999999] flex items-start justify-center pt-8 sm:pt-16 px-4 pb-12 bg-black/70 backdrop-blur-md overflow-y-auto">
+          <div className="card p-6 w-full max-w-md bg-white dark:bg-zinc-900 shadow-2xl relative rounded-2xl animate-fade-in max-h-[85vh] overflow-y-auto border border-gray-200 dark:border-zinc-800">
             <button
               onClick={() => setModalOpen(false)}
               className="absolute top-4 right-4 p-1 rounded-lg text-gray-400 hover:text-gray-600"
@@ -599,8 +599,8 @@ export default function AgendaPage() {
 
       {/* ── Modal Detalhes e Edição do Evento ───────────────── */}
       <ModalPortal isOpen={!!eventoSelecionado}>
-        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm overflow-y-auto">
-          <div className="card p-6 w-full max-w-md bg-white shadow-2xl relative rounded-2xl animate-fade-in my-auto max-h-[90vh] overflow-y-auto">
+        <div className="fixed inset-0 z-[999999] flex items-start justify-center pt-8 sm:pt-16 px-4 pb-12 bg-black/70 backdrop-blur-md overflow-y-auto">
+          <div className="card p-6 w-full max-w-md bg-white dark:bg-zinc-900 shadow-2xl relative rounded-2xl animate-fade-in max-h-[85vh] overflow-y-auto border border-gray-200 dark:border-zinc-800">
             <button
               onClick={() => setEventoSelecionado(null)}
               className="absolute top-4 right-4 p-1 rounded-lg text-gray-400 hover:text-gray-600"

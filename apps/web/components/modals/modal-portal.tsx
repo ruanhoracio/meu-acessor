@@ -12,6 +12,7 @@ export function ModalPortal({ children, isOpen }: { children: ReactNode; isOpen:
 
   useEffect(() => {
     if (isOpen) {
+      window.scrollTo({ top: 0, behavior: "instant" as any });
       const originalOverflow = document.body.style.overflow;
       document.body.style.overflow = "hidden";
       return () => {

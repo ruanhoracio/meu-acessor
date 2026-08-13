@@ -36,8 +36,8 @@ export function ModalBusca({ isOpen, onClose }: { isOpen: boolean; onClose: () =
 
   return (
     <ModalPortal isOpen={isOpen}>
-      <div className="fixed inset-0 z-[9999] flex items-start justify-center pt-20 p-4 bg-black/60 backdrop-blur-sm overflow-y-auto">
-        <div className="card w-full max-w-xl p-4 relative bg-white shadow-2xl rounded-2xl animate-fade-in my-auto max-h-[85vh] overflow-y-auto">
+      <div className="fixed inset-0 z-[999999] flex items-start justify-center pt-8 sm:pt-16 px-4 pb-12 bg-black/70 backdrop-blur-md overflow-y-auto">
+        <div className="card w-full max-w-xl p-4 relative bg-white dark:bg-zinc-900 shadow-2xl rounded-2xl animate-fade-in max-h-[85vh] overflow-y-auto border border-gray-200 dark:border-zinc-800">
           <div className="flex items-center gap-3 border-b pb-3 px-2 border-gray-200">
             <Search className="w-5 h-5 text-gray-400" />
             <input
