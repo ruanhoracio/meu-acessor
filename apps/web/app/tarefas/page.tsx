@@ -290,35 +290,35 @@ export default function TarefasTodoistPage() {
       {/* ── Topo do Todoist: Título & Botões de Alternância ────────────────── */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="font-heading text-2xl font-bold tracking-tight text-gray-900 dark:text-zinc-100 flex items-center gap-2">
-            Tarefas & Afazeres
+          <h1 className="font-heading text-2xl font-light tracking-tight text-primary flex items-center gap-2">
+            Tarefas & Checklists
           </h1>
-          <p className="text-xs text-gray-500 dark:text-zinc-400 mt-0.5">
+          <p className="text-xs font-mono text-muted mt-0.5">
             Organização cronológica inteligente estilo Todoist "Em Breve".
           </p>
         </div>
 
         <div className="flex items-center gap-2">
           {/* Alternador de Modo: Todoist vs Kanban */}
-          <div className="flex items-center bg-gray-100 dark:bg-zinc-800/80 p-1 rounded-xl border border-gray-200 dark:border-zinc-700/80 shadow-2xs">
+          <div className="flex items-center bg-card p-1 rounded-lg border border-dashed border-border shadow-2xs">
             <button
               onClick={() => setModoExibicao("todoist")}
-              className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-lg transition-all ${
+              className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-mono font-bold rounded transition-all cursor-pointer ${
                 modoExibicao === "todoist"
-                  ? "bg-white dark:bg-zinc-900 text-accent shadow-xs"
-                  : "text-gray-600 dark:text-zinc-400 hover:text-gray-900 dark:hover:text-zinc-200"
+                  ? "bg-[#c6f91f] text-black shadow-xs"
+                  : "text-muted hover:text-primary"
               }`}
             >
               <List className="w-3.5 h-3.5" />
-              <span>Em Breve (Todoist)</span>
+              <span>Lista (Todoist)</span>
             </button>
 
             <button
               onClick={() => setModoExibicao("kanban")}
-              className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-lg transition-all ${
+              className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-mono font-bold rounded transition-all cursor-pointer ${
                 modoExibicao === "kanban"
-                  ? "bg-white dark:bg-zinc-900 text-accent shadow-xs"
-                  : "text-gray-600 dark:text-zinc-400 hover:text-gray-900 dark:hover:text-zinc-200"
+                  ? "bg-[#c6f91f] text-black shadow-xs"
+                  : "text-muted hover:text-primary"
               }`}
             >
               <LayoutGrid className="w-3.5 h-3.5" />

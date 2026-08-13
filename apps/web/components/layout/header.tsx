@@ -41,18 +41,18 @@ export function Header() {
         className="sticky top-0 z-20 h-[64px] flex items-center justify-between px-4 md:px-8 relative backdrop-blur-md transition-all"
         style={{
           background: "var(--bg-primary)",
-          borderBottom: "0.5px solid var(--border)",
+          borderBottom: "1px dashed var(--border-dashed)",
         }}
       >
         <div>
           <h1
-            className="font-heading text-xl font-light tracking-tight"
+            className="font-heading text-2xl font-light tracking-tighter"
             style={{ color: "var(--text-primary)" }}
           >
             {title}
           </h1>
           {pathname === "/" && (
-            <p className="text-xs text-muted capitalize -mt-0.5" style={{ color: "var(--text-muted)" }}>
+            <p className="text-xs text-muted font-mono capitalize -mt-0.5" style={{ color: "var(--text-muted)" }}>
               {dateStr}
             </p>
           )}
@@ -65,11 +65,11 @@ export function Header() {
           {/* Botão Pesquisar */}
           <button
             onClick={() => setModalBuscaOpen(true)}
-            className="w-9 h-9 rounded-full flex items-center justify-center transition-all cursor-pointer hover:border-accent"
+            className="w-9 h-9 rounded-lg flex items-center justify-center transition-all cursor-pointer hover:border-accent"
             style={{
               background: "var(--bg-card)",
               color: "var(--text-secondary)",
-              border: "1px solid var(--border)",
+              border: "1px dashed var(--border)",
               boxShadow: "var(--shadow-xs)",
             }}
             title="Pesquisar (Cmd+K)"
@@ -80,20 +80,20 @@ export function Header() {
           {/* Botão Notificações */}
           <button
             onClick={() => setPopoverNotifOpen(!popoverNotifOpen)}
-            className="w-9 h-9 rounded-full flex items-center justify-center relative transition-all cursor-pointer hover:border-accent"
+            className="w-9 h-9 rounded-lg flex items-center justify-center relative transition-all cursor-pointer hover:border-accent"
             style={{
               background: "var(--bg-card)",
               color: "var(--text-secondary)",
-              border: "1px solid var(--border)",
+              border: "1px dashed var(--border)",
               boxShadow: "var(--shadow-xs)",
             }}
             title="Notificações"
           >
             <Bell className="w-4 h-4" strokeWidth={1.8} />
             <span
-              className="absolute top-0 right-0 w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"
+              className="absolute top-0 right-0 w-2.5 h-2.5 rounded-full bg-[#c6f91f] animate-pulse"
               style={{
-                boxShadow: "0 0 10px rgba(52, 211, 153, 0.6)",
+                boxShadow: "0 0 10px rgba(198, 249, 31, 0.6)",
               }}
             />
           </button>

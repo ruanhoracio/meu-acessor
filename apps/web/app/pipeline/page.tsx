@@ -124,7 +124,7 @@ export default function PipelineKanbanPage() {
           <button
             type="button"
             onClick={carregarVideos}
-            className="p-2 rounded-xl border border-gray-200 dark:border-zinc-800 hover:bg-gray-100 dark:hover:bg-zinc-800 text-gray-600 dark:text-zinc-300 transition-all cursor-pointer flex items-center gap-1.5 text-xs font-semibold"
+            className="p-2 px-3 rounded-lg border border-dashed border-border bg-card hover:bg-surface-hover text-secondary hover:text-primary transition-all cursor-pointer flex items-center gap-1.5 text-xs font-mono font-bold uppercase tracking-wider"
             title="Atualizar vídeos"
           >
             <RefreshCw className={`w-3.5 h-3.5 ${loading ? "animate-spin text-accent" : ""}`} />
@@ -150,14 +150,14 @@ export default function PipelineKanbanPage() {
           return (
             <div
               key={col.key}
-              className="flex flex-col bg-surface p-4 rounded-3xl border border-border min-h-[420px]"
+              className="flex flex-col bg-surface p-4 rounded-xl border border-dashed border-border min-h-[420px]"
             >
               {/* Header da coluna */}
-              <div className="flex items-center justify-between mb-3 pb-2 border-b border-border px-1">
+              <div className="flex items-center justify-between mb-3 pb-2 border-b border-dashed border-border px-1">
                 <h3 className="font-heading text-sm font-bold tracking-tight uppercase" style={{ color: col.cor }}>
                   {col.titulo}
                 </h3>
-                <span className="w-5 h-5 rounded-full bg-card border border-border flex items-center justify-center font-mono text-[10px] font-bold text-secondary">
+                <span className="w-5 h-5 rounded bg-card border border-dashed border-border flex items-center justify-center font-mono text-[10px] font-bold text-secondary">
                   {videosCol.length}
                 </span>
               </div>
@@ -174,7 +174,7 @@ export default function PipelineKanbanPage() {
                     <div
                       key={video.id}
                       onClick={() => setVideoParaEditar(video)}
-                      className="card p-4 cursor-pointer group relative rounded-2xl"
+                      className="card p-4 cursor-pointer group relative rounded-lg"
                       style={
                         travado
                           ? { borderColor: "var(--danger)", background: "var(--danger-subtle)" }
@@ -192,13 +192,13 @@ export default function PipelineKanbanPage() {
                             {video.projeto?.nome || "Sem cliente"}
                           </span>
                         </div>
-                        <span className="badge badge-neutral text-[9px] font-bold">
+                        <span className="badge badge-neutral text-[9px] font-mono font-bold uppercase">
                           {FORMATO_LABELS[video.formato] || video.formato}
                         </span>
                       </div>
 
                       {/* Title */}
-                      <p className="font-heading text-sm font-medium text-primary mb-3 leading-snug">
+                      <p className="font-heading text-sm font-light text-primary mb-3 leading-snug">
                         {video.titulo}
                       </p>
 
@@ -207,7 +207,7 @@ export default function PipelineKanbanPage() {
                         <select
                           value={video.estagio}
                           onChange={(e) => handleMoverEstagio(video.id, video.estagio, e)}
-                          className="input py-1 px-3 text-[11px] font-bold rounded-full cursor-pointer"
+                          className="input py-1 px-3 text-[11px] font-mono font-bold rounded-lg cursor-pointer"
                         >
                           <option value="briefing">📋 BRIEFING</option>
                           <option value="cortando">✂️ EDITANDO</option>
@@ -217,7 +217,7 @@ export default function PipelineKanbanPage() {
                       </div>
 
                       {/* Meta row */}
-                      <div className="flex items-center justify-between text-[11px] text-muted pt-2 border-t border-border">
+                      <div className="flex items-center justify-between text-[11px] text-muted pt-2 border-t border-dashed border-border">
                         <div className="flex items-center gap-2">
                           {video.prazoEntrega && (
                             <span className="flex items-center gap-1">

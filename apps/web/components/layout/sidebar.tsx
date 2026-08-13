@@ -101,28 +101,28 @@ export function Sidebar() {
         borderColor: "var(--border)",
       }}
     >
-      {/* Logo vetorial oficial Meu Assessor com marca d'água Vektor */}
+      {/* Logo vetorial oficial Meu Assessor com headset verde Volt */}
       <div
-        className="px-5 h-[76px] flex items-center justify-between border-b relative overflow-hidden"
-        style={{ borderColor: "var(--border)" }}
+        className="px-5 h-[76px] flex items-center justify-between border-b border-dashed relative overflow-hidden"
+        style={{ borderColor: "var(--border-dashed)" }}
       >
         <div className="relative w-[150px] h-[48px]">
           <Image
-            src="/logo-header.svg"
+            src="/logo-header-volt.svg"
             alt="Meu Assessor"
             fill
-            className="object-contain object-left dark:brightness-125 transition-all"
+            className="object-contain object-left text-white transition-all"
             priority
           />
         </div>
-        <span className="font-mono text-[9px] font-bold text-accent px-1.5 py-0.5 rounded border border-accent/30 bg-accent/10 uppercase tracking-widest">
-          v2.5
+        <span className="font-mono text-[9px] font-bold text-[#c6f91f] px-2 py-0.5 rounded border border-[#c6f91f]/30 bg-[#c6f91f]/10 uppercase tracking-widest">
+          VOLT 2.0
         </span>
-        <div className="absolute bottom-0 left-0 right-0 h-[1px] bg-gradient-to-r from-accent/50 via-accent to-transparent" />
+        <div className="absolute bottom-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-[#c6f91f]/40 to-transparent" />
       </div>
 
       {/* Nav */}
-      <nav className="flex-1 px-3 py-5 space-y-1 overflow-y-auto">
+      <nav className="flex-1 px-3 py-5 space-y-1.5 overflow-y-auto">
         {NAV_ITEMS.map((item) => {
           const isActive = item.href === "/"
             ? pathname === "/"
@@ -136,13 +136,13 @@ export function Sidebar() {
               className={`sidebar-link ${isActive ? "active" : ""}`}
             >
               <Icon className="w-[16px] h-[16px]" strokeWidth={isActive ? 2.4 : 1.8} />
-              <span className="tracking-widest uppercase font-mono text-[11px] font-bold">{item.label}</span>
+              <span className="tracking-wider uppercase font-mono text-[11px] font-bold">{item.label}</span>
               {item.href === "/inbox" && inboxCount > 0 && (
                 <span
-                  className="ml-auto text-[10px] font-mono font-bold py-0.5 px-2 rounded transition-all"
+                  className="ml-auto text-[10px] font-mono font-bold py-0.5 px-2 rounded-full transition-all"
                   style={{
                     background: "var(--accent)",
-                    color: "#080808",
+                    color: "#05080a",
                   }}
                 >
                   {inboxCount}
@@ -164,7 +164,7 @@ export function Sidebar() {
         </Link>
 
         {/* User avatar com redimensionador de foto */}
-        <div className="mt-3 mx-1 p-3 rounded-2xl border border-border bg-card flex items-center gap-3 shadow-xs">
+        <div className="mt-3 mx-1 p-3 rounded-xl border border-dashed border-border bg-card flex items-center gap-3 shadow-xs">
           <input
             type="file"
             ref={fileInputRef}
@@ -176,16 +176,16 @@ export function Sidebar() {
           <button
             type="button"
             onClick={() => fileInputRef.current?.click()}
-            className="relative group w-9 h-9 rounded-full overflow-hidden flex-shrink-0 cursor-pointer border border-accent/40 hover:border-accent transition-all shadow-xs"
+            className="relative group w-9 h-9 rounded-lg overflow-hidden flex-shrink-0 cursor-pointer border border-[#c6f91f]/40 hover:border-[#c6f91f] transition-all shadow-xs"
             title="Clique para escolher e redimensionar foto do seu computador"
           >
             {userAvatar ? (
               <img src={userAvatar} alt="Foto de perfil" className="w-full h-full object-cover" />
             ) : (
               <div
-                className="w-full h-full flex items-center justify-center text-xs font-bold text-emerald-950"
+                className="w-full h-full flex items-center justify-center text-xs font-bold text-black"
                 style={{
-                  background: "var(--accent-gradient)",
+                  background: "#c6f91f",
                 }}
               >
                 {nomeUsuario.charAt(0).toUpperCase()}
@@ -198,10 +198,10 @@ export function Sidebar() {
 
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse flex-shrink-0" />
+              <span className="w-2 h-2 rounded-full bg-[#c6f91f] animate-pulse flex-shrink-0" />
               <p className="text-xs font-bold truncate text-primary">{nomeUsuario}</p>
             </div>
-            <p className="text-[10px] text-muted truncate">Assessor Ativo</p>
+            <p className="text-[10px] font-mono text-muted truncate">Editor / Producer</p>
           </div>
         </div>
       </div>

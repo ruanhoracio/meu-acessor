@@ -139,7 +139,7 @@ export function BannerAvisos() {
 
   return (
     <div
-      className="card p-6 relative overflow-hidden transition-all shadow-card"
+      className="card p-5 relative overflow-hidden transition-all shadow-card"
       style={{
         borderLeft: `4px solid ${atual.cor}`,
       }}
@@ -147,8 +147,8 @@ export function BannerAvisos() {
       <div className="flex items-start justify-between gap-4 relative z-10">
         <div className="flex gap-4 items-center">
           <div
-            className="w-11 h-11 rounded-2xl flex items-center justify-center flex-shrink-0 shadow-xs font-mono font-bold"
-            style={{ background: atual.cor, color: "#064e3b" }}
+            className="w-10 h-10 rounded-lg flex items-center justify-center flex-shrink-0 shadow-xs font-mono font-bold text-black"
+            style={{ background: atual.cor }}
           >
             {atual.icon}
           </div>
@@ -156,17 +156,17 @@ export function BannerAvisos() {
             <div className="flex items-center gap-2 mb-1">
               <span
                 className="badge badge-accent text-[10px]"
-                style={{ background: `${atual.cor}25`, color: atual.cor }}
+                style={{ background: `${atual.cor}25`, color: atual.cor, borderColor: `${atual.cor}40` }}
               >
                 {atual.badge}
               </span>
               {avisos.length > 1 && (
                 <span className="text-[10px] font-mono text-muted">
-                  0{index + 1} // SYSTEM
+                  0{index + 1} / 0{avisos.length}
                 </span>
               )}
             </div>
-            <h3 className="font-heading text-xl font-light text-primary leading-snug">
+            <h3 className="font-heading text-xl font-light text-primary leading-tight">
               {atual.titulo}
             </h3>
             <p className="text-xs text-secondary leading-relaxed max-w-2xl mt-1">
@@ -179,13 +179,13 @@ export function BannerAvisos() {
           <div className="flex items-center gap-1.5">
             <button
               onClick={anterior}
-              className="w-8 h-8 rounded-full border border-border bg-surface text-secondary hover:text-primary hover:border-accent flex items-center justify-center transition-all cursor-pointer"
+              className="w-8 h-8 rounded-lg border border-dashed border-border bg-surface text-secondary hover:text-primary hover:border-accent flex items-center justify-center transition-all cursor-pointer"
             >
               <ChevronLeft className="w-4 h-4" />
             </button>
             <button
               onClick={proximo}
-              className="w-8 h-8 rounded-full border border-border bg-surface text-secondary hover:text-primary hover:border-accent flex items-center justify-center transition-all cursor-pointer"
+              className="w-8 h-8 rounded-lg border border-dashed border-border bg-surface text-secondary hover:text-primary hover:border-accent flex items-center justify-center transition-all cursor-pointer"
             >
               <ChevronRight className="w-4 h-4" />
             </button>

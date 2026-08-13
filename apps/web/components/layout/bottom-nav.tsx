@@ -29,7 +29,7 @@ export function BottomNav() {
         background: "var(--bg-sidebar)",
         backdropFilter: "blur(24px)",
         WebkitBackdropFilter: "blur(24px)",
-        borderTop: "1px solid var(--border)",
+        borderTop: "1px dashed var(--border-dashed)",
         paddingBottom: "max(12px, env(safe-area-inset-bottom))",
       }}
     >
@@ -44,16 +44,15 @@ export function BottomNav() {
             <Link
               key={item.href}
               href={item.href}
-              className="flex flex-col items-center gap-1 py-1.5 px-3 rounded-full transition-all cursor-pointer"
+              className="flex flex-col items-center gap-1 py-1.5 px-3 rounded-lg transition-all cursor-pointer"
               style={{
-                color: isActive ? "#064e3b" : "var(--text-muted)",
-                background: isActive ? "var(--accent-gradient)" : "transparent",
-                fontWeight: isActive ? 700 : 500,
-                boxShadow: isActive ? "0 8px 18px rgba(16, 185, 129, 0.4)" : "none",
+                color: isActive ? "#c6f91f" : "var(--text-muted)",
+                background: isActive ? "rgba(198, 249, 31, 0.1)" : "transparent",
+                border: isActive ? "1px solid rgba(198, 249, 31, 0.25)" : "1px solid transparent",
               }}
             >
               <Icon className="w-4.5 h-4.5" strokeWidth={isActive ? 2.4 : 1.8} />
-              <span className="text-[9px] font-mono uppercase tracking-wider">{item.label}</span>
+              <span className="text-[9px] font-mono uppercase tracking-wider font-bold">{item.label}</span>
             </Link>
           );
         })}
