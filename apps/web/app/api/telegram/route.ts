@@ -1,262 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db";
 import OpenAI from "openai";
+import { tentarClassificacaoInstantanea, formatarBRT } from "@/lib/classificador";
 
 const TELEGRAM_TOKEN = process.env.TELEGRAM_BOT_TOKEN || "";
 const ALLOWED_CHAT_ID = process.env.TELEGRAM_ALLOWED_CHAT_ID || "";
 const GROQ_KEY = process.env.GROQ_API_KEY || "";
 
 const groq = GROQ_KEY ? new OpenAI({ apiKey: GROQ_KEY, baseURL: "https://api.groq.com/openai/v1" }) : null;
-
-const MESES_MAP: Record<string, number> = {
-  janeiro: 0, jan: 0,
-  fevereiro: 1, fev: 1,
-  março: 2, marco: 2, mar: 2,
-  abril: 3, abr: 3,
-  maio: 4, mai: 4,
-  junho: 5, jun: 5,
-  julho: 6, jul: 6,
-  agosto: 7, ago: 7,
-  setembro: 8, set: 8,
-  outubro: 9, out: 9,
-  novembro: 10, nov: 10,
-  dezembro: 11, dez: 11,
-};
-
-function extrairDataEMensagem(mensagem: string, agora: Date) {
-  const msgTrim = mensagem.trim();
-  let dataCalculada: Date | null = null;
-  let tituloLimpo = msgTrim;
-  let ehDataExplicita = false;
-
-  // 1. "12 de Setembro", "15 de Outubro", "3 de maio", "20 de agosto"
-  const regexMesExtenso = /(\d{1,2})\s+de\s+(janeiro|fevereiro|março|marco|abril|maio|junho|julho|agosto|setembro|outubro|novembro|dezembro|jan|fev|mar|abr|mai|jun|jul|ago|set|out|nov|dez)/i;
-  const matchMesExt = msgTrim.match(regexMesExtenso);
-
-  if (matchMesExt) {
-    const diaNum = parseInt(matchMesExt[1], 10);
-    const mesNome = matchMesExt[2].toLowerCase();
-    const mesIdx = MESES_MAP[mesNome];
-
-    if (mesIdx !== undefined && diaNum >= 1 && diaNum <= 31) {
-      let ano = agora.getFullYear();
-      if (mesIdx < agora.getMonth() || (mesIdx === agora.getMonth() && diaNum < agora.getDate())) {
-        if (agora.getMonth() > mesIdx) {
-          ano += 1;
-        }
-      }
-      dataCalculada = new Date(ano, mesIdx, diaNum, 9, 0, 0, 0);
-      ehDataExplicita = true;
-      tituloLimpo = msgTrim.replace(matchMesExt[0], "").replace(/^[\s\-_:]+/, "").replace(/[\s\-_:]+$/, "").trim();
-    }
-  }
-
-  // 2. "12/09", "15/10/2026"
-  if (!dataCalculada) {
-    const regexBarra = /(\d{1,2})\/(\d{1,2})(?:\/(\d{2,4}))?/;
-    const matchBarra = msgTrim.match(regexBarra);
-    if (matchBarra) {
-      const diaNum = parseInt(matchBarra[1], 10);
-      const mesNum = parseInt(matchBarra[2], 10) - 1;
-      let ano = matchBarra[3] ? parseInt(matchBarra[3], 10) : agora.getFullYear();
-      if (ano < 100) ano += 2000;
-
-      if (mesNum >= 0 && mesNum <= 11 && diaNum >= 1 && diaNum <= 31) {
-        dataCalculada = new Date(ano, mesNum, diaNum, 9, 0, 0, 0);
-        ehDataExplicita = true;
-        tituloLimpo = msgTrim.replace(matchBarra[0], "").replace(/^[\s\-_:]+/, "").replace(/[\s\-_:]+$/, "").trim();
-      }
-    }
-  }
-
-  // 3. "amanhã" / "amanha" / "hoje"
-  if (!dataCalculada) {
-    const msgLower = msgTrim.toLowerCase();
-    if (msgLower.includes("amanhã") || msgLower.includes("amanha")) {
-      const d = new Date(agora);
-      d.setDate(d.getDate() + 1);
-      d.setHours(9, 0, 0, 0);
-      dataCalculada = d;
-      ehDataExplicita = true;
-      tituloLimpo = msgTrim.replace(/(?:para|pra)?\s*(?:amanhã|amanha)/gi, "").replace(/^[\s\-_:]+/, "").replace(/[\s\-_:]+$/, "").trim();
-    } else if (msgLower.includes("hoje")) {
-      const d = new Date(agora);
-      d.setHours(18, 0, 0, 0);
-      dataCalculada = d;
-      tituloLimpo = msgTrim.replace(/(?:para|pra)?\s*hoje/gi, "").replace(/^[\s\-_:]+/, "").replace(/[\s\-_:]+$/, "").trim();
-    }
-  }
-
-  // Limpeza final do título
-  tituloLimpo = tituloLimpo
-    .replace(/^(?:adicione|adicionar|criar|fazer|coloque|colocar|põe|bota)?\s*(?:uma\s*)?(?:tarefa|tarefas)?\s*(?:para|pra|que\s*é)?\s*/gi, "")
-    .replace(/^tarefa\s*(?:pra|para|de)?\s*/gi, "")
-    .replace(/(?:,?\s*)?(?:coloque|colocar|põe|bota|adicione|salve|salvar)?\s*(?:na|pra|para)?\s*agenda/gi, "")
-    .replace(/^(agendar|marcar|criar|fazer|preciso|tenho que)\s+/gi, "")
-    .replace(/^[,\s\-_:]+/, "")
-    .replace(/[,\s\-_:]+$/, "")
-    .trim();
-
-  if (!tituloLimpo) tituloLimpo = msgTrim;
-  tituloLimpo = tituloLimpo.charAt(0).toUpperCase() + tituloLimpo.slice(1);
-
-  return {
-    data: dataCalculada,
-    tituloLimpo,
-    ehDataExplicita,
-  };
-}
-
-// Algoritmo local instantâneo (~2ms)
-function tentarClassificacaoInstantanea(mensagem: string, agora: Date, projetosAtivos: string[]) {
-  const msgTrim = mensagem.trim();
-  if (msgTrim.includes("\n") || msgTrim.length > 120) return null;
-  const msgLower = msgTrim.toLowerCase();
-
-  // Lembrete proativo
-  const isLembrete =
-    msgLower.includes("me lembra") ||
-    msgLower.includes("me lembre") ||
-    msgLower.includes("lembrar de") ||
-    msgLower.includes("lembrar que") ||
-    msgLower.includes("me avisa") ||
-    msgLower.includes("me avise");
-
-  if (isLembrete) {
-    let dataAlvo = new Date(agora);
-    if (msgLower.includes("amanhã") || msgLower.includes("amanha")) {
-      dataAlvo.setDate(dataAlvo.getDate() + 1);
-    }
-
-    let hora = 9;
-    let minuto = 0;
-    const matchHora = msgLower.match(/(?:às|as|para\s*as|para\s*às)?\s*(\d{1,2})(?:h|:(\d{2}))?/i);
-    if (matchHora) {
-      hora = parseInt(matchHora[1], 10);
-      if (matchHora[2]) minuto = parseInt(matchHora[2], 10);
-    }
-
-    dataAlvo.setHours(hora, minuto, 0, 0);
-    if (dataAlvo <= agora && !msgLower.includes("amanhã") && !msgLower.includes("amanha")) {
-      dataAlvo.setDate(dataAlvo.getDate() + 1);
-    }
-
-    const dataNotificar = new Date(dataAlvo.getTime() - 5 * 60 * 1000);
-
-    let tituloLimpo = msgTrim
-      .replace(/^(?:por\s*favor\s*)?(?:me\s*)?(?:lembra|lembre|avisa|avise)(?:\s*de|\s*que)?/gi, "")
-      .replace(/(?:para|pra|em)?\s*(?:amanhã|amanha|hoje)/gi, "")
-      .replace(/(?:às|as|para\s*as|para\s*às)?\s*\d{1,2}(?:h|:\d{2})?/gi, "")
-      .replace(/^,\s*/, "")
-      .trim();
-
-    if (!tituloLimpo) tituloLimpo = msgTrim;
-    tituloLimpo = tituloLimpo.charAt(0).toUpperCase() + tituloLimpo.slice(1);
-
-    const horaAlvoStr = dataAlvo.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
-    const horaNotifStr = dataNotificar.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
-    const dataFormatada = dataAlvo.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" });
-
-    return [
-      {
-        tipo: "lembrete",
-        titulo: tituloLimpo,
-        prazo: dataAlvo.toISOString(),
-        horarioNotificar: dataNotificar.toISOString(),
-        confianca: 0.98,
-        confirmacao: `⏰ *Lembrete Agendado!*\n📌 *O que:* "${tituloLimpo}"\n📅 *Horário:* ${dataFormatada} às ${horaAlvoStr}\n🔔 *Aviso Proativo:* ${horaNotifStr} (5 min antes no seu Telegram)`,
-      },
-    ];
-  }
-
-  // Link
-  if (msgLower.startsWith("http://") || msgLower.startsWith("https://")) {
-    return [
-      {
-        tipo: "referencia",
-        titulo: "Link de referência",
-        url: msgTrim,
-        confianca: 0.95,
-        confirmacao: "✓ Referência salva com sucesso!",
-      },
-    ];
-  }
-
-  // 1. Palavras-chave explícitas de TAREFA (Prioridade Máxima)
-  const isExplicitTarefa =
-    msgLower.includes("tarefa") ||
-    msgLower.includes("fazer") ||
-    msgLower.includes("afazer");
-
-  // 2. Palavras-chave explícitas de VÍDEO / PIPELINE
-  const isExplicitVideo =
-    msgLower.includes("vídeo") ||
-    msgLower.includes("video") ||
-    msgLower.includes("vsl") ||
-    msgLower.includes("reels") ||
-    msgLower.includes("corte");
-
-  // 3. Palavras-chave explícitas de EVENTO DE AGENDA
-  const isExplicitEvento =
-    msgLower.includes("agenda") ||
-    msgLower.includes("agendar") ||
-    msgLower.includes("marcar") ||
-    msgLower.includes("reunião") ||
-    msgLower.includes("reuniao") ||
-    msgLower.includes("call") ||
-    msgLower.includes("compromisso") ||
-    msgLower.includes("médico") ||
-    msgLower.includes("medico") ||
-    msgLower.includes("dentista") ||
-    msgLower.includes("consulta") ||
-    msgLower.includes("barbeiro") ||
-    msgLower.includes("ir no") ||
-    msgLower.includes("ir ao") ||
-    msgLower.includes("ir para");
-
-  let projetoEncontrado: string | undefined;
-  for (const proj of projetosAtivos) {
-    if (msgLower.includes(proj.toLowerCase())) {
-      projetoEncontrado = proj;
-      break;
-    }
-  }
-
-  // Processa extração de data e título limpo
-  const parsedData = extrairDataEMensagem(msgTrim, agora);
-  const prazo = parsedData.data;
-  const tituloLimpo = parsedData.tituloLimpo;
-
-  // HIERARQUIA DE DECISÃO IMPRESCINDÍVEL: Palavras explícitas SEMPRE vencem
-  let tipoFinal: "video" | "tarefa" | "evento" = "tarefa";
-
-  if (isExplicitTarefa) {
-    tipoFinal = "tarefa";
-  } else if (isExplicitVideo) {
-    tipoFinal = "video";
-  } else if (isExplicitEvento) {
-    tipoFinal = "evento";
-  } else if (parsedData.ehDataExplicita) {
-    // Se há data explícita (ex: 12 de Setembro) mas NENHUMA palavra "tarefa" ou "vídeo", aí sim vira evento de agenda
-    tipoFinal = "evento";
-  } else {
-    tipoFinal = "tarefa";
-  }
-
-  const dtStr = prazo ? prazo.toLocaleDateString("pt-BR") : "";
-
-  return [
-    {
-      tipo: tipoFinal,
-      titulo: tituloLimpo,
-      projeto: projetoEncontrado,
-      prazo: prazo ? prazo.toISOString() : undefined,
-      formato: msgLower.includes("vsl") ? "vsl" : msgLower.includes("reels") ? "reels" : "outro",
-      confianca: 0.95,
-      confirmacao: `✓ ${tipoFinal === "video" ? "Vídeo adicionado no Pipeline" : tipoFinal === "evento" ? "Compromisso agendado na Agenda" : "Tarefa criada"}: "${tituloLimpo}"${dtStr ? ` (${dtStr})` : ""}`,
-    },
-  ];
-}
 
 export async function POST(req: NextRequest) {
   try {
@@ -340,21 +91,66 @@ export async function POST(req: NextRequest) {
 
       if (!classificacoes && groq) {
         try {
+          const hojeBRT = agora.toLocaleString("pt-BR", {
+            timeZone: "America/Sao_Paulo",
+            weekday: "long",
+            day: "2-digit",
+            month: "2-digit",
+            year: "numeric",
+            hour: "2-digit",
+            minute: "2-digit",
+          });
+
           const resp = await groq.chat.completions.create({
             model: "llama-3.3-70b-versatile",
             messages: [
               {
                 role: "system",
-                content: `Você é o assistente IA para editor de vídeo. Responda apenas array JSON de classificação: [{"tipo": "video"|"tarefa"|"evento"|"nota"|"lembrete", "titulo": "..."}]`,
+                content: `Você é o "Meu Assessor", assistente de um editor de vídeo brasileiro.
+Agora é ${hojeBRT} (horário de Brasília, UTC-3).
+Clientes ativos: ${JSON.stringify(projetosAtivosNomes)}
+
+Classifique a mensagem em UM tipo, nesta ordem de prioridade:
+1. "tarefa" — se a palavra "tarefa" aparecer explicitamente.
+2. "video" — vídeo, edição, VSL, Reels, corte, criativo.
+3. "lembrete" — "me lembra de...", "me avisa...".
+4. "evento" — compromisso com data/hora: reunião, call, sessão, aula, consulta, almoço, viagem.
+5. "nota" — ideia ou informação para guardar, sem ação nem prazo.
+6. "referencia" — link ou inspiração para salvar.
+7. "tarefa" — qualquer afazer que não se encaixe acima.
+
+O "titulo" deve ser curto e limpo: sem verbo de comando, sem a data e sem o horário.
+O "prazo" é ISO 8601 em UTC; converta o horário de Brasília somando 3 horas (14h BRT = 17:00Z).
+Se não houver data/hora na mensagem, omita "prazo".
+
+Responda APENAS o array JSON, sem texto ao redor:
+[{"tipo":"evento","titulo":"Sessão com alunos","projeto":"Petron","prazo":"2026-09-08T17:00:00.000Z"}]`,
               },
               { role: "user", content: textoParaClassificar },
             ],
             temperature: 0.0,
-            max_tokens: 250,
+            max_tokens: 300,
           });
           const raw = resp.choices[0]?.message?.content || "";
           const jsonText = raw.trim().replace(/^```json/, "").replace(/^```/, "").replace(/```$/, "").trim();
-          classificacoes = JSON.parse(jsonText);
+          const parsed = JSON.parse(jsonText);
+          classificacoes = (Array.isArray(parsed) ? parsed : [parsed]).map((c: any) => {
+            const rotulos: Record<string, string> = {
+              video: "🎬 Vídeo adicionado no Pipeline",
+              evento: "📅 Compromisso agendado na Agenda",
+              nota: "📝 Nota salva",
+              lembrete: "⏰ Lembrete agendado",
+              referencia: "🔖 Referência salva",
+              tarefa: "✅ Tarefa criada",
+            };
+            const quando = c.prazo ? ` — ${formatarBRT(new Date(c.prazo))}` : "";
+            return {
+              ...c,
+              confianca: c.confianca ?? 0.85,
+              confirmacao:
+                c.confirmacao || `${rotulos[c.tipo] || "✓ Registrado"}: "${c.titulo}"${quando}`,
+            };
+          });
         } catch (err) {
           console.error("[Groq Error]:", err);
         }
