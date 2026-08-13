@@ -290,23 +290,23 @@ export default function TarefasTodoistPage() {
       {/* ── Topo do Todoist: Título & Botões de Alternância ────────────────── */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="font-heading text-2xl font-bold tracking-tight text-gray-900 flex items-center gap-2">
+          <h1 className="font-heading text-2xl font-bold tracking-tight text-gray-900 dark:text-zinc-100 flex items-center gap-2">
             Tarefas & Afazeres
           </h1>
-          <p className="text-xs text-gray-500 mt-0.5">
+          <p className="text-xs text-gray-500 dark:text-zinc-400 mt-0.5">
             Organização cronológica inteligente estilo Todoist "Em Breve".
           </p>
         </div>
 
         <div className="flex items-center gap-2">
           {/* Alternador de Modo: Todoist vs Kanban */}
-          <div className="flex items-center bg-gray-100 p-1 rounded-xl border border-gray-200 shadow-2xs">
+          <div className="flex items-center bg-gray-100 dark:bg-zinc-800/80 p-1 rounded-xl border border-gray-200 dark:border-zinc-700/80 shadow-2xs">
             <button
               onClick={() => setModoExibicao("todoist")}
               className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-lg transition-all ${
                 modoExibicao === "todoist"
-                  ? "bg-white text-accent shadow-xs"
-                  : "text-gray-600 hover:text-gray-900"
+                  ? "bg-white dark:bg-zinc-900 text-accent shadow-xs"
+                  : "text-gray-600 dark:text-zinc-400 hover:text-gray-900 dark:hover:text-zinc-200"
               }`}
             >
               <List className="w-3.5 h-3.5" />
@@ -317,8 +317,8 @@ export default function TarefasTodoistPage() {
               onClick={() => setModoExibicao("kanban")}
               className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-bold rounded-lg transition-all ${
                 modoExibicao === "kanban"
-                  ? "bg-white text-accent shadow-xs"
-                  : "text-gray-600 hover:text-gray-900"
+                  ? "bg-white dark:bg-zinc-900 text-accent shadow-xs"
+                  : "text-gray-600 dark:text-zinc-400 hover:text-gray-900 dark:hover:text-zinc-200"
               }`}
             >
               <LayoutGrid className="w-3.5 h-3.5" />
@@ -338,8 +338,8 @@ export default function TarefasTodoistPage() {
       </div>
 
       {/* ── Filtro de Clientes / Projetos ───────────────────────────────────── */}
-      <div className="flex items-center gap-2 overflow-x-auto pb-1 border-b border-gray-200">
-        <span className="text-xs font-bold text-gray-400 flex items-center gap-1 flex-shrink-0">
+      <div className="flex items-center gap-2 overflow-x-auto pb-1 border-b border-gray-200 dark:border-zinc-800">
+        <span className="text-xs font-bold text-gray-400 dark:text-zinc-500 flex items-center gap-1 flex-shrink-0">
           <Filter className="w-3.5 h-3.5" />
           Projetos:
         </span>
@@ -347,8 +347,8 @@ export default function TarefasTodoistPage() {
           onClick={() => setFiltroProjeto(null)}
           className={`px-3 py-1 text-xs font-semibold rounded-full transition-all flex-shrink-0 ${
             filtroProjeto === null
-              ? "bg-gray-900 text-white"
-              : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+              ? "bg-gray-900 dark:bg-zinc-100 text-white dark:text-zinc-900 font-bold"
+              : "bg-gray-100 dark:bg-zinc-800 text-gray-600 dark:text-zinc-300 hover:bg-gray-200 dark:hover:bg-zinc-700"
           }`}
         >
           Todos
@@ -376,9 +376,9 @@ export default function TarefasTodoistPage() {
            ═════════════════════════════════════════════════════════════════════ */
         <div className="space-y-6">
           {/* ── Barra Superior de Calendário Todoist (Mês & Dias) ─────────────── */}
-          <div className="card p-4 bg-white border border-gray-200 shadow-sm rounded-2xl space-y-3">
+          <div className="card p-4 bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-800 shadow-sm rounded-2xl space-y-3">
             <div className="flex items-center justify-between">
-              <span className="font-heading text-sm font-bold text-gray-900">
+              <span className="font-heading text-sm font-bold text-gray-900 dark:text-zinc-100">
                 {MESES_ABREV[dataSelecionadaBarra.getMonth()]} de {dataSelecionadaBarra.getFullYear()} ›
               </span>
 
@@ -389,13 +389,13 @@ export default function TarefasTodoistPage() {
                     d.setDate(d.getDate() - 7);
                     setDataSelecionadaBarra(d);
                   }}
-                  className="p-1 rounded-lg hover:bg-gray-100 text-gray-600"
+                  className="p-1 rounded-lg hover:bg-gray-100 dark:hover:bg-zinc-800 text-gray-600 dark:text-zinc-400"
                 >
                   <ChevronLeft className="w-4 h-4" />
                 </button>
                 <button
                   onClick={() => setDataSelecionadaBarra(new Date())}
-                  className="px-2.5 py-1 text-xs font-bold rounded-lg border border-gray-200 hover:bg-gray-50"
+                  className="px-2.5 py-1 text-xs font-bold rounded-lg border border-gray-200 dark:border-zinc-700 hover:bg-gray-50 dark:hover:bg-zinc-800 text-gray-700 dark:text-zinc-300"
                 >
                   Hoje
                 </button>
@@ -405,7 +405,7 @@ export default function TarefasTodoistPage() {
                     d.setDate(d.getDate() + 7);
                     setDataSelecionadaBarra(d);
                   }}
-                  className="p-1 rounded-lg hover:bg-gray-100 text-gray-600"
+                  className="p-1 rounded-lg hover:bg-gray-100 dark:hover:bg-zinc-800 text-gray-600 dark:text-zinc-400"
                 >
                   <ChevronRight className="w-4 h-4" />
                 </button>
@@ -422,9 +422,9 @@ export default function TarefasTodoistPage() {
                   <button
                     key={i}
                     onClick={() => setDataSelecionadaBarra(d)}
-                    className="flex flex-col items-center py-1.5 rounded-xl transition-all cursor-pointer hover:bg-gray-100"
+                    className="flex flex-col items-center py-1.5 rounded-xl transition-all cursor-pointer hover:bg-gray-100 dark:hover:bg-zinc-800"
                   >
-                    <span className="text-[11px] font-bold text-gray-400 uppercase">
+                    <span className="text-[11px] font-bold text-gray-400 dark:text-zinc-500 uppercase">
                       {DIAS_SEMANA_SIGLAS[d.getDay()]}
                     </span>
                     <span
@@ -432,8 +432,8 @@ export default function TarefasTodoistPage() {
                         ehHoje
                           ? "bg-accent text-white shadow-xs"
                           : ehSelecionado
-                          ? "border-2 border-gray-900 text-gray-900"
-                          : "text-gray-700"
+                          ? "border-2 border-gray-900 dark:border-zinc-100 text-gray-900 dark:text-zinc-100"
+                          : "text-gray-700 dark:text-zinc-300"
                       }`}
                     >
                       {d.getDate()}
@@ -478,12 +478,12 @@ export default function TarefasTodoistPage() {
           {diasFeed.map((dia) => (
             <div key={dia.dtStr} className="space-y-2 pt-2">
               {/* Header do Dia Todoist: "10 ago. · Hoje · Segunda-feira" */}
-              <div className="pb-1.5 border-b border-gray-200 flex items-center justify-between">
-                <h3 className="font-heading text-sm font-bold text-gray-900 tracking-tight">
+              <div className="pb-1.5 border-b border-gray-200 dark:border-zinc-800 flex items-center justify-between">
+                <h3 className="font-heading text-sm font-bold text-gray-900 dark:text-zinc-100 tracking-tight">
                   {dia.label}
                 </h3>
                 {dia.itens.length > 0 && (
-                  <span className="text-xs font-semibold text-gray-400">
+                  <span className="text-xs font-semibold text-gray-400 dark:text-zinc-500">
                     {dia.itens.length} {dia.itens.length === 1 ? "tarefa" : "tarefas"}
                   </span>
                 )}
@@ -503,13 +503,13 @@ export default function TarefasTodoistPage() {
                   ))}
                 </div>
               ) : (
-                <p className="text-xs text-gray-400 italic py-1 pl-2">Nenhuma tarefa agendada.</p>
+                <p className="text-xs text-gray-400 dark:text-zinc-500 italic py-1 pl-2">Nenhuma tarefa agendada.</p>
               )}
 
               {/* Botão Inline Todoist: "+ Adicionar tarefa" */}
               <button
                 onClick={() => abrirModalComData(dia.dtStr)}
-                className="flex items-center gap-2 text-xs font-semibold text-gray-500 hover:text-accent py-1.5 px-2 rounded-lg hover:bg-gray-100 transition-colors cursor-pointer w-full text-left group"
+                className="flex items-center gap-2 text-xs font-semibold text-gray-500 dark:text-zinc-400 hover:text-accent dark:hover:text-accent py-1.5 px-2 rounded-lg hover:bg-gray-100 dark:hover:bg-zinc-800/60 transition-colors cursor-pointer w-full text-left group"
               >
                 <Plus className="w-4 h-4 text-accent transition-transform group-hover:scale-110" />
                 <span>Adicionar tarefa</span>
@@ -624,8 +624,10 @@ function RenderItemTodoist({
   return (
     <div
       onClick={onEditar}
-      className={`group flex items-center justify-between gap-3 p-2.5 rounded-xl border border-gray-200/80 bg-white hover:border-gray-300 hover:shadow-xs transition-all cursor-pointer ${
-        concluido ? "opacity-60 bg-gray-50/50" : ""
+      className={`group flex items-center justify-between gap-3 p-2.5 rounded-xl border transition-all cursor-pointer ${
+        concluido
+          ? "opacity-60 bg-gray-50/50 dark:bg-zinc-900/40 border-gray-200 dark:border-zinc-800"
+          : "bg-white dark:bg-zinc-900/90 border-gray-200/80 dark:border-zinc-800/80 hover:border-gray-300 dark:hover:border-zinc-700 shadow-2xs"
       }`}
     >
       {/* Esquerda: Checkbox Redondo Todoist + Título da Tarefa */}
@@ -635,7 +637,7 @@ function RenderItemTodoist({
           onClick={(e) => onToggle(item.id, isVideo ? item.estagio : item.status, isVideo, e)}
           className={`w-5 h-5 rounded-full border-2 flex items-center justify-center transition-all cursor-pointer flex-shrink-0 ${
             concluido
-              ? "border-gray-400 bg-gray-400 text-white"
+              ? "border-gray-400 dark:border-zinc-600 bg-gray-400 dark:bg-zinc-600 text-white"
               : corCheckRing
           }`}
           title={concluido ? "Marcar como não concluído" : "Concluir tarefa"}
@@ -645,8 +647,10 @@ function RenderItemTodoist({
 
         <div className="min-w-0 flex-1">
           <p
-            className={`text-sm font-semibold text-gray-900 truncate leading-snug ${
-              concluido ? "line-through text-gray-400 font-normal" : ""
+            className={`text-sm font-semibold truncate leading-snug ${
+              concluido
+                ? "line-through text-gray-400 dark:text-zinc-500 font-normal"
+                : "text-gray-900 dark:text-zinc-100"
             }`}
           >
             {item.titulo}
@@ -654,7 +658,7 @@ function RenderItemTodoist({
 
           {/* Subtítulo ou tags secundárias */}
           {item.descricao && (
-            <p className="text-xs text-gray-400 truncate mt-0.5">{item.descricao}</p>
+            <p className="text-xs text-gray-400 dark:text-zinc-500 truncate mt-0.5">{item.descricao}</p>
           )}
         </div>
       </div>
@@ -662,7 +666,7 @@ function RenderItemTodoist({
       {/* Direita: Tag do Cliente / Entrada + Ícones de Ações Rápidas no Hover */}
       <div className="flex items-center gap-2 flex-shrink-0">
         {/* Tag de Entrada ou Cliente estilo Todoist */}
-        <div className="flex items-center gap-1 text-[11px] font-bold text-gray-500 bg-gray-100 px-2 py-0.5 rounded-lg group-hover:hidden">
+        <div className="flex items-center gap-1 text-[11px] font-bold text-gray-500 dark:text-zinc-400 bg-gray-100 dark:bg-zinc-800 px-2 py-0.5 rounded-lg group-hover:hidden">
           {item.projeto ? (
             <>
               <span className="w-2 h-2 rounded-full" style={{ background: item.projeto.cor || "#ff5a3d" }} />
@@ -682,14 +686,14 @@ function RenderItemTodoist({
         <div className="hidden group-hover:flex items-center gap-1 transition-opacity">
           <button
             onClick={(e) => { e.stopPropagation(); onEditar(); }}
-            className="p-1 rounded-md text-gray-400 hover:text-gray-700 hover:bg-gray-100"
+            className="p-1 rounded-md text-gray-400 dark:text-zinc-500 hover:text-gray-700 dark:hover:text-zinc-200 hover:bg-gray-100 dark:hover:bg-zinc-800"
             title="Editar"
           >
             <Edit3 className="w-3.5 h-3.5" />
           </button>
           <button
             onClick={(e) => onExcluir(item.id, isVideo, e)}
-            className="p-1 rounded-md text-gray-400 hover:text-red-600 hover:bg-red-50"
+            className="p-1 rounded-md text-gray-400 dark:text-zinc-500 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/30"
             title="Excluir"
           >
             <Trash2 className="w-3.5 h-3.5" />

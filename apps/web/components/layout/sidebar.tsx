@@ -111,7 +111,7 @@ export function Sidebar() {
             src="/logo-header.svg"
             alt="Meu Assessor"
             fill
-            className="object-contain object-left"
+            className="object-contain object-left dark:brightness-125 transition-all"
             priority
           />
         </div>

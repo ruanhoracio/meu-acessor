@@ -40,7 +40,7 @@ export function Header() {
       <header
         className="sticky top-0 z-20 h-[64px] flex items-center justify-between px-4 md:px-8 relative"
         style={{
-          background: "rgba(236, 236, 234, 0.85)",
+          background: "var(--bg-primary)",
           backdropFilter: "blur(20px)",
           WebkitBackdropFilter: "blur(20px)",
           borderBottom: "1px solid var(--border)",

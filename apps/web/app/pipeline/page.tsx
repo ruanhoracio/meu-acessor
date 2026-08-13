@@ -112,11 +112,11 @@ export default function PipelineKanbanPage() {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div>
-          <h1 className="font-heading text-2xl font-bold tracking-tight text-gray-900 flex items-center gap-2">
-            Pipeline de Edição
+          <h1 className="font-heading text-2xl font-bold tracking-tight text-gray-900 dark:text-zinc-100 flex items-center gap-2">
+            Pipeline de Vídeos
           </h1>
-          <p className="text-xs text-gray-500">
-            Acompanhe a esteira de vídeos nos estágios: BRIEFING, EDITANDO, EDITADO e ENVIADO.
+          <p className="text-xs text-gray-500 dark:text-zinc-400 mt-0.5">
+            4 estágios simples: Briefing ➔ Editando ➔ Editado ➔ Enviado.
           </p>
         </div>
 
@@ -124,7 +124,7 @@ export default function PipelineKanbanPage() {
           <button
             type="button"
             onClick={carregarVideos}
-            className="p-2 rounded-xl border border-gray-200 hover:bg-gray-100 text-gray-600 transition-all cursor-pointer flex items-center gap-1.5 text-xs font-semibold"
+            className="p-2 rounded-xl border border-gray-200 dark:border-zinc-800 hover:bg-gray-100 dark:hover:bg-zinc-800 text-gray-600 dark:text-zinc-300 transition-all cursor-pointer flex items-center gap-1.5 text-xs font-semibold"
             title="Atualizar vídeos"
           >
             <RefreshCw className={`w-3.5 h-3.5 ${loading ? "animate-spin text-accent" : ""}`} />
@@ -150,14 +150,14 @@ export default function PipelineKanbanPage() {
           return (
             <div
               key={col.key}
-              className="flex flex-col bg-gray-50/70 p-3.5 rounded-2xl border border-gray-200 min-h-[420px]"
+              className="flex flex-col bg-gray-50/70 dark:bg-zinc-900/40 p-3.5 rounded-2xl border border-gray-200 dark:border-zinc-800/80 min-h-[420px]"
             >
               {/* Header da coluna */}
-              <div className="flex items-center justify-between mb-3 pb-2 border-b border-gray-200 px-1">
+              <div className="flex items-center justify-between mb-3 pb-2 border-b border-gray-200 dark:border-zinc-800 px-1">
                 <h3 className="text-xs font-bold tracking-wider" style={{ color: col.cor }}>
                   {col.titulo}
                 </h3>
-                <span className="w-5 h-5 rounded-full bg-gray-200 flex items-center justify-center text-[10px] font-bold text-gray-700">
+                <span className="w-5 h-5 rounded-full bg-gray-200 dark:bg-zinc-800 flex items-center justify-center text-[10px] font-bold text-gray-700 dark:text-zinc-300">
                   {videosCol.length}
                 </span>
               </div>
@@ -174,10 +174,10 @@ export default function PipelineKanbanPage() {
                     <div
                       key={video.id}
                       onClick={() => setVideoParaEditar(video)}
-                      className="card p-4 bg-white rounded-xl border border-gray-200 hover:border-gray-400 transition-all shadow-xs cursor-pointer group relative"
+                      className="card p-4 bg-white dark:bg-zinc-900 rounded-xl border border-gray-200 dark:border-zinc-800 hover:border-gray-400 dark:hover:border-zinc-700 transition-all shadow-xs cursor-pointer group relative"
                       style={
                         travado
-                          ? { borderColor: "#ef4444", background: "rgba(239, 68, 68, 0.02)" }
+                          ? { borderColor: "#ef4444", background: "rgba(239, 68, 68, 0.08)" }
                           : {}
                       }
                     >
@@ -188,17 +188,17 @@ export default function PipelineKanbanPage() {
                             className="w-2.5 h-2.5 rounded-full flex-shrink-0"
                             style={{ background: video.projeto?.cor || "#ff5a3d" }}
                           />
-                          <span className="text-[11px] font-bold text-gray-700 truncate max-w-[120px]">
+                          <span className="text-[11px] font-bold text-gray-700 dark:text-zinc-300 truncate max-w-[120px]">
                             {video.projeto?.nome || "Sem cliente"}
                           </span>
                         </div>
-                        <span className="badge badge-neutral text-[9px] font-bold">
+                        <span className="badge badge-neutral text-[9px] font-bold dark:bg-zinc-800 dark:text-zinc-300">
                           {FORMATO_LABELS[video.formato] || video.formato}
                         </span>
                       </div>
 
                       {/* Title */}
-                      <p className="text-sm font-bold text-gray-900 mb-3 leading-snug">
+                      <p className="text-sm font-bold text-gray-900 dark:text-zinc-100 mb-3 leading-snug">
                         {video.titulo}
                       </p>
 
@@ -207,7 +207,7 @@ export default function PipelineKanbanPage() {
                         <select
                           value={video.estagio}
                           onChange={(e) => handleMoverEstagio(video.id, video.estagio, e)}
-                          className="w-full text-[11px] font-bold py-1 px-2 rounded-lg bg-gray-100 text-gray-700 border border-gray-200 cursor-pointer hover:bg-gray-200 transition-colors"
+                          className="w-full text-[11px] font-bold py-1 px-2 rounded-lg bg-gray-100 dark:bg-zinc-800 text-gray-700 dark:text-zinc-200 border border-gray-200 dark:border-zinc-700 cursor-pointer hover:bg-gray-200 dark:hover:bg-zinc-700 transition-colors"
                         >
                           <option value="briefing">📋 BRIEFING</option>
                           <option value="cortando">✂️ EDITANDO</option>
@@ -217,7 +217,7 @@ export default function PipelineKanbanPage() {
                       </div>
 
                       {/* Meta row */}
-                      <div className="flex items-center justify-between text-[10px] text-gray-500 pt-2 border-t border-gray-100">
+                      <div className="flex items-center justify-between text-[10px] text-gray-500 dark:text-zinc-400 pt-2 border-t border-gray-100 dark:border-zinc-800">
                         <div className="flex items-center gap-2">
                           {video.prazoEntrega && (
                             <span className="flex items-center gap-1 font-medium">
