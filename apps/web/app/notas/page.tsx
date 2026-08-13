@@ -23,24 +23,23 @@ export default function NotasPage() {
   });
 
   return (
-    <div className="animate-fade-in-up max-w-4xl">
+    <div className="animate-fade-in-up space-y-6 max-w-5xl mx-auto pb-16">
       {/* Busca + Tags */}
       <div className="flex flex-col md:flex-row gap-3 mb-6">
         <div className="relative flex-1">
           <Search
-            className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4"
-            style={{ color: "var(--text-muted)" }}
+            className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted"
           />
           <input
             type="text"
             placeholder="Buscar notas..."
             value={busca}
             onChange={(e) => setBusca(e.target.value)}
-            className="input pl-10"
+            className="input pl-10 text-xs font-mono"
           />
         </div>
         <div className="flex items-center gap-2 overflow-x-auto pb-1">
-          <Tag className="w-4 h-4 flex-shrink-0" style={{ color: "var(--text-muted)" }} />
+          <Tag className="w-4 h-4 flex-shrink-0 text-muted" />
           {todasTags.map((tag) => (
             <button
               key={tag}
@@ -58,16 +57,13 @@ export default function NotasPage() {
       {/* Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {/* Nota nova */}
-        <button className="card p-6 flex flex-col items-center justify-center gap-3 border-dashed cursor-pointer transition-all min-h-[160px]"
-          style={{ borderStyle: "dashed", borderColor: "var(--border-hover)" }}
-        >
+        <button className="card p-6 flex flex-col items-center justify-center gap-3 border-dashed cursor-pointer transition-all min-h-[160px] hover:border-[#c6f91f]">
           <div
-            className="w-10 h-10 rounded-xl flex items-center justify-center"
-            style={{ background: "var(--accent-subtle)" }}
+            className="w-10 h-10 rounded-lg flex items-center justify-center bg-[#c6f91f]/10 border border-[#c6f91f]/30"
           >
-            <Plus className="w-5 h-5" style={{ color: "var(--accent)" }} />
+            <Plus className="w-5 h-5 text-accent" />
           </div>
-          <span className="text-sm" style={{ color: "var(--text-muted)" }}>
+          <span className="text-xs font-mono font-bold uppercase tracking-wider text-muted">
             Nova nota
           </span>
         </button>
@@ -75,12 +71,12 @@ export default function NotasPage() {
         {notasFiltradas.map((nota) => (
           <div
             key={nota.id}
-            className="card p-5 cursor-pointer transition-all hover:border-[rgba(255,90,61,0.2)]"
+            className="card p-5 cursor-pointer transition-all hover:border-[#c6f91f] rounded-xl"
           >
             <div className="flex items-start justify-between mb-3">
               <div className="flex items-center gap-2">
-                <FileText className="w-4 h-4" style={{ color: "var(--accent)" }} />
-                <h3 className="text-sm font-semibold truncate">
+                <FileText className="w-4 h-4 text-accent" />
+                <h3 className="font-heading text-base font-light text-primary truncate">
                   {nota.titulo || "Sem título"}
                 </h3>
               </div>
@@ -93,27 +89,24 @@ export default function NotasPage() {
               )}
             </div>
 
-            <p
-              className="text-xs leading-relaxed mb-3 line-clamp-4"
-              style={{ color: "var(--text-muted)" }}
-            >
+            <p className="text-xs text-secondary leading-relaxed mb-3 line-clamp-4 font-mono">
               {nota.conteudo}
             </p>
 
-            <div className="flex items-center justify-between">
-              <div className="flex gap-1.5">
+            <div className="flex items-center justify-between text-[11px] pt-2 border-t border-dashed border-border">
+              <span className="text-muted font-mono text-[10px]">
+                {new Date(nota.criadoEm).toLocaleDateString("pt-BR", {
+                  day: "2-digit",
+                  month: "short",
+                })}
+              </span>
+              <div className="flex items-center gap-1">
                 {nota.tags.map((tag) => (
-                  <span key={tag} className="badge badge-neutral text-[10px]">
+                  <span key={tag} className="badge badge-neutral text-[9px] font-mono">
                     {tag}
                   </span>
                 ))}
               </div>
-              <span className="text-[10px]" style={{ color: "var(--text-muted)" }}>
-                {nota.criadoEm.toLocaleDateString("pt-BR", {
-                  day: "numeric",
-                  month: "short",
-                })}
-              </span>
             </div>
           </div>
         ))}

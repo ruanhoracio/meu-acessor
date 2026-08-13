@@ -24,10 +24,10 @@ const TAG_ICONS: Record<string, React.ReactNode> = {
 };
 
 const GRADIENT_BG = [
-  "linear-gradient(135deg, #fef2f0 0%, #ececea 100%)",
-  "linear-gradient(135deg, #eef2fa 0%, #ececea 100%)",
-  "linear-gradient(135deg, #eefaf2 0%, #ececea 100%)",
-  "linear-gradient(135deg, #fafaee 0%, #ececea 100%)",
+  "linear-gradient(135deg, rgba(198, 249, 31, 0.1) 0%, rgba(5, 8, 10, 0.8) 100%)",
+  "linear-gradient(135deg, rgba(99, 102, 241, 0.1) 0%, rgba(5, 8, 10, 0.8) 100%)",
+  "linear-gradient(135deg, rgba(245, 158, 11, 0.1) 0%, rgba(5, 8, 10, 0.8) 100%)",
+  "linear-gradient(135deg, rgba(16, 185, 129, 0.1) 0%, rgba(5, 8, 10, 0.8) 100%)",
 ];
 
 export default function ReferenciasPage() {
@@ -40,10 +40,10 @@ export default function ReferenciasPage() {
     : REFERENCIAS;
 
   return (
-    <div className="animate-fade-in-up">
+    <div className="animate-fade-in-up space-y-6 max-w-6xl mx-auto pb-16">
       {/* Tags */}
-      <div className="flex items-center gap-2 mb-6 overflow-x-auto pb-2">
-        <Tag className="w-4 h-4 flex-shrink-0" style={{ color: "var(--text-muted)" }} />
+      <div className="flex items-center gap-2 overflow-x-auto pb-2">
+        <Tag className="w-4 h-4 flex-shrink-0 text-muted" />
         <button
           onClick={() => setTagAtiva(null)}
           className={`badge cursor-pointer whitespace-nowrap ${!tagAtiva ? "badge-accent" : "badge-neutral"}`}
@@ -67,16 +67,13 @@ export default function ReferenciasPage() {
       {/* Grade */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         {/* Adicionar referência */}
-        <button className="card p-8 flex flex-col items-center justify-center gap-3 border-dashed cursor-pointer transition-all min-h-[200px]"
-          style={{ borderStyle: "dashed", borderColor: "var(--border-hover)" }}
-        >
+        <button className="card p-8 flex flex-col items-center justify-center gap-3 border-dashed cursor-pointer transition-all min-h-[200px] hover:border-[#c6f91f]">
           <div
-            className="w-12 h-12 rounded-2xl flex items-center justify-center"
-            style={{ background: "var(--accent-subtle)" }}
+            className="w-12 h-12 rounded-lg flex items-center justify-center bg-[#c6f91f]/10 border border-[#c6f91f]/30"
           >
-            <Plus className="w-5 h-5" style={{ color: "var(--accent)" }} />
+            <Plus className="w-5 h-5 text-accent" />
           </div>
-          <span className="text-sm" style={{ color: "var(--text-muted)" }}>
+          <span className="text-xs font-mono font-bold uppercase tracking-wider text-muted">
             Salvar referência
           </span>
         </button>
@@ -84,51 +81,49 @@ export default function ReferenciasPage() {
         {refsFiltradas.map((ref, i) => (
           <div
             key={ref.id}
-            className="card overflow-hidden cursor-pointer transition-all hover:border-[rgba(255,90,61,0.2)] group"
+            className="card overflow-hidden cursor-pointer transition-all hover:border-[#c6f91f] group rounded-xl"
           >
             {/* Thumbnail placeholder */}
             <div
-              className="h-36 relative flex items-center justify-center"
+              className="h-36 relative flex items-center justify-center border-b border-dashed border-border"
               style={{ background: GRADIENT_BG[i % GRADIENT_BG.length] }}
             >
               <div className="text-center px-4">
                 <Play
-                  className="w-10 h-10 mx-auto mb-2 opacity-20 group-hover:opacity-50 transition-opacity"
-                  style={{ color: "var(--text-muted)" }}
+                  className="w-10 h-10 mx-auto mb-2 opacity-30 group-hover:opacity-80 transition-opacity text-[#c6f91f]"
                 />
-                <p className="text-xs truncate max-w-[200px]" style={{ color: "var(--text-muted)" }}>
+                <p className="text-xs font-mono text-muted truncate max-w-[200px]">
                   {ref.url}
                 </p>
               </div>
-              {/* Hover overlay */}
-              <div
-                className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity rounded-t-[21px]"
-                style={{ background: "rgba(26,26,26,0.6)" }}
-              >
+            </div>
+
+            {/* Conteúdo */}
+            <div className="p-4">
+              <h3 className="font-heading text-base font-light text-primary mb-1">
+                {ref.titulo}
+              </h3>
+              <p className="text-xs text-secondary mb-3 line-clamp-2">
+                {/* Assuming 'nota' exists in the data, if not available in data, replace with appropriate field */}
+                {(ref as any).nota}
+              </p>
+
+              <div className="flex items-center justify-between">
+                <div className="flex flex-wrap gap-1">
+                  {ref.tags.map((tag) => (
+                    <span key={tag} className="badge badge-neutral text-[9px] font-mono">
+                      {tag}
+                    </span>
+                  ))}
+                </div>
                 <a
                   href={ref.url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="btn-primary flex items-center gap-2 text-sm"
+                  className="p-1 text-muted hover:text-accent transition-colors"
                 >
-                  <ExternalLink className="w-4 h-4" />
-                  Abrir
+                  <ExternalLink className="w-3.5 h-3.5" />
                 </a>
-              </div>
-            </div>
-
-            {/* Info */}
-            <div className="p-4">
-              <p className="text-sm font-medium mb-2 line-clamp-2">
-                {ref.titulo}
-              </p>
-              <div className="flex flex-wrap gap-1.5">
-                {ref.tags.map((tag) => (
-                  <span key={tag} className="badge badge-neutral text-[10px] flex items-center gap-1">
-                    {TAG_ICONS[tag]}
-                    {tag}
-                  </span>
-                ))}
               </div>
             </div>
           </div>

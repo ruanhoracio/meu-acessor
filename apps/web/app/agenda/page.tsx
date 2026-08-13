@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useTransition } from "react";
+import { useState, useEffect } from "react";
 import {
   ChevronLeft,
   ChevronRight,
@@ -14,7 +14,6 @@ import {
   Repeat,
   GripVertical,
 } from "lucide-react";
-import { getEventos, criarEvento, atualizarEvento, excluirEvento } from "@/actions/agenda";
 import { ModalPortal } from "@/components/modals/modal-portal";
 
 const DIAS_SEMANA = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
@@ -93,20 +92,17 @@ export default function AgendaPage() {
     fimGrade.setHours(23, 59, 59, 999);
 
     try {
-      const dataEvts = await getEventos(inicioGrade, fimGrade);
-      if (Array.isArray(dataEvts)) {
-        setEventos(dataEvts);
+      const resEvts = await fetch(
+        `/api/eventos?inicio=${inicioGrade.toISOString()}&fim=${fimGrade.toISOString()}`
+      );
+      if (resEvts.ok) {
+        const jsonEvts = await resEvts.json();
+        if (Array.isArray(jsonEvts)) {
+          setEventos(jsonEvts);
+        }
       }
     } catch (e) {
-      console.error("Erro ao carregar via Server Action, usando fetch fallback:", e);
-      try {
-        const resEvts = await fetch(
-          `/api/eventos?inicio=${inicioGrade.toISOString()}&fim=${fimGrade.toISOString()}`
-        ).then((r) => r.json());
-        if (Array.isArray(resEvts)) setEventos(resEvts);
-      } catch (err) {
-        console.error("Erro no fetch /api/eventos:", err);
-      }
+      console.error("Erro ao carregar eventos:", e);
     }
 
     // Buscar lista de projetos

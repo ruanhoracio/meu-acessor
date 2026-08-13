@@ -32,12 +32,12 @@ const MESES = [
 ];
 
 const FORMATOS = [
-  { value: "reels", label: "Reels / TikTok", color: "bg-purple-100 text-purple-700 border-purple-200" },
-  { value: "vsl", label: "VSL", color: "bg-blue-100 text-blue-700 border-blue-200" },
-  { value: "criativo", label: "Criativo Ads", color: "bg-amber-100 text-amber-700 border-amber-200" },
-  { value: "aula", label: "Aula / Youtube", color: "bg-emerald-100 text-emerald-700 border-emerald-200" },
-  { value: "institucional", label: "Institucional", color: "bg-indigo-100 text-indigo-700 border-indigo-200" },
-  { value: "outro", label: "Corte / Outro", color: "bg-gray-100 text-gray-700 border-gray-200" },
+  { value: "reels", label: "Reels / TikTok", color: "badge badge-neutral" },
+  { value: "vsl", label: "VSL", color: "badge badge-accent-subtle" },
+  { value: "criativo", label: "Criativo Ads", color: "badge badge-warning" },
+  { value: "aula", label: "Aula / Youtube", color: "badge badge-accent" },
+  { value: "institucional", label: "Institucional", color: "badge badge-neutral" },
+  { value: "outro", label: "Corte / Outro", color: "badge badge-neutral" },
 ];
 
 export default function ControleEntregasPage() {
@@ -193,11 +193,11 @@ export default function ControleEntregasPage() {
       {/* ── Topo & Filtros ────────────────────────────────────────── */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="font-heading text-2xl font-bold tracking-tight text-gray-900 dark:text-zinc-100 flex items-center gap-2">
-            <Film className="w-7 h-7 text-accent" />
+          <h1 className="font-heading text-2xl font-light tracking-tight text-primary flex items-center gap-2">
+            <Film className="w-6 h-6 text-accent" />
             Controle de Vídeos Entregues
           </h1>
-          <p className="text-xs text-gray-500 dark:text-zinc-400 mt-1">
+          <p className="text-xs font-mono text-muted mt-1">
             Selecione o cliente, defina a meta mensal e marque os vídeos concluídos.
           </p>
         </div>
@@ -205,11 +205,11 @@ export default function ControleEntregasPage() {
         <button
           onClick={handleCopiarResumo}
           disabled={videos.length === 0}
-          className="btn-primary text-xs py-2.5 px-4 rounded-xl flex items-center justify-center gap-2 cursor-pointer shadow-sm hover:scale-[1.02] transition-all"
+          className="btn-primary text-xs py-2.5 px-4 rounded-lg flex items-center justify-center gap-2 cursor-pointer shadow-sm hover:scale-[1.02] transition-all"
         >
           {copiado ? (
             <>
-              <Check className="w-4 h-4 text-green-300" />
+              <Check className="w-4 h-4 text-black" />
               <span>Resumo Copiado!</span>
             </>
           ) : (
@@ -222,14 +222,14 @@ export default function ControleEntregasPage() {
       </div>
 
       {/* ── Barra de Seleção de Cliente e Mês ───────────────────────── */}
-      <div className="card p-4 bg-white/90 dark:bg-zinc-900/90 backdrop-blur-md rounded-2xl border border-gray-200/80 dark:border-zinc-800 shadow-xs flex flex-wrap items-center gap-3">
+      <div className="card p-4 bg-card rounded-xl border border-dashed border-border shadow-xs flex flex-wrap items-center gap-3">
         {/* Filtro Cliente */}
         <div className="flex items-center gap-2 flex-1 min-w-[200px]">
           <User className="w-4 h-4 text-accent flex-shrink-0" />
           <select
             value={projetoSelecionado}
             onChange={(e) => setProjetoSelecionado(e.target.value)}
-            className="input w-full py-2.5 text-xs font-bold rounded-xl border-gray-200 dark:border-zinc-700 cursor-pointer bg-gray-50/50 dark:bg-zinc-800 text-gray-900 dark:text-zinc-100"
+            className="input w-full py-2.5 text-xs font-mono font-bold rounded-lg border-dashed border-border cursor-pointer bg-surface text-primary"
           >
             <option value="todos">🌐 Todos os Clientes</option>
             {projetos.map((p) => (
@@ -246,7 +246,7 @@ export default function ControleEntregasPage() {
           <select
             value={mesSelecionado}
             onChange={(e) => setMesSelecionado(Number(e.target.value))}
-            className="input w-full py-2.5 text-xs font-bold rounded-xl border-gray-200 dark:border-zinc-700 cursor-pointer bg-gray-50/50 dark:bg-zinc-800 text-gray-900 dark:text-zinc-100"
+            className="input w-full py-2.5 text-xs font-mono font-bold rounded-lg border-dashed border-border cursor-pointer bg-surface text-primary"
           >
             {MESES.map((m, idx) => (
               <option key={idx} value={idx + 1}>
@@ -261,7 +261,7 @@ export default function ControleEntregasPage() {
           <select
             value={anoSelecionado}
             onChange={(e) => setAnoSelecionado(Number(e.target.value))}
-            className="input py-2.5 text-xs font-bold rounded-xl border-gray-200 dark:border-zinc-700 cursor-pointer bg-gray-50/50 dark:bg-zinc-800 text-gray-900 dark:text-zinc-100"
+            className="input py-2.5 text-xs font-mono font-bold rounded-lg border-dashed border-border cursor-pointer bg-surface text-primary"
           >
             <option value={2025}>2025</option>
             <option value={2026}>2026</option>
@@ -271,44 +271,44 @@ export default function ControleEntregasPage() {
       </div>
 
       {/* ── Banner de Progresso & Ajuste de Meta Mensal ───────────── */}
-      <div className="bg-gradient-to-r from-emerald-600 to-teal-700 text-white p-5 rounded-2xl shadow-md relative overflow-hidden">
+      <div className="card p-6 bg-card border border-dashed border-accent/40 text-primary shadow-card relative overflow-hidden">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-3">
           <div>
-            <h2 className="font-heading text-lg md:text-xl font-bold tracking-tight flex items-center gap-2">
+            <h2 className="font-heading text-xl md:text-2xl font-light tracking-tight flex items-center gap-2">
               <span>Vídeos de {MESES[mesSelecionado - 1]} — {projetoAtualNome}</span>
             </h2>
-            <p className="text-xs text-emerald-100 font-medium mt-0.5">
+            <p className="text-xs font-mono text-muted mt-0.5">
               Acompanhamento de contrato e entregas ativas do cliente
             </p>
           </div>
 
           {/* Controle de Meta do Cliente */}
-          <div className="flex items-center gap-3 bg-emerald-950/30 p-2 px-3 rounded-xl border border-white/20 self-start md:self-auto">
+          <div className="flex items-center gap-3 bg-surface p-2 px-3 rounded-lg border border-dashed border-border self-start md:self-auto">
             {projetoSelecionado !== "todos" ? (
               !editandoMeta ? (
-                <div className="flex items-center gap-2 text-xs font-bold">
-                  <Target className="w-4 h-4 text-emerald-300" />
-                  <span>Meta do Cliente: <u className="no-underline font-extrabold text-white text-sm px-1.5 py-0.5 bg-white/20 rounded-md">{metaTotal} vídeos/mês</u></span>
+                <div className="flex items-center gap-2 text-xs font-bold font-mono">
+                  <Target className="w-4 h-4 text-accent" />
+                  <span>Meta do Cliente: <u className="no-underline font-extrabold text-[#c6f91f] text-sm px-1.5 py-0.5 bg-[#c6f91f]/10 border border-[#c6f91f]/30 rounded-md">{metaTotal} vídeos/mês</u></span>
                   <button
                     type="button"
                     onClick={() => {
                       setMetaInput(metaTotal);
                       setEditandoMeta(true);
                     }}
-                    className="p-1 text-emerald-200 hover:text-white rounded hover:bg-white/10 cursor-pointer"
+                    className="p-1 text-muted hover:text-primary rounded hover:bg-surface-hover cursor-pointer"
                     title="Editar quantidade mensal de vídeos deste cliente"
                   >
                     <Edit3 className="w-3.5 h-3.5" />
                   </button>
                 </div>
               ) : (
-                <div className="flex items-center gap-2 text-xs">
-                  <span className="font-bold text-white">Meta Vídeos/Mês:</span>
+                <div className="flex items-center gap-2 text-xs font-mono">
+                  <span className="font-bold text-primary">Meta Vídeos/Mês:</span>
                   <input
                     type="number"
                     value={metaInput}
                     onChange={(e) => setMetaInput(Number(e.target.value))}
-                    className="w-16 py-1 px-2 text-center font-extrabold text-gray-900 bg-white rounded-lg text-xs"
+                    className="w-16 py-1 px-2 text-center font-bold text-primary bg-card border border-dashed border-border rounded-lg text-xs"
                     min="1"
                     max="100"
                     autoFocus
@@ -317,41 +317,45 @@ export default function ControleEntregasPage() {
                     type="button"
                     onClick={handleSalvarMeta}
                     disabled={salvandoMeta}
-                    className="px-2.5 py-1 bg-white text-emerald-900 hover:bg-emerald-100 rounded-lg font-bold text-xs cursor-pointer shadow-xs"
+                    className="btn-primary py-1 px-2.5 text-xs font-bold"
                   >
                     {salvandoMeta ? "..." : "Salvar"}
                   </button>
                   <button
                     type="button"
                     onClick={() => setEditandoMeta(false)}
-                    className="text-xs text-emerald-200 hover:text-white"
+                    className="text-xs text-muted hover:text-primary"
                   >
                     X
                   </button>
                 </div>
               )
             ) : (
-              <span className="text-xs font-semibold text-emerald-100">
+              <span className="text-xs font-mono text-muted">
                 Selecione um cliente para ajustar a meta contratada.
               </span>
             )}
           </div>
 
           <div className="text-right">
-            <span className="font-heading text-xl md:text-2xl font-extrabold tracking-tight">
+            <span className="font-heading text-2xl md:text-3xl font-light tracking-tighter text-[#c6f91f]">
               {concluidosCount}/{metaTotal} concluídos
             </span>
-            <span className="block text-[11px] text-emerald-200 font-bold">
+            <span className="block text-[11px] font-mono text-muted font-bold">
               ({percentual}% da meta atingida)
             </span>
           </div>
         </div>
 
         {/* Barra de Progresso Animada */}
-        <div className="w-full bg-emerald-950/40 h-3 rounded-full overflow-hidden p-0.5 mt-2">
+        <div className="progress-track mt-3">
           <div
-            className="bg-white h-full rounded-full transition-all duration-500 shadow-sm"
-            style={{ width: `${percentual}%` }}
+            className="progress-fill"
+            style={{
+              width: `${percentual}%`,
+              background: "#c6f91f",
+              boxShadow: "0 0 16px rgba(198, 249, 31, 0.5)",
+            }}
           />
         </div>
       </div>
