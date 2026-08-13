@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { Search, X, Clapperboard, CheckSquare, Calendar, ArrowRight } from "lucide-react";
 import Link from "next/link";
+import { ModalPortal } from "@/components/modals/modal-portal";
 
 export function ModalBusca({ isOpen, onClose }: { isOpen: boolean; onClose: () => void }) {
   const [query, setQuery] = useState("");
@@ -33,59 +34,59 @@ export function ModalBusca({ isOpen, onClose }: { isOpen: boolean; onClose: () =
     }
   }, [query]);
 
-  if (!isOpen) return null;
-
   return (
-    <div className="fixed inset-0 z-50 flex items-start justify-center pt-20 p-4 bg-black/60 backdrop-blur-sm overflow-y-auto">
-      <div className="card w-full max-w-xl p-4 relative bg-white shadow-2xl rounded-2xl animate-fade-in">
-        <div className="flex items-center gap-3 border-b pb-3 px-2" style={{ borderColor: "var(--border)" }}>
-          <Search className="w-5 h-5 text-gray-400" />
-          <input
-            type="text"
-            placeholder="Pesquisar vídeos, tarefas, clientes..."
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            className="w-full outline-none text-base font-semibold bg-transparent"
-            autoFocus
-          />
-          <button onClick={onClose} className="p-1 rounded-lg hover:bg-black/5 text-gray-400">
-            <X className="w-5 h-5" />
-          </button>
-        </div>
+    <ModalPortal isOpen={isOpen}>
+      <div className="fixed inset-0 z-[9999] flex items-start justify-center pt-20 p-4 bg-black/60 backdrop-blur-sm overflow-y-auto">
+        <div className="card w-full max-w-xl p-4 relative bg-white shadow-2xl rounded-2xl animate-fade-in my-auto max-h-[85vh] overflow-y-auto">
+          <div className="flex items-center gap-3 border-b pb-3 px-2 border-gray-200">
+            <Search className="w-5 h-5 text-gray-400" />
+            <input
+              type="text"
+              placeholder="Pesquisar vídeos, tarefas, clientes..."
+              value={query}
+              onChange={(e) => setQuery(e.target.value)}
+              className="w-full outline-none text-base font-semibold bg-transparent text-gray-900"
+              autoFocus
+            />
+            <button onClick={onClose} className="p-1 rounded-lg hover:bg-gray-100 text-gray-400">
+              <X className="w-5 h-5" />
+            </button>
+          </div>
 
-        <div className="max-h-[350px] overflow-y-auto py-2">
-          {resultados.videos.length > 0 && (
-            <div className="mb-3">
-              <span className="text-[11px] font-bold text-gray-400 uppercase px-3 block mb-2">Vídeos</span>
-              {resultados.videos.map((v) => (
-                <Link
-                  key={v.id}
-                  href={`/pipeline/${v.id}`}
-                  onClick={onClose}
-                  className="flex items-center justify-between p-2.5 hover:bg-gray-100 rounded-xl transition-colors"
-                >
-                  <div className="flex items-center gap-3">
-                    <Clapperboard className="w-4 h-4 text-orange-500" />
-                    <div>
-                      <p className="text-sm font-bold text-gray-900">{v.titulo}</p>
-                      <p className="text-xs text-gray-500">{v.projeto?.nome || "Sem cliente"}</p>
+          <div className="py-4 space-y-4">
+            {query.trim().length <= 1 ? (
+              <div className="text-center py-6 text-xs text-gray-400">
+                Digite pelo menos 2 caracteres para buscar em todo o aplicativo...
+              </div>
+            ) : resultados.videos.length === 0 ? (
+              <div className="text-center py-6 text-xs text-gray-400">
+                Nenhum resultado encontrado para "{query}".
+              </div>
+            ) : (
+              <div className="space-y-2">
+                <h4 className="text-[11px] font-bold text-gray-400 uppercase px-2">Vídeos do Pipeline</h4>
+                {resultados.videos.map((v) => (
+                  <Link
+                    key={v.id}
+                    href={`/pipeline/${v.id}`}
+                    onClick={onClose}
+                    className="flex items-center justify-between p-2.5 rounded-xl hover:bg-gray-50 transition-colors border border-transparent hover:border-gray-200"
+                  >
+                    <div className="flex items-center gap-2.5">
+                      <Clapperboard className="w-4 h-4 text-accent" />
+                      <div>
+                        <p className="text-xs font-bold text-gray-900">{v.titulo}</p>
+                        <p className="text-[10px] text-gray-400">{v.projeto?.nome || "Sem cliente"} • {v.estagio}</p>
+                      </div>
                     </div>
-                  </div>
-                  <ArrowRight className="w-4 h-4 text-gray-400" />
-                </Link>
-              ))}
-            </div>
-          )}
-
-          {query.length > 1 && resultados.videos.length === 0 && (
-            <p className="text-xs text-gray-400 text-center py-8">Nenhum resultado encontrado para "{query}"</p>
-          )}
-
-          {query.length <= 1 && (
-            <p className="text-xs text-gray-400 text-center py-8">Digite pelo menos 2 caracteres para pesquisar</p>
-          )}
+                    <ArrowRight className="w-4 h-4 text-gray-300" />
+                  </Link>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       </div>
-    </div>
+    </ModalPortal>
   );
 }

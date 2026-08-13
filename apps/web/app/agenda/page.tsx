@@ -15,6 +15,7 @@ import {
   GripVertical,
 } from "lucide-react";
 import { getEventos, criarEvento, atualizarEvento, excluirEvento } from "@/actions/agenda";
+import { ModalPortal } from "@/components/modals/modal-portal";
 
 const DIAS_SEMANA = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
 const MESES = [
@@ -459,9 +460,9 @@ export default function AgendaPage() {
       </div>
 
       {/* ── Modal Criar Novo Evento ─────────────────────────── */}
-      {modalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm overflow-y-auto">
-          <div className="card p-6 w-full max-w-md bg-white shadow-2xl relative rounded-2xl animate-fade-in my-auto">
+      <ModalPortal isOpen={modalOpen}>
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm overflow-y-auto">
+          <div className="card p-6 w-full max-w-md bg-white shadow-2xl relative rounded-2xl animate-fade-in my-auto max-h-[90vh] overflow-y-auto">
             <button
               onClick={() => setModalOpen(false)}
               className="absolute top-4 right-4 p-1 rounded-lg text-gray-400 hover:text-gray-600"
@@ -594,12 +595,12 @@ export default function AgendaPage() {
             </form>
           </div>
         </div>
-      )}
+      </ModalPortal>
 
       {/* ── Modal Detalhes e Edição do Evento ───────────────── */}
-      {eventoSelecionado && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm overflow-y-auto">
-          <div className="card p-6 w-full max-w-md bg-white shadow-2xl relative rounded-2xl animate-fade-in my-auto">
+      <ModalPortal isOpen={!!eventoSelecionado}>
+        <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm overflow-y-auto">
+          <div className="card p-6 w-full max-w-md bg-white shadow-2xl relative rounded-2xl animate-fade-in my-auto max-h-[90vh] overflow-y-auto">
             <button
               onClick={() => setEventoSelecionado(null)}
               className="absolute top-4 right-4 p-1 rounded-lg text-gray-400 hover:text-gray-600"
@@ -803,7 +804,7 @@ export default function AgendaPage() {
             )}
           </div>
         </div>
-      )}
+      </ModalPortal>
     </div>
   );
 }
