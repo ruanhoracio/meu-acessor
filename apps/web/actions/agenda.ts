@@ -5,21 +5,8 @@ import { revalidatePath } from "next/cache";
 
 export async function getEventos(dataInicio: Date, dataFim: Date) {
   try {
-    // Buscar todos os eventos no período OU eventos recorrentes
+    // Buscar todos os eventos do usuário
     const eventos = await prisma.evento.findMany({
-      where: {
-        OR: [
-          {
-            inicio: {
-              gte: dataInicio,
-              lte: dataFim,
-            },
-          },
-          {
-            recorrencia: { in: ["semanal", "mensal"] },
-          },
-        ],
-      },
       include: {
         projeto: true,
       },
@@ -32,18 +19,18 @@ export async function getEventos(dataInicio: Date, dataFim: Date) {
 
     for (const evt of eventos) {
       const inicioEvt = new Date(evt.inicio);
-      const fimEvt = evt.fim ? new Date(evt.fim) : null;
-      const duracaoMs = fimEvt ? fimEvt.getTime() - inicioEvt.getTime() : 3600000;
+      const fimEvt = evt.fim ? new Date(evt.fim) : new Date(inicioEvt.getTime() + 3600000);
+      const duracaoMs = fimEvt.getTime() - inicioEvt.getTime();
 
       // Evento Único (sem recorrência)
       if (!evt.recorrencia || evt.recorrencia === "unico") {
-        if (inicioEvt >= dataInicio && inicioEvt <= dataFim) {
+        if (inicioEvt <= dataFim && fimEvt >= dataInicio) {
           resultadoProjetado.push(evt);
         }
         continue;
       }
 
-      // Evento Fixo Semanal (Repete toda semana no mesmo dia da semana e horário)
+      // Evento Fixo Semanal (Repete toda semana)
       if (evt.recorrencia === "semanal") {
         const diaSemanaTarget = inicioEvt.getDay();
         const curr = new Date(dataInicio);
@@ -72,7 +59,7 @@ export async function getEventos(dataInicio: Date, dataFim: Date) {
         }
       }
 
-      // Evento Fixo Mensal (Repete todo mês no mesmo dia do mês e horário)
+      // Evento Fixo Mensal (Repete todo mês)
       else if (evt.recorrencia === "mensal") {
         const diaDoMesTarget = inicioEvt.getDate();
         const mesTarget = dataInicio.getMonth();

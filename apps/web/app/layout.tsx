@@ -59,7 +59,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="pt-BR" className={`${inter.variable} ${geist.variable} ${spaceMono.variable}`}>
+    <html lang="pt-BR" className={`dark ${inter.variable} ${geist.variable} ${spaceMono.variable}`}>
       <head>
         <meta name="mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-capable" content="yes" />

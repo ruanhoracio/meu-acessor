@@ -93,12 +93,20 @@ export default function AgendaPage() {
     fimGrade.setHours(23, 59, 59, 999);
 
     try {
-      const resEvts = await fetch(
-        `/api/eventos?inicio=${inicioGrade.toISOString()}&fim=${fimGrade.toISOString()}`
-      ).then((r) => r.json());
-      if (Array.isArray(resEvts)) setEventos(resEvts);
+      const dataEvts = await getEventos(inicioGrade, fimGrade);
+      if (Array.isArray(dataEvts)) {
+        setEventos(dataEvts);
+      }
     } catch (e) {
-      console.error("Erro ao carregar eventos da agenda:", e);
+      console.error("Erro ao carregar via Server Action, usando fetch fallback:", e);
+      try {
+        const resEvts = await fetch(
+          `/api/eventos?inicio=${inicioGrade.toISOString()}&fim=${fimGrade.toISOString()}`
+        ).then((r) => r.json());
+        if (Array.isArray(resEvts)) setEventos(resEvts);
+      } catch (err) {
+        console.error("Erro no fetch /api/eventos:", err);
+      }
     }
 
     // Buscar lista de projetos
