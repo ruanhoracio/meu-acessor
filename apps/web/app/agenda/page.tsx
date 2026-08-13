@@ -192,9 +192,16 @@ export default function AgendaPage() {
 
   // Abrir modal novo evento em um dia específico
   const abrirModalNovoNoDia = (dia: Date) => {
-    const dtStr = dia.toISOString().split("T")[0];
-    setDataSelecionada(dtStr);
-    setDataFimSelecionada(dtStr);
+    try {
+      const validDia = dia && !isNaN(dia.getTime()) ? dia : new Date();
+      const dtStr = validDia.toISOString().split("T")[0];
+      setDataSelecionada(dtStr);
+      setDataFimSelecionada(dtStr);
+    } catch (e) {
+      const todayStr = new Date().toISOString().split("T")[0];
+      setDataSelecionada(todayStr);
+      setDataFimSelecionada(todayStr);
+    }
     setNovoTitulo("");
     setNovoHorario("09:00");
     setNovoProjetoId("");
@@ -297,16 +304,26 @@ export default function AgendaPage() {
   const abrirDetalhesEvento = (ev: any) => {
     setEventoSelecionado(ev);
     setEditando(false);
-    setEditTitulo(ev.titulo);
+    setEditTitulo(ev.titulo || "");
 
-    const dtInicio = new Date(ev.inicio);
-    setEditDataInicio(dtInicio.toISOString().split("T")[0]);
+    try {
+      const dtInicio = ev.inicio ? new Date(ev.inicio) : new Date();
+      const validInicio = isNaN(dtInicio.getTime()) ? new Date() : dtInicio;
+      setEditDataInicio(validInicio.toISOString().split("T")[0]);
 
-    const dtFim = ev.fim ? new Date(ev.fim) : dtInicio;
-    setEditDataFim(dtFim.toISOString().split("T")[0]);
+      const dtFim = ev.fim ? new Date(ev.fim) : validInicio;
+      const validFim = isNaN(dtFim.getTime()) ? validInicio : dtFim;
+      setEditDataFim(validFim.toISOString().split("T")[0]);
 
-    const horStr = dtInicio.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
-    setEditHorario(horStr);
+      const horStr = validInicio.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+      setEditHorario(horStr);
+    } catch (err) {
+      const todayStr = new Date().toISOString().split("T")[0];
+      setEditDataInicio(todayStr);
+      setEditDataFim(todayStr);
+      setEditHorario("09:00");
+    }
+
     setEditProjetoId(ev.projetoId || "");
     setEditRecorrencia(ev.recorrencia || "unico");
   };
