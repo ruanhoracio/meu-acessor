@@ -1,165 +1,232 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db";
+import { enviarTelegram, escaparMarkdown, telegramConfigurado } from "@/lib/telegram";
 
-const TELEGRAM_TOKEN = process.env.TELEGRAM_BOT_TOKEN || "";
+export const dynamic = "force-dynamic";
+
 const ALLOWED_CHAT_ID = process.env.TELEGRAM_ALLOWED_CHAT_ID || "";
 
-function getDiaString(d: Date): string {
-  const ano = d.getFullYear();
-  const mes = String(d.getMonth() + 1).padStart(2, "0");
-  const dia = String(d.getDate()).padStart(2, "0");
-  return `${ano}-${mes}-${dia}`;
+// Brasil não usa horário de verão: UTC-3 o ano inteiro.
+const BRT_OFFSET_HORAS = 3;
+
+/** Componentes de calendário do instante informado, no fuso de Brasília. */
+function partesBRT(data: Date) {
+  const d = new Date(data.getTime() - BRT_OFFSET_HORAS * 3600000);
+  return {
+    ano: d.getUTCFullYear(),
+    mes: d.getUTCMonth(),
+    dia: d.getUTCDate(),
+    hora: d.getUTCHours(),
+  };
 }
 
-async function enviarResumoAgendado(tipo: "08" | "16" | "19") {
-  const hoje = new Date();
-  const hojeStr = getDiaString(hoje);
-  const chaveDigest = `digest_${tipo}_${hojeStr}`;
+/** "YYYY-MM-DD" do dia em Brasília — usado como chave de idempotência. */
+function diaBRT(data: Date): string {
+  const p = partesBRT(data);
+  return `${p.ano}-${String(p.mes + 1).padStart(2, "0")}-${String(p.dia).padStart(2, "0")}`;
+}
 
-  const jaEnviado = await prisma.lembreteEnviado.findFirst({
-    where: { tipo: chaveDigest },
+/** Instante UTC correspondente à meia-noite (BRT) do dia informado. */
+function inicioDoDiaBRT(ano: number, mes: number, dia: number): Date {
+  return new Date(Date.UTC(ano, mes, dia, BRT_OFFSET_HORAS, 0, 0, 0));
+}
+
+function horaBRTFormatada(data: Date): string {
+  return data.toLocaleTimeString("pt-BR", {
+    timeZone: "America/Sao_Paulo",
+    hour: "2-digit",
+    minute: "2-digit",
   });
+}
 
+function dataBRTFormatada(data: Date): string {
+  return data.toLocaleDateString("pt-BR", {
+    timeZone: "America/Sao_Paulo",
+    weekday: "long",
+    day: "2-digit",
+    month: "2-digit",
+  });
+}
+
+/** Registra o envio só depois de confirmado, para não "queimar" o lembrete do dia. */
+async function enviarERegistrar(chave: string, texto: string, chatId: string): Promise<boolean> {
+  const jaEnviado = await prisma.lembreteEnviado.findFirst({ where: { tipo: chave } });
   if (jaEnviado) return false;
 
-  // 1. Tarefas de HOJE
-  const tarefas = await prisma.tarefa.findMany({
-    where: { status: "aberta" },
-    include: { projeto: true },
-  });
-
-  const tarefasHoje = tarefas.filter((t) => {
-    if (!t.prazo) return true;
-    return getDiaString(new Date(t.prazo)) <= hojeStr;
-  });
-
-  // 2. Agenda de HOJE
-  const inicioDia = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate(), 0, 0, 0);
-  const fimDia = new Date(hoje.getFullYear(), hoje.getMonth(), hoje.getDate(), 23, 59, 59);
-
-  const eventosHoje = await prisma.evento.findMany({
-    where: {
-      inicio: { gte: inicioDia, lte: fimDia },
-    },
-    include: { projeto: true },
-  });
-
-  // 3. Entregas Pendentes
-  const entregas = await prisma.entregaMensal.findMany({
-    where: { mes: hoje.getMonth() + 1, ano: hoje.getFullYear(), concluido: false },
-    include: { projeto: true },
-  });
-
-  const tituloHeader =
-    tipo === "08"
-      ? "☀️ *Resumo Matinal das 08:00*"
-      : tipo === "16"
-      ? "⚡ *Acompanhamento da Tarde das 16:00*"
-      : "🌙 *Resumo da Noite das 19:00*";
-
-  let msg = `${tituloHeader}\n\n`;
-
-  if (tarefasHoje.length > 0) {
-    msg += `📋 *Tarefas do Dia (${tarefasHoje.length}):*\n`;
-    tarefasHoje.slice(0, 10).forEach((t) => {
-      msg += `• ${t.titulo}${t.projeto ? ` _(${t.projeto.nome})_` : ""}\n`;
-    });
-    msg += `\n`;
-  } else {
-    msg += `📋 *Tarefas do Dia:* Nenhuma tarefa pendente!\n\n`;
+  const resultado = await enviarTelegram(chatId, texto);
+  if (!resultado.ok) {
+    console.error(`[Cron] Falha ao enviar "${chave}":`, resultado.erro);
+    return false;
   }
-
-  if (eventosHoje.length > 0) {
-    msg += `📅 *Agenda de Hoje (${eventosHoje.length}):*\n`;
-    eventosHoje.forEach((e) => {
-      const horaStr = new Date(e.inicio).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
-      msg += `• ${horaStr} — ${e.titulo}\n`;
-    });
-    msg += `\n`;
-  }
-
-  if (entregas.length > 0) {
-    msg += `🎬 *Entregas Pendentes do Mês (${entregas.length}):*\n`;
-    entregas.slice(0, 5).forEach((e) => {
-      msg += `• ${e.titulo}${e.projeto ? ` _(${e.projeto.nome})_` : ""}\n`;
-    });
-  }
-
-  const targetChatId = ALLOWED_CHAT_ID || "733888488";
-
-  await fetch(`https://api.telegram.org/bot${TELEGRAM_TOKEN}/sendMessage`, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      chat_id: targetChatId,
-      text: msg,
-      parse_mode: "Markdown",
-    }),
-  });
 
   await prisma.lembreteEnviado.create({
-    data: {
-      tipo: chaveDigest,
-      entidadeId: "cron_digest",
-    },
+    data: { tipo: chave, entidadeId: "cron" },
   });
-
   return true;
 }
 
-export async function GET(req: NextRequest) {
-  try {
-    const agora = new Date();
-    // Ajuste de fuso horário BRT (UTC-3)
-    const horaBRT = new Date(agora.getTime() - 3 * 60 * 60 * 1000).getUTCHours();
+// ── Resumo diário (08:00 e 16:00 BRT) ──────────────────────────────
+async function enviarResumoAgendado(tipo: "08" | "16", agora: Date, chatId: string) {
+  const hojeStr = diaBRT(agora);
+  const p = partesBRT(agora);
 
-    // 1. Checagem de Lembretes Agendados (Aviso 5 minutos antes 24/7)
-    const lembretesPendentes = await prisma.lembreteAgendado.findMany({
-      where: {
-        enviado: false,
-        horarioNotificar: { lte: agora },
-      },
+  const inicioDia = inicioDoDiaBRT(p.ano, p.mes, p.dia);
+  const fimDia = new Date(inicioDia.getTime() + 24 * 3600000 - 1);
+
+  const tarefas = await prisma.tarefa.findMany({
+    where: { status: { in: ["aberta", "fazendo"] } },
+    include: { projeto: true },
+    orderBy: { prioridade: "asc" },
+  });
+  const tarefasHoje = tarefas.filter((t) => !t.prazo || diaBRT(new Date(t.prazo)) <= hojeStr);
+
+  const eventosHoje = await prisma.evento.findMany({
+    where: { inicio: { gte: inicioDia, lte: fimDia } },
+    include: { projeto: true },
+    orderBy: { inicio: "asc" },
+  });
+
+  const entregas = await prisma.entregaMensal.findMany({
+    where: { mes: p.mes + 1, ano: p.ano, concluido: false },
+    include: { projeto: true },
+  });
+
+  let msg =
+    tipo === "08"
+      ? `☀️ *Bom dia, Ruan!* Seu resumo de ${dataBRTFormatada(agora)}\n\n`
+      : `⚡ *Checagem da tarde (16:00)* — ${dataBRTFormatada(agora)}\n\n`;
+
+  if (eventosHoje.length > 0) {
+    msg += `📅 *Agenda de hoje (${eventosHoje.length}):*\n`;
+    eventosHoje.forEach((e) => {
+      msg += `• ${horaBRTFormatada(new Date(e.inicio))} — ${escaparMarkdown(e.titulo)}`;
+      msg += e.projeto ? ` _(${escaparMarkdown(e.projeto.nome)})_\n` : "\n";
+    });
+    msg += `\n`;
+  } else {
+    msg += `📅 *Agenda:* nenhum compromisso hoje.\n\n`;
+  }
+
+  if (tarefasHoje.length > 0) {
+    msg += `📋 *Tarefas do dia (${tarefasHoje.length}):*\n`;
+    tarefasHoje.slice(0, 10).forEach((t) => {
+      msg += `• ${escaparMarkdown(t.titulo)}`;
+      msg += t.projeto ? ` _(${escaparMarkdown(t.projeto.nome)})_\n` : "\n";
+    });
+    if (tarefasHoje.length > 10) msg += `_...e mais ${tarefasHoje.length - 10}._\n`;
+    msg += `\n`;
+  } else {
+    msg += `📋 *Tarefas:* nenhuma pendente. 🎉\n\n`;
+  }
+
+  if (entregas.length > 0) {
+    msg += `🎬 *Entregas pendentes do mês (${entregas.length}):*\n`;
+    entregas.slice(0, 5).forEach((e) => {
+      msg += `• ${escaparMarkdown(e.titulo)}`;
+      msg += e.projeto ? ` _(${escaparMarkdown(e.projeto.nome)})_\n` : "\n";
+    });
+    msg += `\n`;
+  }
+
+  msg += tipo === "08" ? `🚀 *Bom trabalho hoje!*` : `💪 *Reta final — bora fechar essas!*`;
+
+  return enviarERegistrar(`digest_${tipo}_${hojeStr}`, msg, chatId);
+}
+
+// ── Lembretes de compromissos: 2 dias antes e 1 dia antes ──────────
+async function enviarLembretesDeAgenda(agora: Date, chatId: string) {
+  const p = partesBRT(agora);
+  const enviados: string[] = [];
+
+  for (const distancia of [2, 1] as const) {
+    const inicioAlvo = inicioDoDiaBRT(p.ano, p.mes, p.dia + distancia);
+    const fimAlvo = new Date(inicioAlvo.getTime() + 24 * 3600000 - 1);
+
+    const eventos = await prisma.evento.findMany({
+      where: { inicio: { gte: inicioAlvo, lte: fimAlvo } },
+      include: { projeto: true },
+      orderBy: { inicio: "asc" },
     });
 
-    for (const l of lembretesPendentes) {
-      const horAlvoStr = new Date(l.horarioAlvo).toLocaleTimeString("pt-BR", {
-        hour: "2-digit",
-        minute: "2-digit",
-      });
+    for (const ev of eventos) {
+      const chave = `agenda_d${distancia}_${ev.id}_${diaBRT(new Date(ev.inicio))}`;
+      const cabecalho = distancia === 2 ? "*Faltam 2 dias*" : "*É amanhã!*";
 
-      const targetChatId = l.chatId || ALLOWED_CHAT_ID;
+      const msg =
+        `🔔 ${cabecalho}\n\n` +
+        `📌 *${escaparMarkdown(ev.titulo)}*\n` +
+        `📅 ${dataBRTFormatada(new Date(ev.inicio))} às *${horaBRTFormatada(new Date(ev.inicio))}*` +
+        (ev.projeto ? `\n👤 Cliente: _${escaparMarkdown(ev.projeto.nome)}_` : "");
 
-      await fetch(`https://api.telegram.org/bot${TELEGRAM_TOKEN}/sendMessage`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          chat_id: targetChatId,
-          text: `⏰ *LEMBRETE PROATIVO (Faltam 5 minutos!)*\n\n📌 *${l.mensagem}*\n🕒 Agendado para às *${horAlvoStr}*`,
-          parse_mode: "Markdown",
-        }),
-      });
+      if (await enviarERegistrar(chave, msg, chatId)) enviados.push(chave);
+    }
+  }
 
-      await prisma.lembreteAgendado.update({
-        where: { id: l.id },
-        data: { enviado: true },
-      });
+  return enviados;
+}
+
+// ── Lembretes pontuais criados pelo usuário (5 min antes) ──────────
+async function enviarLembretesPontuais(agora: Date, chatIdPadrao: string) {
+  const pendentes = await prisma.lembreteAgendado.findMany({
+    where: { enviado: false, horarioNotificar: { lte: agora } },
+  });
+
+  let enviados = 0;
+  for (const l of pendentes) {
+    const msg =
+      `⏰ *LEMBRETE*\n\n` +
+      `📌 *${escaparMarkdown(l.mensagem)}*\n` +
+      `🕒 Agendado para às *${horaBRTFormatada(new Date(l.horarioAlvo))}*`;
+
+    const resultado = await enviarTelegram(l.chatId || chatIdPadrao, msg);
+    if (resultado.ok) {
+      await prisma.lembreteAgendado.update({ where: { id: l.id }, data: { enviado: true } });
+      enviados++;
+    } else {
+      console.error("[Cron] Falha no lembrete pontual:", resultado.erro);
+    }
+  }
+  return enviados;
+}
+
+export async function GET(_req: NextRequest) {
+  try {
+    if (!telegramConfigurado()) {
+      console.error("[Cron] TELEGRAM_BOT_TOKEN ausente — nenhum envio possível.");
+      return NextResponse.json(
+        { status: "error", motivo: "TELEGRAM_BOT_TOKEN não configurado na Vercel" },
+        { status: 500 }
+      );
     }
 
-    // 2. Disparos dos Resumos Diários das 08:00, 16:00 e 19:00
-    if (horaBRT >= 8 && horaBRT < 16) {
-      await enviarResumoAgendado("08");
+    const chatId = ALLOWED_CHAT_ID;
+    if (!chatId) {
+      return NextResponse.json(
+        { status: "error", motivo: "TELEGRAM_ALLOWED_CHAT_ID não configurado na Vercel" },
+        { status: 500 }
+      );
     }
-    if (horaBRT >= 16 && horaBRT < 19) {
-      await enviarResumoAgendado("16");
-    }
-    if (horaBRT >= 19) {
-      await enviarResumoAgendado("19");
+
+    const agora = new Date();
+    const horaBRT = partesBRT(agora).hora;
+
+    const lembretesPontuais = await enviarLembretesPontuais(agora, chatId);
+    const lembretesAgenda = await enviarLembretesDeAgenda(agora, chatId);
+
+    // Janelas amplas: se o cron atrasar, o resumo ainda sai no mesmo dia.
+    let resumoEnviado: string | null = null;
+    if (horaBRT >= 6 && horaBRT < 16) {
+      if (await enviarResumoAgendado("08", agora, chatId)) resumoEnviado = "08";
+    } else if (horaBRT >= 16) {
+      if (await enviarResumoAgendado("16", agora, chatId)) resumoEnviado = "16";
     }
 
     return NextResponse.json({
       status: "ok",
       horaBRT,
-      lembretesProcessados: lembretesPendentes.length,
+      resumoEnviado,
+      lembretesAgenda: lembretesAgenda.length,
+      lembretesPontuais,
       timestamp: agora.toISOString(),
     });
   } catch (error: any) {

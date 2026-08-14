@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/db";
 import OpenAI from "openai";
 import { tentarClassificacaoInstantanea, formatarBRT } from "@/lib/classificador";
+import { enviarTelegram } from "@/lib/telegram";
 
 const TELEGRAM_TOKEN = process.env.TELEGRAM_BOT_TOKEN || "";
 const ALLOWED_CHAT_ID = process.env.TELEGRAM_ALLOWED_CHAT_ID || "";
@@ -10,8 +11,9 @@ const GROQ_KEY = process.env.GROQ_API_KEY || "";
 const groq = GROQ_KEY ? new OpenAI({ apiKey: GROQ_KEY, baseURL: "https://api.groq.com/openai/v1" }) : null;
 
 export async function POST(req: NextRequest) {
+  let body: any = null;
   try {
-    const body = await req.json();
+    body = await req.json();
 
     if (body.message) {
       const msg = body.message;
@@ -244,26 +246,35 @@ Responda APENAS o array JSON, sem texto ao redor:
       });
 
       // Se foi mensagem de áudio, inclui a transcrição na resposta para o usuário saber o que foi entendido
-      const sufixoAudio = voiceMsg && textoParaClassificar ? `\n\n🎙️ _" ${textoParaClassificar} "_` : "";
+      const sufixoAudio = voiceMsg && textoParaClassificar ? `\n\n🎙️ _"${textoParaClassificar}"_` : "";
       const msgLinhas = itemsClassificados.map((c: any) => c.confirmacao || `✓ ${c.tipo}: ${c.titulo}`);
       const confirmText = msgLinhas.join("\n") + sufixoAudio;
 
-      await fetch(`https://api.telegram.org/bot${TELEGRAM_TOKEN}/sendMessage`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          chat_id: chatId,
-          text: confirmText,
-          parse_mode: "Markdown",
-        }),
-      });
+      const envio = await enviarTelegram(chatId, confirmText);
+      if (!envio.ok) {
+        console.error("[Telegram Webhook] Confirmação não entregue:", envio.erro);
+      }
 
-      return NextResponse.json({ status: "ok" });
+      return NextResponse.json({ status: "ok", confirmacaoEntregue: envio.ok });
     }
 
     return NextResponse.json({ status: "ignored" });
   } catch (error: any) {
     console.error("[Telegram Webhook Error]:", error);
+
+    // O usuário precisa saber que a mensagem chegou mas não foi processada,
+    // em vez de ficar no vácuo achando que o bot ignorou.
+    try {
+      const chatIdErro = String(body?.message?.chat?.id || ALLOWED_CHAT_ID || "");
+      if (chatIdErro) {
+        await enviarTelegram(
+          chatIdErro,
+          "⚠️ Recebi sua mensagem, mas houve um erro ao processar.\nEla está salva no Inbox do app — dá uma olhada lá.",
+          { markdown: false }
+        );
+      }
+    } catch {}
+
     return NextResponse.json({ status: "error", error: String(error) }, { status: 500 });
   }
 }
