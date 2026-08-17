@@ -181,7 +181,7 @@ export default function HojePage() {
       <div className="card p-6 animate-fade-in-up-delay-1">
         <div className="flex items-center justify-between mb-3">
           <div className="flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-[#c6f91f] animate-pulse" />
+            <span className="w-2 h-2 rounded-full bg-accent animate-pulse" />
             <span className="font-mono text-xs font-bold text-secondary uppercase tracking-wider">
               Capacidade da Semana
             </span>
@@ -198,8 +198,7 @@ export default function HojePage() {
             className="progress-fill"
             style={{
               width: `${Math.min(percentual, 100)}%`,
-              background: estourada ? "var(--danger)" : "#c6f91f",
-              boxShadow: estourada ? "0 0 12px var(--danger-subtle)" : "0 0 16px rgba(198, 249, 31, 0.5)",
+              background: estourada ? "var(--danger)" : "var(--accent-gradient)",
             }}
           />
         </div>
@@ -408,7 +407,7 @@ function StatCard({
         accent
           ? {
               borderColor: "var(--accent)",
-              background: "rgba(198, 249, 31, 0.08)",
+              background: "var(--accent-subtle)",
             }
           : {}
       }

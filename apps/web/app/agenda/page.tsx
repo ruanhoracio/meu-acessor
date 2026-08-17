@@ -459,7 +459,7 @@ export default function AgendaPage() {
                   <span
                     className={`text-xs font-mono font-bold inline-flex items-center justify-center w-6 h-6 rounded-md transition-all ${
                       ehHoje
-                        ? "bg-[#c6f91f] text-black shadow-xs font-extrabold"
+                        ? "bg-accent text-inverse shadow-xs font-extrabold"
                         : ehMesAtual
                         ? "text-primary"
                         : "text-muted opacity-50"

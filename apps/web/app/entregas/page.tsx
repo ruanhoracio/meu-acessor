@@ -288,7 +288,7 @@ export default function ControleEntregasPage() {
               !editandoMeta ? (
                 <div className="flex items-center gap-2 text-xs font-bold font-mono">
                   <Target className="w-4 h-4 text-accent" />
-                  <span>Meta do Cliente: <u className="no-underline font-extrabold text-[#c6f91f] text-sm px-1.5 py-0.5 bg-[#c6f91f]/10 border border-[#c6f91f]/30 rounded-md">{metaTotal} vídeos/mês</u></span>
+                  <span>Meta do Cliente: <u className="no-underline font-extrabold text-accent text-sm px-1.5 py-0.5 bg-accent-subtle border border-border rounded-md">{metaTotal} vídeos/mês</u></span>
                   <button
                     type="button"
                     onClick={() => {
@@ -338,7 +338,7 @@ export default function ControleEntregasPage() {
           </div>
 
           <div className="text-right">
-            <span className="font-heading text-2xl md:text-3xl font-light tracking-tighter text-[#c6f91f]">
+            <span className="font-heading text-2xl md:text-3xl font-light tracking-tighter text-accent">
               {concluidosCount}/{metaTotal} concluídos
             </span>
             <span className="block text-[11px] font-mono text-muted font-bold">
@@ -353,8 +353,7 @@ export default function ControleEntregasPage() {
             className="progress-fill"
             style={{
               width: `${percentual}%`,
-              background: "#c6f91f",
-              boxShadow: "0 0 16px rgba(198, 249, 31, 0.5)",
+              background: "var(--accent-gradient)",
             }}
           />
         </div>

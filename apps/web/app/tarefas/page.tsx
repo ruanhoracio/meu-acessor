@@ -305,7 +305,7 @@ export default function TarefasTodoistPage() {
               onClick={() => setModoExibicao("todoist")}
               className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-mono font-bold rounded transition-all cursor-pointer ${
                 modoExibicao === "todoist"
-                  ? "bg-[#c6f91f] text-black shadow-xs"
+                  ? "bg-accent text-inverse shadow-xs"
                   : "text-muted hover:text-primary"
               }`}
             >
@@ -317,7 +317,7 @@ export default function TarefasTodoistPage() {
               onClick={() => setModoExibicao("kanban")}
               className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-mono font-bold rounded transition-all cursor-pointer ${
                 modoExibicao === "kanban"
-                  ? "bg-[#c6f91f] text-black shadow-xs"
+                  ? "bg-accent text-inverse shadow-xs"
                   : "text-muted hover:text-primary"
               }`}
             >
@@ -509,7 +509,7 @@ export default function TarefasTodoistPage() {
               {/* Botão Inline Todoist: "+ Adicionar tarefa" */}
               <button
                 onClick={() => abrirModalComData(dia.dtStr)}
-                className="flex items-center gap-2 text-xs font-semibold text-muted hover:text-accent dark:hover:text-accent py-1.5 px-2 rounded-lg hover:bg-surface-hover transition-colors cursor-pointer w-full text-left group"
+                className="flex items-center gap-2 text-xs font-semibold text-muted hover:text-accent py-1.5 px-2 rounded-lg hover:bg-surface-hover transition-colors cursor-pointer w-full text-left group"
               >
                 <Plus className="w-4 h-4 text-accent transition-transform group-hover:scale-110" />
                 <span>Adicionar tarefa</span>

@@ -46,9 +46,9 @@ export function BottomNav() {
               href={item.href}
               className="flex flex-col items-center gap-1 py-1.5 px-3 rounded-lg transition-all cursor-pointer"
               style={{
-                color: isActive ? "#c6f91f" : "var(--text-muted)",
-                background: isActive ? "rgba(198, 249, 31, 0.1)" : "transparent",
-                border: isActive ? "1px solid rgba(198, 249, 31, 0.25)" : "1px solid transparent",
+                color: isActive ? "var(--accent-on)" : "var(--text-muted)",
+                background: isActive ? "var(--accent-gradient)" : "transparent",
+                border: isActive ? "1px solid var(--accent)" : "1px solid transparent",
               }}
             >
               <Icon className="w-4.5 h-4.5" strokeWidth={isActive ? 2.4 : 1.8} />

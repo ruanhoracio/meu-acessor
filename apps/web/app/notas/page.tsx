@@ -164,9 +164,9 @@ export default function NotasPage() {
           {/* Nota nova */}
           <button
             onClick={abrirNova}
-            className="card p-6 flex flex-col items-center justify-center gap-3 border-dashed cursor-pointer transition-all min-h-[160px] hover:border-[#c6f91f]"
+            className="card p-6 flex flex-col items-center justify-center gap-3 border-dashed cursor-pointer transition-all min-h-[160px] hover:border-accent"
           >
-            <div className="w-10 h-10 rounded-lg flex items-center justify-center bg-[#c6f91f]/10 border border-[#c6f91f]/30">
+            <div className="w-10 h-10 rounded-lg flex items-center justify-center bg-accent-subtle border border-border">
               <Plus className="w-5 h-5 text-accent" />
             </div>
             <span className="text-xs font-mono font-bold uppercase tracking-wider text-muted">
@@ -178,7 +178,7 @@ export default function NotasPage() {
             <div
               key={nota.id}
               onClick={() => abrirEdicao(nota)}
-              className="card p-5 cursor-pointer transition-all hover:border-[#c6f91f] rounded-xl"
+              className="card p-5 cursor-pointer transition-all hover:border-accent rounded-xl"
             >
               <div className="flex items-start justify-between mb-3">
                 <div className="flex items-center gap-2">

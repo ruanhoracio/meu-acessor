@@ -61,7 +61,10 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
       <div className="min-h-screen bg-background flex items-center justify-center p-4">
         <div className="card w-full max-w-md p-8 bg-card backdrop-blur-xl shadow-elevated relative rounded-3xl border border-border animate-fade-in-up text-center">
           {/* Avatar / Ícone */}
-          <div className="mx-auto w-20 h-20 rounded-full p-1 bg-gradient-to-tr from-[#c6f91f] to-[#a3d900] shadow-volt mb-4 relative">
+          <div
+            className="mx-auto w-20 h-20 rounded-full p-1 shadow-volt mb-4 relative"
+            style={{ background: "var(--accent-gradient)" }}
+          >
             <div className="w-full h-full rounded-full overflow-hidden bg-surface flex items-center justify-center">
               {avatar ? (
                 <img src={avatar} alt="Ruan" className="w-full h-full object-cover" />
@@ -69,7 +72,10 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
                 <Lock className="w-8 h-8 text-accent" />
               )}
             </div>
-            <div className="absolute bottom-0 right-0 bg-[#c6f91f] text-black p-1.5 rounded-full shadow-xs">
+            <div
+              className="absolute bottom-0 right-0 p-1.5 rounded-full shadow-xs"
+              style={{ background: "var(--accent)", color: "var(--accent-on)" }}
+            >
               <ShieldCheck className="w-3.5 h-3.5" />
             </div>
           </div>

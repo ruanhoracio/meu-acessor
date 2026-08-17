@@ -6,7 +6,6 @@ import { Bell, Search, Plus } from "lucide-react";
 import { ModalNovo } from "@/components/modals/modal-novo";
 import { ModalBusca } from "@/components/modals/modal-busca";
 import { PopoverNotificacoes } from "@/components/modals/popover-notificacoes";
-import { ThemeToggle } from "@/components/theme-toggle";
 
 const PAGE_TITLES: Record<string, string> = {
   "/": "Hoje",
@@ -59,9 +58,6 @@ export function Header() {
         </div>
 
         <div className="flex items-center gap-2.5">
-          {/* Botão Alternar Tema */}
-          <ThemeToggle />
-
           {/* Botão Pesquisar */}
           <button
             onClick={() => setModalBuscaOpen(true)}
@@ -91,9 +87,9 @@ export function Header() {
           >
             <Bell className="w-4 h-4" strokeWidth={1.8} />
             <span
-              className="absolute top-0 right-0 w-2.5 h-2.5 rounded-full bg-[#c6f91f] animate-pulse"
+              className="absolute top-0 right-0 w-2.5 h-2.5 rounded-full bg-danger animate-pulse"
               style={{
-                boxShadow: "0 0 10px rgba(198, 249, 31, 0.6)",
+                boxShadow: "0 0 0 2px var(--bg-primary)",
               }}
             />
           </button>

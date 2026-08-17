@@ -26,11 +26,12 @@ const TAG_ICONS: Record<string, React.ReactNode> = {
   "tipografia": <Type className="w-3 h-3" />,
 };
 
+/* Placeholders na escala de gráficos do VIA (navy → cinza-azulado) */
 const GRADIENT_BG = [
-  "linear-gradient(135deg, rgba(198, 249, 31, 0.1) 0%, rgba(5, 8, 10, 0.8) 100%)",
-  "linear-gradient(135deg, rgba(99, 102, 241, 0.1) 0%, rgba(5, 8, 10, 0.8) 100%)",
-  "linear-gradient(135deg, rgba(245, 158, 11, 0.1) 0%, rgba(5, 8, 10, 0.8) 100%)",
-  "linear-gradient(135deg, rgba(16, 185, 129, 0.1) 0%, rgba(5, 8, 10, 0.8) 100%)",
+  "linear-gradient(135deg, #0A1F3B 0%, #335379 100%)",
+  "linear-gradient(135deg, #335379 0%, #5E7B9E 100%)",
+  "linear-gradient(135deg, #5E7B9E 0%, #93A8C2 100%)",
+  "linear-gradient(135deg, #1E3A5F 0%, #93A8C2 100%)",
 ];
 
 export default function ReferenciasPage() {
@@ -174,9 +175,9 @@ export default function ReferenciasPage() {
           {/* Adicionar referência */}
           <button
             onClick={abrirNova}
-            className="card p-8 flex flex-col items-center justify-center gap-3 border-dashed cursor-pointer transition-all min-h-[200px] hover:border-[#c6f91f]"
+            className="card p-8 flex flex-col items-center justify-center gap-3 border-dashed cursor-pointer transition-all min-h-[200px] hover:border-accent"
           >
-            <div className="w-12 h-12 rounded-lg flex items-center justify-center bg-[#c6f91f]/10 border border-[#c6f91f]/30">
+            <div className="w-12 h-12 rounded-lg flex items-center justify-center bg-accent-subtle border border-border">
               <Plus className="w-5 h-5 text-accent" />
             </div>
             <span className="text-xs font-mono font-bold uppercase tracking-wider text-muted">
@@ -188,7 +189,7 @@ export default function ReferenciasPage() {
             <div
               key={ref.id}
               onClick={() => abrirEdicao(ref)}
-              className="card overflow-hidden cursor-pointer transition-all hover:border-[#c6f91f] group rounded-xl"
+              className="card overflow-hidden cursor-pointer transition-all hover:border-accent group rounded-xl"
             >
               {/* Thumbnail placeholder */}
               <div
@@ -196,7 +197,7 @@ export default function ReferenciasPage() {
                 style={{ background: GRADIENT_BG[i % GRADIENT_BG.length] }}
               >
                 <div className="text-center px-4">
-                  <Play className="w-10 h-10 mx-auto mb-2 opacity-30 group-hover:opacity-80 transition-opacity text-[#c6f91f]" />
+                  <Play className="w-10 h-10 mx-auto mb-2 opacity-30 group-hover:opacity-80 transition-opacity text-accent" />
                   <p className="text-xs font-mono text-muted truncate max-w-[200px]">
                     {ref.url}
                   </p>

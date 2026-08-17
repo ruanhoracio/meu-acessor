@@ -16,7 +16,6 @@ import {
   Settings,
   Camera,
 } from "lucide-react";
-import { ThemeToggle } from "@/components/theme-toggle";
 
 const NAV_ITEMS = [
   { href: "/", label: "Hoje", icon: LayoutDashboard },
@@ -101,19 +100,18 @@ export function Sidebar() {
         borderColor: "var(--border)",
       }}
     >
-      {/* Logo vetorial oficial Meu Assessor com headset verde Volt e texto branco */}
       {/* Logo vetorial oficial Meu Assessor */}
       <div
-        className="px-5 h-[76px] flex items-center justify-between border-b border-dashed relative overflow-hidden"
-        style={{ borderColor: "var(--border-dashed)" }}
+        className="px-5 h-[76px] flex items-center justify-between border-b relative overflow-hidden"
+        style={{ borderColor: "var(--border)" }}
       >
         <Link
           href="/"
-          className="relative w-[158px] h-[52px] flex items-center bg-[#05080a] dark:bg-transparent rounded-xl px-2 transition-colors"
+          className="relative w-[158px] h-[52px] flex items-center rounded-xl px-2 transition-colors"
           title="Meu Assessor"
         >
           <Image
-            src="/logo-header-volt.svg"
+            src="/logo-header.svg"
             alt="Meu Assessor"
             width={142}
             height={42}
@@ -121,7 +119,6 @@ export function Sidebar() {
             priority
           />
         </Link>
-        <div className="absolute bottom-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-[#c6f91f]/40 to-transparent" />
       </div>
 
       {/* Nav */}
@@ -145,7 +142,7 @@ export function Sidebar() {
                   className="ml-auto text-[10px] font-mono font-bold py-0.5 px-2 rounded-full transition-all"
                   style={{
                     background: "var(--accent)",
-                    color: "#05080a",
+                    color: "var(--accent-on)",
                   }}
                 >
                   {inboxCount}
@@ -158,9 +155,6 @@ export function Sidebar() {
 
       {/* Footer */}
       <div className="px-3 py-4 border-t space-y-2" style={{ borderColor: "var(--border)" }}>
-        <div className="px-1">
-          <ThemeToggle />
-        </div>
         <Link href="/config" className={`sidebar-link ${pathname === "/config" ? "active" : ""}`}>
           <Settings className="w-[16px] h-[16px]" strokeWidth={1.8} />
           <span className="tracking-widest uppercase font-mono text-[11px] font-bold">Configurações</span>
@@ -179,16 +173,17 @@ export function Sidebar() {
           <button
             type="button"
             onClick={() => fileInputRef.current?.click()}
-            className="relative group w-9 h-9 rounded-lg overflow-hidden flex-shrink-0 cursor-pointer border border-[#c6f91f]/40 hover:border-[#c6f91f] transition-all shadow-xs"
+            className="relative group w-9 h-9 rounded-lg overflow-hidden flex-shrink-0 cursor-pointer border border-border hover:border-accent transition-all shadow-xs"
             title="Clique para escolher e redimensionar foto do seu computador"
           >
             {userAvatar ? (
               <img src={userAvatar} alt="Foto de perfil" className="w-full h-full object-cover" />
             ) : (
               <div
-                className="w-full h-full flex items-center justify-center text-xs font-bold text-black"
+                className="w-full h-full flex items-center justify-center text-xs font-bold"
                 style={{
-                  background: "#c6f91f",
+                  background: "var(--accent-gradient)",
+                  color: "var(--accent-on)",
                 }}
               >
                 {nomeUsuario.charAt(0).toUpperCase()}
@@ -201,7 +196,7 @@ export function Sidebar() {
 
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-1.5">
-              <span className="w-2 h-2 rounded-full bg-[#c6f91f] animate-pulse flex-shrink-0" />
+              <span className="w-2 h-2 rounded-full bg-success animate-pulse flex-shrink-0" />
               <p className="text-xs font-bold truncate text-primary">{nomeUsuario}</p>
             </div>
             <p className="text-[10px] font-mono text-muted truncate">Editor / Producer</p>
