@@ -24,6 +24,21 @@ const MESES_MAP: Record<string, number> = {
   dezembro: 11, dez: 11,
 };
 
+// getDay(): 0 = domingo ... 6 = sábado
+const DIAS_SEMANA_MAP: Record<string, number> = {
+  domingo: 0,
+  segunda: 1,
+  terca: 2, terça: 2,
+  quarta: 3,
+  quinta: 4,
+  sexta: 5,
+  sabado: 6, sábado: 6,
+};
+
+// Sem \b no fim: acentos (ã, ç, á) não contam como letra para \b em JS
+const RE_DIA_SEMANA =
+  /\b(?:pr[óo]xim[ao]\s+|ness[ae]\s+|nest[ae]\s+|ess[ae]\s+|est[ae]\s+)?(segunda|ter[çc]a|quarta|quinta|sexta|s[áa]bado|domingo)(?:\s*[- ]\s*feira)?(?![a-zà-ú])/i;
+
 export interface ClassificacaoOutput {
   tipo: "video" | "tarefa" | "evento" | "nota" | "referencia" | "lembrete";
   titulo: string;
@@ -97,14 +112,17 @@ function limparTitulo(texto: string): string {
     .replace(/\b\d{1,2}\s*\/\s*\d{1,2}(?:\s*\/\s*\d{2,4})?/g, " ")
     .replace(/\b\d{1,2}\s+de\s+(?:janeiro|fevereiro|março|marco|abril|maio|junho|julho|agosto|setembro|outubro|novembro|dezembro|jan|fev|mar|abr|mai|jun|jul|ago|set|out|nov|dez)\b/gi, " ")
     // referências relativas (sem \b final: "ã" não conta como caractere de palavra)
-    .replace(/(?:\b(?:para|pra|no|na|em)\s+)?(?:\bdepois\s+de\s+)?\bamanh[ãa](?![a-z])/gi, " ")
+    .replace(/(?:\b(?:para|pra|no|na|em)\s+)?(?:\bdepois\s+de\s+)?\bamanh[ãa](?![a-zà-ú])/gi, " ")
     .replace(/(?:\b(?:para|pra|no|na|em)\s+)?\bhoje\b/gi, " ")
+    // dias da semana: "pra quinta", "na sexta-feira", "próxima segunda"
+    .replace(/(?:\b(?:para|pra|no|na|em)\s+)?(?:\bpr[óo]xim[ao]\s+|\bness[ae]\s+|\bnest[ae]\s+|\bess[ae]\s+|\best[ae]\s+)?\b(?:segunda|ter[çc]a|quarta|quinta|sexta|s[áa]bado|domingo)(?:\s*[- ]\s*feira)?(?![a-zà-ú])/gi, " ")
     // pedidos de lembrete
     .replace(/^(?:por\s*favor,?\s*)?(?:me\s+)?(?:lembr[ae]|lembrar|avis[ae]|avisar)(?:\s+(?:de|que|pra|para))?\s*/gi, " ")
     // verbos de comando no início
     .replace(/^(?:por\s*favor,?\s*)?(?:adicione|adicionar|criar?|crie|coloque|colocar|p[õo]e|bota|botar|marca|marcar|agenda|agendar|salva|salvar|anota|anotar|fazer|faz)\b\s*/gi, " ")
     // rótulo explícito do tipo ("tarefa: x", "uma nota de y")
-    .replace(/^(?:uma?|o|a)?\s*(?:tarefa|nota|evento|compromisso|refer[êe]ncia)\s*(?::|-|\bde\b|\bpara\b|\bpra\b)\s*/gi, " ")
+    // conector opcional: em "tarefa pra amanhã ligar" o "pra amanhã" já foi removido acima
+    .replace(/^(?:uma?|o|a)?\s*(?:tarefa|nota|evento|compromisso|refer[êe]ncia)\s*(?::|-|\bde\b|\bpara\b|\bpra\b)?\s*/gi, " ")
     .replace(/\b(?:na|para\s+a|pra)\s+agenda\b/gi, " ")
     .replace(/^(?:preciso|tenho\s+que|tenho\s+de)\s+/gi, " ")
     // sobras de pontuação e espaços
@@ -166,10 +184,15 @@ export function extrairDataEMensagem(mensagem: string, agora: Date) {
     }
   }
 
-  // 3. "amanhã" / "hoje"
+  // 3. "depois de amanhã" / "amanhã" / "hoje"
+  // Sem \b depois de "amanh[ãa]": o "ã" não é letra para \b em JS, então
+  // "amanhã" (como o Whisper transcreve) nunca casava — só "amanha".
   if (!dataCalculada) {
     const msgLower = msgTrim.toLowerCase();
-    if (/\bamanh[ãa]\b/.test(msgLower)) {
+    if (/\bdepois\s+de\s+amanh[ãa](?![a-zà-ú])/.test(msgLower)) {
+      dataCalculada = dataBRT(hojeBRT.ano, hojeBRT.mes, hojeBRT.dia + 2, hora, minuto);
+      ehDataExplicita = true;
+    } else if (/\bamanh[ãa](?![a-zà-ú])/.test(msgLower)) {
       dataCalculada = dataBRT(hojeBRT.ano, hojeBRT.mes, hojeBRT.dia + 1, hora, minuto);
       ehDataExplicita = true;
     } else if (/\bhoje\b/.test(msgLower)) {
@@ -178,7 +201,25 @@ export function extrairDataEMensagem(mensagem: string, agora: Date) {
     }
   }
 
-  // 4. Só horário, sem dia: hoje se ainda dá tempo, senão amanhã
+  // 4. Dia da semana: "pra quinta", "sexta-feira", "próxima segunda"
+  if (!dataCalculada) {
+    const matchDia = msgTrim.toLowerCase().match(RE_DIA_SEMANA);
+    if (matchDia) {
+      const alvo = DIAS_SEMANA_MAP[matchDia[1].replace("ç", "c").replace("á", "a")];
+      if (alvo !== undefined) {
+        const diaSemanaHoje = new Date(
+          Date.UTC(hojeBRT.ano, hojeBRT.mes, hojeBRT.dia)
+        ).getUTCDay();
+        // Próxima ocorrência estritamente no futuro: "quinta" dita numa quinta = daqui 7 dias
+        let diasAFrente = (alvo - diaSemanaHoje + 7) % 7;
+        if (diasAFrente === 0) diasAFrente = 7;
+        dataCalculada = dataBRT(hojeBRT.ano, hojeBRT.mes, hojeBRT.dia + diasAFrente, hora, minuto);
+        ehDataExplicita = true;
+      }
+    }
+  }
+
+  // 5. Só horário, sem dia: hoje se ainda dá tempo, senão amanhã
   if (!dataCalculada && horario) {
     const candidato = dataBRT(hojeBRT.ano, hojeBRT.mes, hojeBRT.dia, hora, minuto);
     dataCalculada = candidato > agora

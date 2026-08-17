@@ -17,6 +17,8 @@ function partesBRT(data: Date) {
     mes: d.getUTCMonth(),
     dia: d.getUTCDate(),
     hora: d.getUTCHours(),
+    minuto: d.getUTCMinutes(),
+    diaSemana: d.getUTCDay(),
   };
 }
 
@@ -48,6 +50,51 @@ function dataBRTFormatada(data: Date): string {
   });
 }
 
+/**
+ * Eventos que ocorrem no dia BRT informado, projetando recorrências
+ * (semanal/mensal) — mesma lógica da agenda do app. Sem isso, "Culto toda
+ * semana" só aparecia no resumo na data original em que foi criado.
+ */
+async function eventosDoDiaBRT(ano: number, mes: number, dia: number) {
+  const todos = await prisma.evento.findMany({ include: { projeto: true } });
+
+  const inicioDia = inicioDoDiaBRT(ano, mes, dia);
+  const fimDia = new Date(inicioDia.getTime() + 24 * 3600000 - 1);
+  // Normaliza estouro de mês (ex.: dia 32 vira dia 1 do mês seguinte)
+  const pDiaAlvo = partesBRT(inicioDia);
+  const ocorrencias: { evento: (typeof todos)[number]; inicio: Date }[] = [];
+
+  for (const evt of todos) {
+    const inicioEvt = new Date(evt.inicio);
+
+    if (!evt.recorrencia || evt.recorrencia === "unico") {
+      if (inicioEvt >= inicioDia && inicioEvt <= fimDia) {
+        ocorrencias.push({ evento: evt, inicio: inicioEvt });
+      }
+      continue;
+    }
+
+    // Ocorrência candidata: mesmo horário BRT do evento original, no dia alvo
+    const pEvt = partesBRT(inicioEvt);
+    const candidato = new Date(
+      Date.UTC(pDiaAlvo.ano, pDiaAlvo.mes, pDiaAlvo.dia, pEvt.hora + BRT_OFFSET_HORAS, pEvt.minuto, 0, 0)
+    );
+    if (candidato < inicioEvt) continue; // antes da primeira ocorrência
+
+    const bate =
+      evt.recorrencia === "semanal"
+        ? pDiaAlvo.diaSemana === pEvt.diaSemana
+        : evt.recorrencia === "mensal"
+          ? pEvt.dia === pDiaAlvo.dia
+          : false;
+
+    if (bate) ocorrencias.push({ evento: evt, inicio: candidato });
+  }
+
+  ocorrencias.sort((a, b) => a.inicio.getTime() - b.inicio.getTime());
+  return ocorrencias;
+}
+
 /** Registra o envio só depois de confirmado, para não "queimar" o lembrete do dia. */
 async function enviarERegistrar(chave: string, texto: string, chatId: string): Promise<boolean> {
   const jaEnviado = await prisma.lembreteEnviado.findFirst({ where: { tipo: chave } });
@@ -70,9 +117,6 @@ async function enviarResumoAgendado(tipo: "08" | "16", agora: Date, chatId: stri
   const hojeStr = diaBRT(agora);
   const p = partesBRT(agora);
 
-  const inicioDia = inicioDoDiaBRT(p.ano, p.mes, p.dia);
-  const fimDia = new Date(inicioDia.getTime() + 24 * 3600000 - 1);
-
   const tarefas = await prisma.tarefa.findMany({
     where: { status: { in: ["aberta", "fazendo"] } },
     include: { projeto: true },
@@ -80,11 +124,8 @@ async function enviarResumoAgendado(tipo: "08" | "16", agora: Date, chatId: stri
   });
   const tarefasHoje = tarefas.filter((t) => !t.prazo || diaBRT(new Date(t.prazo)) <= hojeStr);
 
-  const eventosHoje = await prisma.evento.findMany({
-    where: { inicio: { gte: inicioDia, lte: fimDia } },
-    include: { projeto: true },
-    orderBy: { inicio: "asc" },
-  });
+  // Inclui recorrentes (semanal/mensal) projetados para hoje
+  const eventosHoje = await eventosDoDiaBRT(p.ano, p.mes, p.dia);
 
   const entregas = await prisma.entregaMensal.findMany({
     where: { mes: p.mes + 1, ano: p.ano, concluido: false },
@@ -98,8 +139,8 @@ async function enviarResumoAgendado(tipo: "08" | "16", agora: Date, chatId: stri
 
   if (eventosHoje.length > 0) {
     msg += `📅 *Agenda de hoje (${eventosHoje.length}):*\n`;
-    eventosHoje.forEach((e) => {
-      msg += `• ${horaBRTFormatada(new Date(e.inicio))} — ${escaparMarkdown(e.titulo)}`;
+    eventosHoje.forEach(({ evento: e, inicio }) => {
+      msg += `• ${horaBRTFormatada(inicio)} — ${escaparMarkdown(e.titulo)}`;
       msg += e.projeto ? ` _(${escaparMarkdown(e.projeto.nome)})_\n` : "\n";
     });
     msg += `\n`;
@@ -139,23 +180,17 @@ async function enviarLembretesDeAgenda(agora: Date, chatId: string) {
   const enviados: string[] = [];
 
   for (const distancia of [2, 1] as const) {
-    const inicioAlvo = inicioDoDiaBRT(p.ano, p.mes, p.dia + distancia);
-    const fimAlvo = new Date(inicioAlvo.getTime() + 24 * 3600000 - 1);
+    // Também projeta recorrentes: um evento semanal gera lembrete a cada ocorrência
+    const ocorrencias = await eventosDoDiaBRT(p.ano, p.mes, p.dia + distancia);
 
-    const eventos = await prisma.evento.findMany({
-      where: { inicio: { gte: inicioAlvo, lte: fimAlvo } },
-      include: { projeto: true },
-      orderBy: { inicio: "asc" },
-    });
-
-    for (const ev of eventos) {
-      const chave = `agenda_d${distancia}_${ev.id}_${diaBRT(new Date(ev.inicio))}`;
+    for (const { evento: ev, inicio } of ocorrencias) {
+      const chave = `agenda_d${distancia}_${ev.id}_${diaBRT(inicio)}`;
       const cabecalho = distancia === 2 ? "*Faltam 2 dias*" : "*É amanhã!*";
 
       const msg =
         `🔔 ${cabecalho}\n\n` +
         `📌 *${escaparMarkdown(ev.titulo)}*\n` +
-        `📅 ${dataBRTFormatada(new Date(ev.inicio))} às *${horaBRTFormatada(new Date(ev.inicio))}*` +
+        `📅 ${dataBRTFormatada(inicio)} às *${horaBRTFormatada(inicio)}*` +
         (ev.projeto ? `\n👤 Cliente: _${escaparMarkdown(ev.projeto.nome)}_` : "");
 
       if (await enviarERegistrar(chave, msg, chatId)) enviados.push(chave);
