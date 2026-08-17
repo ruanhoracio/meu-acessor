@@ -406,8 +406,10 @@ function StatCard({
       style={
         accent
           ? {
-              borderColor: "var(--accent)",
-              background: "var(--accent-subtle)",
+              // Estado de alerta: no VIA o acento é a cor do texto, então o
+              // destaque tem de vir da semântica, não do acento.
+              borderColor: "var(--danger)",
+              background: "var(--danger-subtle)",
             }
           : {}
       }
@@ -418,7 +420,7 @@ function StatCard({
       </div>
       <p
         className="font-heading text-4xl font-light tracking-tighter mt-1"
-        style={{ color: accent ? "var(--accent)" : "var(--text-primary)" }}
+        style={{ color: accent ? "var(--danger)" : "var(--text-primary)" }}
       >
         {value}
       </p>

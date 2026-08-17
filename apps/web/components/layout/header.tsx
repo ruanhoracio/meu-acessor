@@ -40,7 +40,7 @@ export function Header() {
         className="sticky top-0 z-20 h-[64px] flex items-center justify-between px-4 md:px-8 relative backdrop-blur-md transition-all"
         style={{
           background: "var(--bg-primary)",
-          borderBottom: "1px dashed var(--border-dashed)",
+          borderBottom: "1px solid var(--border)",
         }}
       >
         <div>
@@ -65,7 +65,7 @@ export function Header() {
             style={{
               background: "var(--bg-card)",
               color: "var(--text-secondary)",
-              border: "1px dashed var(--border)",
+              border: "1px solid var(--border)",
               boxShadow: "var(--shadow-xs)",
             }}
             title="Pesquisar (Cmd+K)"
@@ -80,7 +80,7 @@ export function Header() {
             style={{
               background: "var(--bg-card)",
               color: "var(--text-secondary)",
-              border: "1px dashed var(--border)",
+              border: "1px solid var(--border)",
               boxShadow: "var(--shadow-xs)",
             }}
             title="Notificações"

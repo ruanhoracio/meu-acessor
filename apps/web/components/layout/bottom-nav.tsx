@@ -29,7 +29,7 @@ export function BottomNav() {
         background: "var(--bg-sidebar)",
         backdropFilter: "blur(24px)",
         WebkitBackdropFilter: "blur(24px)",
-        borderTop: "1px dashed var(--border-dashed)",
+        borderTop: "1px solid var(--border)",
         paddingBottom: "max(12px, env(safe-area-inset-bottom))",
       }}
     >
