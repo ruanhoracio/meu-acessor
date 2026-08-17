@@ -7,3 +7,10 @@ dist/
 .turbo/
 *.tsbuildinfo
 .vercel
+
+# macOS
+.DS_Store
+._*
+
+# Claude Code (local)
+.claude/settings.local.json
