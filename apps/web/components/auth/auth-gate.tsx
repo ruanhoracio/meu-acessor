@@ -65,7 +65,8 @@ export function AuthGate({ children }: { children: React.ReactNode }) {
             className="mx-auto w-20 h-20 rounded-full p-1 shadow-volt mb-4 relative"
             style={{ background: "var(--accent-gradient)" }}
           >
-            <div className="w-full h-full rounded-full overflow-hidden bg-surface flex items-center justify-center">
+            {/* Miolo claro: o cadeado é navy e sumiria sobre o anel navy */}
+            <div className="w-full h-full rounded-full overflow-hidden bg-card flex items-center justify-center">
               {avatar ? (
                 <img src={avatar} alt="Ruan" className="w-full h-full object-cover" />
               ) : (
