@@ -108,14 +108,21 @@ function limparTitulo(texto: string): string {
     .replace(/\b\d{1,2}\s*h\b/gi, " ")
     // datas com ou sem o prefixo "dia"/"no dia"
     .replace(/(?:\b(?:no|em)\s+)?\bdias?\s+\d{1,2}\s*\/\s*\d{1,2}(?:\s*\/\s*\d{2,4})?/gi, " ")
-    .replace(/(?:\b(?:no|em)\s+)?\bdias?\s+\d{1,2}\s+de\s+[a-zçã]+/gi, " ")
+    // Antes era [a-zçã]+ (qualquer palavra): "dia 30 de pagar" perdia o verbo.
+    .replace(/(?:\b(?:no|em)\s+)?\bdias?\s+\d{1,2}\s+de\s+(?:janeiro|fevereiro|março|marco|abril|maio|junho|julho|agosto|setembro|outubro|novembro|dezembro|jan|fev|mar|abr|mai|jun|jul|ago|set|out|nov|dez)\b/gi, " ")
     .replace(/\b\d{1,2}\s*\/\s*\d{1,2}(?:\s*\/\s*\d{2,4})?/g, " ")
     .replace(/\b\d{1,2}\s+de\s+(?:janeiro|fevereiro|março|marco|abril|maio|junho|julho|agosto|setembro|outubro|novembro|dezembro|jan|fev|mar|abr|mai|jun|jul|ago|set|out|nov|dez)\b/gi, " ")
+    // "dia 25" sem mês (depois das variantes com barra/mês, que já saíram acima)
+    .replace(/(?:\b(?:no|em|para|pra)\s+)?\bdias?\s+\d{1,2}\b(?!\s*[\/:h])/gi, " ")
     // referências relativas (sem \b final: "ã" não conta como caractere de palavra)
     .replace(/(?:\b(?:para|pra|no|na|em)\s+)?(?:\bdepois\s+de\s+)?\bamanh[ãa](?![a-zà-ú])/gi, " ")
     .replace(/(?:\b(?:para|pra|no|na|em)\s+)?\bhoje\b/gi, " ")
     // dias da semana: "pra quinta", "na sexta-feira", "próxima segunda"
     .replace(/(?:\b(?:para|pra|no|na|em)\s+)?(?:\bpr[óo]xim[ao]\s+|\bness[ae]\s+|\bnest[ae]\s+|\bess[ae]\s+|\best[ae]\s+)?\b(?:segunda|ter[çc]a|quarta|quinta|sexta|s[áa]bado|domingo)(?:\s*[- ]\s*feira)?(?![a-zà-ú])/gi, " ")
+    // pedido educado no fim: "anota na agenda aí pra mim", "coloca aí"
+    // Exige uma pista ("aí", "pra mim", "na agenda") para não comer
+    // títulos legítimos como "criativo da marca nova".
+    .replace(/[,.;]?\s*(?:e\s+)?(?:por\s*favor,?\s*)?(?:me\s+)?(?:anot[ae]|coloc[ae]|marc[ae]|agend[ae]|bot[ae]|salv[ae]|guard[ae]|p[õo]e)\b[^.!?]*?(?:\ba[íi]\b|\bpra\s+mim\b|\bpor\s+favor\b|\b(?:na|no)\s+(?:agenda|lista|calend[áa]rio)\b)[^.!?]*[.!?]?\s*$/gi, " ")
     // pedidos de lembrete
     .replace(/^(?:por\s*favor,?\s*)?(?:me\s+)?(?:lembr[ae]|lembrar|avis[ae]|avisar)(?:\s+(?:de|que|pra|para))?\s*/gi, " ")
     // verbos de comando no início
@@ -132,6 +139,9 @@ function limparTitulo(texto: string): string {
     .replace(/[\s,;:\-_]+$/, "")
     .replace(/\s+\.$/, "")
     .trim();
+
+  // Sobra típica de ditado: "tem a dentista da Carol" -> "dentista da Carol"
+  t = t.replace(/^(?:tem|t[êe]m|tinha)\s+(?:um|uma|o|a|os|as)\s+/i, "").trim();
 
   if (!t) return "";
   return t.charAt(0).toUpperCase() + t.slice(1);
@@ -219,7 +229,21 @@ export function extrairDataEMensagem(mensagem: string, agora: Date) {
     }
   }
 
-  // 5. Só horário, sem dia: hoje se ainda dá tempo, senão amanhã
+  // 5. "dia 25" sem mês: mês corrente, ou o seguinte se o dia já passou.
+  // Sem isto a frase caía na regra 6 e virava "amanhã no horário falado".
+  if (!dataCalculada) {
+    const matchDiaMes = msgTrim.match(/\bdias?\s+(\d{1,2})\b(?!\s*[\/:h]|\s+de\s+(?:janeiro|fevereiro|março|marco|abril|maio|junho|julho|agosto|setembro|outubro|novembro|dezembro|jan|fev|mar|abr|mai|jun|jul|ago|set|out|nov|dez)\b)/i);
+    if (matchDiaMes) {
+      const diaNum = parseInt(matchDiaMes[1], 10);
+      if (diaNum >= 1 && diaNum <= 31) {
+        const mesAlvo = diaNum >= hojeBRT.dia ? hojeBRT.mes : hojeBRT.mes + 1;
+        dataCalculada = dataBRT(hojeBRT.ano, mesAlvo, diaNum, hora, minuto);
+        ehDataExplicita = true;
+      }
+    }
+  }
+
+  // 6. Só horário, sem dia: hoje se ainda dá tempo, senão amanhã
   if (!dataCalculada && horario) {
     const candidato = dataBRT(hojeBRT.ano, hojeBRT.mes, hojeBRT.dia, hora, minuto);
     dataCalculada = candidato > agora
