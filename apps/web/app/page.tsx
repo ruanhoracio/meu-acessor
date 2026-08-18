@@ -5,15 +5,14 @@ import {
   Clock,
   CheckCircle2,
   Circle,
-  AlertTriangle,
   Clapperboard,
-  Timer,
-  TrendingUp,
   ChevronRight,
   User,
   Users,
   Video,
   Zap,
+  CheckSquare,
+  CalendarDays,
 } from "lucide-react";
 import Link from "next/link";
 import {
@@ -21,8 +20,7 @@ import {
   FORMATO_LABELS,
   AGUARDANDO_LABELS,
 } from "@/lib/mock-data";
-import { horasParaTexto } from "@/lib/utils";
-import { BannerAvisos } from "@/components/dashboard/banner-avisos";
+import { getEventos } from "@/actions/agenda";
 import { BarraCapturaIA } from "@/components/dashboard/barra-captura-ia";
 
 function getDiaString(dateInput: Date | string | null): string {
@@ -55,7 +53,13 @@ export default function HojePage() {
       const [resT, resV, resE] = await Promise.all([
         fetch("/api/tarefas", { cache: "no-store" }).then((r) => r.json()).catch(() => []),
         fetch("/api/videos", { cache: "no-store" }).then((r) => r.json()).catch(() => []),
-        fetch("/api/eventos", { cache: "no-store" }).then((r) => r.json()).catch(() => []),
+        (async () => {
+          // Usa a action da Agenda (e não /api/eventos) porque só ela projeta
+          // as recorrências semanais/mensais para os próximos dias.
+          const ini = new Date(); ini.setHours(0, 0, 0, 0);
+          const fim = new Date(ini); fim.setDate(fim.getDate() + 6); fim.setHours(23, 59, 59, 999);
+          return getEventos(ini, fim).catch(() => []);
+        })(),
       ]);
 
       if (Array.isArray(resT)) setTarefas(resT);
@@ -126,87 +130,136 @@ export default function HojePage() {
     return eStr === hojeStr;
   });
 
+  // Pipeline = tudo que ainda não foi entregue; "em edição" é só a parte
+  // que está de fato na bancada (briefing e aprovado não contam).
+  const ESTAGIOS_EDICAO = ["material_recebido", "cortando", "primeiro_corte", "ajustes"];
   const videosAtivos = videos.filter((v) => v.estagio !== "entregue");
-  const travadosCount = videosAtivos.filter((v) => {
-    const ultimoEv = v.ultimoEvento ? new Date(v.ultimoEvento) : new Date(v.criadoEm);
-    return Math.floor((Date.now() - ultimoEv.getTime()) / (1000 * 60 * 60 * 24)) >= 3;
-  }).length;
+  const videosEmEdicao = videos.filter((v) => ESTAGIOS_EDICAO.includes(v.estagio));
+  const videosEntregues = videos.filter((v) => v.estagio === "entregue");
 
-  // Capacidade da semana
-  const horasComprometidas = videosAtivos.reduce(
-    (acc, v) => acc + (v.estimativaHoras || 0),
-    0
+  // Vídeo também é trabalho do dia: entra na conta de "tarefas pra hoje".
+  const videosParaHoje = videosAtivos.filter(
+    (v) => v.prazoEntrega && getDiaString(v.prazoEntrega) <= hojeStr
   );
-  const horasDisponiveis = 30; // 6h/dia * 5 dias
-  const percentual = Math.round((horasComprometidas / horasDisponiveis) * 100);
-  const estourada = percentual > 100;
+  const totalParaHoje = tarefasHoje.length + videosParaHoje.length;
+
+  // Agenda da semana: hoje + 6 dias, já com as recorrências projetadas
+  const diasDaSemana = Array.from({ length: 7 }, (_, i) => {
+    const d = new Date();
+    d.setHours(0, 0, 0, 0);
+    d.setDate(d.getDate() + i);
+    const dStr = getDiaString(d);
+    return {
+      data: d,
+      dStr,
+      ehHoje: i === 0,
+      eventos: eventos
+        .filter((e) => e.inicio && getDiaString(e.inicio) === dStr)
+        .sort((a, b) => new Date(a.inicio).getTime() - new Date(b.inicio).getTime()),
+    };
+  });
+  const totalEventosSemana = diasDaSemana.reduce((acc, d) => acc + d.eventos.length, 0);
 
   return (
     <div className="space-y-6 animate-fade-in-up pb-12">
       {/* ── Captura Inteligente com IA ─────────────────── */}
       <BarraCapturaIA onSucesso={() => { window.dispatchEvent(new Event("dados_updated")); carregarData(); }} />
 
-      {/* ── Carrossel de Avisos em Looping ──────────── */}
-      <BannerAvisos />
-
       {/* ── Resumo rápido ──────────────────────────── */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <StatCard
-          icon={<CheckCircle2 className="w-4 h-4 text-accent" />}
-          label="Tarefas pendentes hoje"
-          value={String(tarefasHoje.length)}
+          icon={<CheckSquare className="w-4 h-4 text-accent" />}
+          label="Tarefas pra hoje"
+          value={String(totalParaHoje)}
           accent={false}
         />
         <StatCard
           icon={<Clapperboard className="w-4 h-4 text-blue-500" />}
           label="Vídeos em edição"
-          value={String(videosAtivos.length)}
+          value={String(videosEmEdicao.length)}
           accent={false}
         />
         <StatCard
-          icon={<AlertTriangle className="w-4 h-4 text-danger" />}
-          label="Vídeos travados"
-          value={String(travadosCount)}
-          accent={travadosCount > 0}
+          icon={<CheckCircle2 className="w-4 h-4 text-success" />}
+          label="Vídeos entregues"
+          value={String(videosEntregues.length)}
+          accent={false}
         />
         <StatCard
-          icon={<Timer className="w-4 h-4 text-success" />}
-          label="Agenda hoje"
-          value={String(eventosHoje.length)}
+          icon={<Video className="w-4 h-4 text-accent" />}
+          label="Vídeos no pipeline"
+          value={String(videosAtivos.length)}
           accent={false}
         />
       </div>
 
-      {/* ── Capacidade da semana ────────────────────── */}
+      {/* ── Agenda da semana ────────────────────────── */}
       <div className="card p-6 animate-fade-in-up-delay-1">
-        <div className="flex items-center justify-between mb-3">
-          <div className="flex items-center gap-2">
-            <span className="w-2 h-2 rounded-full bg-accent animate-pulse" />
-            <span className="font-mono text-xs font-bold text-secondary uppercase tracking-wider">
-              Capacidade da Semana
-            </span>
-          </div>
-          <span
-            className="font-mono text-xs font-bold"
-            style={{ color: estourada ? "var(--danger)" : "var(--accent)" }}
+        <div className="flex items-center justify-between mb-5">
+          <h2 className="font-heading text-xl font-light text-primary flex items-center gap-2">
+            <CalendarDays className="w-4 h-4 text-accent" />
+            Agenda da Semana ({totalEventosSemana})
+          </h2>
+          <Link
+            href="/agenda"
+            className="text-xs font-mono font-bold text-muted hover:text-accent flex items-center gap-1 uppercase tracking-wider"
           >
-            {horasParaTexto(horasComprometidas)} / {horasParaTexto(horasDisponiveis)}
-          </span>
+            Ver tudo <ChevronRight className="w-3 h-3" />
+          </Link>
         </div>
-        <div className="progress-track">
-          <div
-            className="progress-fill"
-            style={{
-              width: `${Math.min(percentual, 100)}%`,
-              background: estourada ? "var(--danger)" : "var(--accent-gradient)",
-            }}
-          />
+
+        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-2.5">
+          {diasDaSemana.map((dia) => (
+            <div
+              key={dia.dStr}
+              className="rounded-lg p-2.5 min-h-[104px] border transition-colors"
+              style={{
+                background: dia.ehHoje ? "var(--accent-subtle)" : "var(--bg-surface)",
+                borderColor: dia.ehHoje ? "var(--accent)" : "transparent",
+              }}
+            >
+              <div className="flex items-baseline gap-1.5 mb-2">
+                <span
+                  className="font-mono text-[10px] font-bold uppercase tracking-wider"
+                  style={{ color: dia.ehHoje ? "var(--accent)" : "var(--text-muted)" }}
+                >
+                  {dia.data.toLocaleDateString("pt-BR", { weekday: "short" }).replace(".", "")}
+                </span>
+                <span
+                  className="font-mono text-sm font-bold"
+                  style={{ color: dia.ehHoje ? "var(--accent)" : "var(--text-primary)" }}
+                >
+                  {dia.data.getDate()}
+                </span>
+              </div>
+
+              <div className="space-y-1.5">
+                {dia.eventos.map((ev: any, i: number) => (
+                  <div
+                    key={`${ev.id}-${i}`}
+                    className="rounded px-1.5 py-1 border-l-2 bg-card"
+                    style={{ borderColor: ev.projeto?.cor || "var(--accent)" }}
+                    title={ev.titulo}
+                  >
+                    <p className="font-mono text-[9px] text-muted leading-none mb-0.5">
+                      {new Date(ev.inicio).toLocaleTimeString("pt-BR", {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                      })}
+                    </p>
+                    <p className="text-[10px] font-bold text-primary leading-tight line-clamp-2">
+                      {ev.titulo}
+                    </p>
+                  </div>
+                ))}
+
+                {dia.eventos.length === 0 && (
+                  <p className="font-mono text-[9px] text-faint">—</p>
+                )}
+              </div>
+            </div>
+          ))}
         </div>
-        <p className="text-xs font-mono mt-2.5 text-muted">
-          {estourada
-            ? `⚠️ Semana estourada em ${horasParaTexto(horasComprometidas - horasDisponiveis)}`
-            : `${horasParaTexto(horasDisponiveis - horasComprometidas)} disponíveis no contrato`}
-        </p>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
