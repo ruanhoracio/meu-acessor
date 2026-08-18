@@ -21,6 +21,7 @@ import {
   AGUARDANDO_LABELS,
 } from "@/lib/mock-data";
 import { getEventos } from "@/actions/agenda";
+import { getEntregasMensais } from "@/actions/entregas";
 import { BarraCapturaIA } from "@/components/dashboard/barra-captura-ia";
 
 function getDiaString(dateInput: Date | string | null): string {
@@ -46,11 +47,12 @@ export default function HojePage() {
   const [tarefas, setTarefas] = useState<any[]>([]);
   const [videos, setVideos] = useState<any[]>([]);
   const [eventos, setEventos] = useState<any[]>([]);
+  const [entregasMes, setEntregasMes] = useState<{ feitas: number; total: number }>({ feitas: 0, total: 0 });
   const [loading, setLoading] = useState(true);
 
   const carregarData = async () => {
     try {
-      const [resT, resV, resE] = await Promise.all([
+      const [resT, resV, resE, resEnt] = await Promise.all([
         fetch("/api/tarefas", { cache: "no-store" }).then((r) => r.json()).catch(() => []),
         fetch("/api/videos", { cache: "no-store" }).then((r) => r.json()).catch(() => []),
         (async () => {
@@ -60,11 +62,26 @@ export default function HojePage() {
           const fim = new Date(ini); fim.setDate(fim.getDate() + 6); fim.setHours(23, 59, 59, 999);
           return getEventos(ini, fim).catch(() => []);
         })(),
+        (async () => {
+          // Card "entregues" espelha a aba Entregas (EntregaMensal), que é
+          // onde a entrega é de fato marcada — não a tabela do Pipeline.
+          const h = new Date();
+          return getEntregasMensais("todos", h.getMonth() + 1, h.getFullYear()).catch(() => null);
+        })(),
       ]);
 
       if (Array.isArray(resT)) setTarefas(resT);
       if (Array.isArray(resV)) setVideos(resV);
       if (Array.isArray(resE)) setEventos(resE);
+      if (resEnt?.success && Array.isArray(resEnt.videos)) {
+        const lista = resEnt.videos;
+        setEntregasMes({
+          feitas: lista.filter(
+            (v: any) => v.concluido === true || v.estagio === "entregue" || v.estagio === "aprovado"
+          ).length,
+          total: lista.length,
+        });
+      }
     } catch (e) {
       console.error("Erro ao carregar Dashboard:", e);
     } finally {
@@ -135,7 +152,6 @@ export default function HojePage() {
   const ESTAGIOS_EDICAO = ["material_recebido", "cortando", "primeiro_corte", "ajustes"];
   const videosAtivos = videos.filter((v) => v.estagio !== "entregue");
   const videosEmEdicao = videos.filter((v) => ESTAGIOS_EDICAO.includes(v.estagio));
-  const videosEntregues = videos.filter((v) => v.estagio === "entregue");
 
   // Vídeo também é trabalho do dia: entra na conta de "tarefas pra hoje".
   const videosParaHoje = videosAtivos.filter(
@@ -153,12 +169,22 @@ export default function HojePage() {
       data: d,
       dStr,
       ehHoje: i === 0,
+      // Compara o dia contra o intervalo inteiro: "Global Conf" vai de 20 a
+      // 22/08 e precisa aparecer nos três dias, não só no de início.
       eventos: eventos
-        .filter((e) => e.inicio && getDiaString(e.inicio) === dStr)
+        .filter((e) => {
+          if (!e.inicio) return false;
+          const ini = getDiaString(e.inicio);
+          const fim = e.fim ? getDiaString(e.fim) : ini;
+          return dStr >= ini && dStr <= fim;
+        })
         .sort((a, b) => new Date(a.inicio).getTime() - new Date(b.inicio).getTime()),
     };
   });
-  const totalEventosSemana = diasDaSemana.reduce((acc, d) => acc + d.eventos.length, 0);
+  // Distintos: um evento de 3 dias conta como 1 compromisso na semana.
+  const totalEventosSemana = new Set(
+    diasDaSemana.flatMap((d) => d.eventos.map((e: any) => e.idOriginal || e.id))
+  ).size;
 
   return (
     <div className="space-y-6 animate-fade-in-up pb-12">
@@ -182,7 +208,7 @@ export default function HojePage() {
         <StatCard
           icon={<CheckCircle2 className="w-4 h-4 text-success" />}
           label="Vídeos entregues"
-          value={String(videosEntregues.length)}
+          value={`${entregasMes.feitas}/${entregasMes.total}`}
           accent={false}
         />
         <StatCard
