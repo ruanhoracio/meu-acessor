@@ -85,6 +85,7 @@ function formatarHeaderDiaTodoist(dataObj: Date, hojeObj: Date): string {
 }
 
 export default function TarefasTodoistPage() {
+  const [reagendando, setReagendando] = useState(false);
   const [tarefas, setTarefas] = useState<any[]>([]);
   const [videos, setVideos] = useState<any[]>([]);
   const [projetos, setProjetos] = useState<any[]>([]);
@@ -180,17 +181,37 @@ export default function TarefasTodoistPage() {
   };
 
   const handleReagendarAtrasadas = async () => {
-    const hojeStr = getDiaString(new Date());
-    const atrasadas = tarefas.filter((t) => t.status !== "concluida" && t.prazo && getDiaString(t.prazo) < hojeStr);
+    if (reagendando || itensAtrasados.length === 0) return;
+    setReagendando(true);
+    const agora = new Date().toISOString();
 
-    for (const t of atrasadas) {
-      await fetch(`/api/tarefas/${t.id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ prazo: new Date().toISOString() }),
-      });
-    }
-    carregarDados();
+    // A seção atrasada mistura tarefas e vídeos. Antes daqui só saíam tarefas,
+    // e o botão não fazia nada quando os atrasados eram vídeos. Agora reagenda
+    // exatamente os itens à vista, cada um no seu endpoint.
+    const respostas = await Promise.allSettled(
+      itensAtrasados.map((item) =>
+        item.tipoItem === "video"
+          ? fetch(`/api/videos/${item.id}`, {
+              method: "PATCH",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ prazoEntrega: agora }),
+            })
+          : fetch(`/api/tarefas/${item.id}`, {
+              method: "PATCH",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ prazo: agora }),
+            })
+      )
+    );
+
+    const falhas = respostas.filter(
+      (r) => r.status === "rejected" || !(r as any).value?.ok
+    ).length;
+    if (falhas > 0) console.error(`[Reagendar] ${falhas} item(ns) não foram reagendados`);
+
+    window.dispatchEvent(new Event("dados_updated"));
+    await carregarDados();
+    setReagendando(false);
   };
 
   // Normalização unificada de tarefas + vídeos
@@ -454,9 +475,12 @@ export default function TarefasTodoistPage() {
                 </h3>
                 <button
                   onClick={handleReagendarAtrasadas}
-                  className="text-xs font-bold text-danger hover:text-danger hover:underline cursor-pointer"
+                  disabled={reagendando}
+                  className="text-xs font-bold text-danger hover:underline cursor-pointer disabled:opacity-50 disabled:cursor-wait"
                 >
-                  Reagendar para Hoje ➔
+                  {reagendando
+                    ? "Reagendando..."
+                    : `Reagendar para Hoje (${itensAtrasados.length}) ➔`}
                 </button>
               </div>
 
