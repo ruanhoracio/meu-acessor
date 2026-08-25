@@ -229,109 +229,105 @@ export default function NotasPage() {
       {/* Modal Criar / Editar Nota */}
       <ModalPortal isOpen={modalOpen}>
         {modalOpen && (
-          <div className="fixed inset-0 z-[999999] flex items-start justify-center pt-8 sm:pt-16 px-4 pb-12 bg-black/80 backdrop-blur-md overflow-y-auto">
-            <div className="card p-6 w-full max-w-lg bg-card border border-dashed border-border shadow-elevated relative rounded-2xl max-h-[85vh] overflow-y-auto">
-              <button
-                onClick={() => setModalOpen(false)}
-                className="absolute top-4 right-4 p-1 rounded-lg text-muted hover:text-primary"
+          <div className="fixed inset-0 z-[999999] flex items-stretch sm:items-center justify-center sm:p-6 bg-black/60 backdrop-blur-md">
+            <div className="bg-card w-full h-full sm:h-[92vh] sm:max-w-3xl sm:rounded-2xl shadow-elevated border border-border flex flex-col overflow-hidden">
+              {/* Barra superior */}
+              <div className="flex items-center justify-between gap-3 px-5 sm:px-7 h-16 border-b border-border flex-shrink-0">
+                <div className="flex items-center gap-2 min-w-0">
+                  <FileText className="w-4 h-4 text-accent flex-shrink-0" />
+                  <span className="font-mono text-[11px] font-bold uppercase tracking-wider text-muted truncate">
+                    {notaEditando ? "Editar Nota" : "Nova Nota"}
+                  </span>
+                </div>
+                <div className="flex items-center gap-2 flex-shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => setModalOpen(false)}
+                    className="btn-ghost py-2 px-3.5 text-xs"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    type="submit"
+                    form="form-nota"
+                    disabled={salvando}
+                    className="btn-primary py-2 px-5 text-xs"
+                  >
+                    {salvando ? "Salvando..." : "Salvar"}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setModalOpen(false)}
+                    className="p-1.5 rounded-lg text-muted hover:text-primary hover:bg-surface transition-colors cursor-pointer"
+                    aria-label="Fechar"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+              </div>
+
+              {/* Área de escrita: título e corpo sem moldura, ocupando a tela */}
+              <form
+                id="form-nota"
+                onSubmit={handleSalvar}
+                className="flex-1 min-h-0 flex flex-col"
               >
-                <X className="w-5 h-5" />
-              </button>
-
-              <h3 className="font-heading text-lg font-bold text-primary mb-4 flex items-center gap-2">
-                <FileText className="w-5 h-5 text-accent" />
-                {notaEditando ? "Editar Nota" : "Nova Nota"}
-              </h3>
-
-              <form onSubmit={handleSalvar} className="space-y-4">
-                <div>
-                  <label className="text-xs font-semibold text-secondary block mb-1">
-                    Título (opcional):
-                  </label>
+                <div className="flex-1 min-h-0 overflow-y-auto px-5 sm:px-7 py-6">
                   <input
                     type="text"
-                    placeholder="Ex: Ideia de roteiro..."
+                    placeholder="Título"
                     value={formTitulo}
                     onChange={(e) => setFormTitulo(e.target.value)}
-                    className="input w-full font-semibold"
+                    className="w-full bg-transparent border-0 outline-none font-heading text-2xl sm:text-3xl font-semibold text-primary placeholder:text-faint mb-1"
                     autoFocus
                   />
-                </div>
-
-                <div>
-                  <label className="text-xs font-semibold text-secondary block mb-1">
-                    Conteúdo:
-                  </label>
+                  <p className="font-mono text-[10px] uppercase tracking-wider text-faint mb-5">
+                    {new Date().toLocaleDateString("pt-BR", {
+                      day: "2-digit",
+                      month: "long",
+                      year: "numeric",
+                    })}
+                  </p>
                   <textarea
-                    placeholder="Escreva sua nota..."
+                    placeholder="Comece a escrever..."
                     value={formConteudo}
                     onChange={(e) => setFormConteudo(e.target.value)}
-                    className="input w-full min-h-[140px] resize-y font-mono text-xs leading-relaxed"
+                    className="w-full bg-transparent border-0 outline-none resize-none text-[15px] leading-7 text-secondary placeholder:text-faint min-h-[45vh]"
                     required
                   />
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                  <div>
-                    <label className="text-xs font-semibold text-secondary block mb-1">
-                      Tags (separadas por vírgula):
-                    </label>
-                    <input
-                      type="text"
-                      placeholder="ideia, roteiro, cliente"
-                      value={formTags}
-                      onChange={(e) => setFormTags(e.target.value)}
-                      className="input w-full text-xs font-mono"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-xs font-semibold text-secondary block mb-1">
-                      Vincular ao Cliente (opcional):
-                    </label>
-                    <select
-                      value={formProjetoId}
-                      onChange={(e) => setFormProjetoId(e.target.value)}
-                      className="input w-full text-xs"
-                    >
-                      <option value="">Nenhum (Geral)</option>
-                      {projetos.map((p) => (
-                        <option key={p.id} value={p.id}>
-                          {p.nome}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-                </div>
-
-                <div className="flex justify-between items-center pt-3 border-t border-border">
-                  {notaEditando ? (
+                {/* Rodapé com os metadados, fora do caminho de quem escreve */}
+                <div className="flex-shrink-0 border-t border-border px-5 sm:px-7 py-3 flex flex-wrap items-center gap-3">
+                  <input
+                    type="text"
+                    placeholder="tags: ideia, roteiro"
+                    value={formTags}
+                    onChange={(e) => setFormTags(e.target.value)}
+                    className="input flex-1 min-w-[160px] text-xs py-2"
+                  />
+                  <select
+                    value={formProjetoId}
+                    onChange={(e) => setFormProjetoId(e.target.value)}
+                    className="input w-auto min-w-[150px] text-xs py-2"
+                  >
+                    <option value="">Nenhum cliente</option>
+                    {projetos.map((p) => (
+                      <option key={p.id} value={p.id}>
+                        {p.nome}
+                      </option>
+                    ))}
+                  </select>
+                  {notaEditando && (
                     <button
                       type="button"
                       onClick={handleExcluir}
-                      className="p-2 text-danger hover:bg-danger-subtle rounded-xl text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer"
+                      className="ml-auto p-2 text-danger hover:bg-danger-subtle rounded-lg text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer"
                     >
                       <Trash2 className="w-4 h-4" />
-                      <span>Excluir</span>
+                      <span className="hide-mobile">Excluir</span>
                     </button>
-                  ) : (
-                    <span />
                   )}
-                  <div className="flex gap-2">
-                    <button
-                      type="button"
-                      onClick={() => setModalOpen(false)}
-                      className="btn-neutral py-2 px-4 text-xs"
-                    >
-                      Cancelar
-                    </button>
-                    <button
-                      type="submit"
-                      disabled={salvando}
-                      className="btn-primary py-2 px-5 text-xs font-bold"
-                    >
-                      {salvando ? "Salvando..." : "Salvar Nota"}
-                    </button>
-                  </div>
                 </div>
               </form>
             </div>
