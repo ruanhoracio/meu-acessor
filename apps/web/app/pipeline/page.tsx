@@ -17,6 +17,7 @@ import {
 } from "lucide-react";
 import Link from "next/link";
 import { horasParaTexto } from "@/lib/utils";
+import { ESTAGIOS_FINALIZADOS } from "@/lib/mock-data";
 import { ModalEditarVideo } from "@/components/modals/modal-editar-video";
 import { ModalNovo } from "@/components/modals/modal-novo";
 
@@ -168,7 +169,10 @@ export default function PipelineKanbanPage() {
                   const criadoEm = new Date(video.criadoEm);
                   const ultimoEv = video.ultimoEvento ? new Date(video.ultimoEvento) : criadoEm;
                   const diasParado = Math.floor((Date.now() - ultimoEv.getTime()) / (1000 * 60 * 60 * 24));
-                  const travado = diasParado >= 3;
+                  // Vídeo na coluna ENVIADO fica parado porque acabou,
+                  // não porque travou — alertar ali é ruído.
+                  const travado =
+                    diasParado >= 3 && !ESTAGIOS_FINALIZADOS.includes(video.estagio);
 
                   return (
                     <div

@@ -19,6 +19,7 @@ import {
   ESTAGIO_LABELS,
   FORMATO_LABELS,
   AGUARDANDO_LABELS,
+  ESTAGIOS_FINALIZADOS,
 } from "@/lib/mock-data";
 import { getEventos } from "@/actions/agenda";
 import { getEntregasMensais } from "@/actions/entregas";
@@ -413,7 +414,7 @@ export default function HojePage() {
             {videosAtivos.slice(0, 4).map((v) => {
               const ultimoEv = v.ultimoEvento ? new Date(v.ultimoEvento) : new Date(v.criadoEm);
               const diasParado = Math.floor((Date.now() - ultimoEv.getTime()) / (1000 * 60 * 60 * 24));
-              const travado = diasParado >= 3;
+              const travado = diasParado >= 3 && !ESTAGIOS_FINALIZADOS.includes(v.estagio);
 
               return (
                 <Link

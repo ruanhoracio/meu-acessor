@@ -93,6 +93,12 @@ export const ESTAGIO_LABELS: Record<string, string> = {
   entregue: "ENVIADO",
 };
 
+/**
+ * Estágios em que o vídeo já saiu das mãos (a coluna "ENVIADO").
+ * Ficar dias parado aqui é o esperado — não é alerta.
+ */
+export const ESTAGIOS_FINALIZADOS: string[] = ["aprovado", "entregue"];
+
 export const ESTAGIOS_KANBAN = [
   "briefing",
   "cortando",
