@@ -457,7 +457,11 @@ export default function AgendaPage() {
                 {/* Número do Dia */}
                 <div className="flex items-center justify-between mb-1 px-1">
                   <span
-                    className={`text-xs font-mono font-bold inline-flex items-center justify-center w-6 h-6 rounded-md transition-all ${
+                    className={`text-xs font-mono font-bold inline-flex items-center justify-center h-6 rounded-md whitespace-nowrap transition-all ${
+                      // No dia 1 o rótulo vira "1 set." e não cabe em 24px:
+                      // a largura precisa acompanhar o texto, senão vaza.
+                      dia.getDate() === 1 ? "px-1.5" : "w-6"
+                    } ${
                       ehHoje
                         ? "bg-accent text-inverse shadow-xs font-extrabold"
                         : ehMesAtual
