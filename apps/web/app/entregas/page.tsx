@@ -45,6 +45,9 @@ export default function ControleEntregasPage() {
   const [mesSelecionado, setMesSelecionado] = useState<number>(dataHoje.getMonth() + 1); // 1-12
   const [anoSelecionado, setAnoSelecionado] = useState<number>(dataHoje.getFullYear());
   const [projetoSelecionado, setProjetoSelecionado] = useState<string>("todos");
+  // Só libera a busca depois de restaurar a escolha anterior, senão a página
+  // pisca no mês corrente antes de pular para o mês que o usuário deixou.
+  const [prefsCarregadas, setPrefsCarregadas] = useState(false);
 
   const [videos, setVideos] = useState<any[]>([]);
   const [projetos, setProjetos] = useState<any[]>([]);
@@ -62,6 +65,45 @@ export default function ControleEntregasPage() {
 
   const [isPending, startTransition] = useTransition();
   const [copiado, setCopiado] = useState(false);
+
+  // A seleção sobrevive a sair e voltar da página: antes o mês voltava
+  // sempre para o corrente e obrigava a escolher de novo.
+  const CHAVE_PREFS = "entregas:selecao";
+
+  useEffect(() => {
+    try {
+      const salvo = localStorage.getItem(CHAVE_PREFS);
+      if (salvo) {
+        const { mes, ano, projeto } = JSON.parse(salvo);
+        if (typeof mes === "number" && mes >= 1 && mes <= 12) setMesSelecionado(mes);
+        if (typeof ano === "number") setAnoSelecionado(ano);
+        if (typeof projeto === "string") setProjetoSelecionado(projeto);
+      }
+    } catch {
+      // localStorage bloqueado: segue no mês corrente
+    }
+    setPrefsCarregadas(true);
+  }, []);
+
+  useEffect(() => {
+    if (!prefsCarregadas) return;
+    try {
+      localStorage.setItem(
+        CHAVE_PREFS,
+        JSON.stringify({ mes: mesSelecionado, ano: anoSelecionado, projeto: projetoSelecionado })
+      );
+    } catch {
+      // sem persistência não é erro fatal
+    }
+  }, [prefsCarregadas, mesSelecionado, anoSelecionado, projetoSelecionado]);
+
+  const ehMesCorrente =
+    mesSelecionado === dataHoje.getMonth() + 1 && anoSelecionado === dataHoje.getFullYear();
+
+  const voltarParaMesCorrente = () => {
+    setMesSelecionado(dataHoje.getMonth() + 1);
+    setAnoSelecionado(dataHoje.getFullYear());
+  };
 
   // Carrega lista ao mudar os filtros
   const recarregarDados = async () => {
@@ -84,8 +126,9 @@ export default function ControleEntregasPage() {
   };
 
   useEffect(() => {
+    if (!prefsCarregadas) return;
     recarregarDados();
-  }, [mesSelecionado, anoSelecionado, projetoSelecionado]);
+  }, [prefsCarregadas, mesSelecionado, anoSelecionado, projetoSelecionado]);
 
   // Salvar Meta do Cliente
   const handleSalvarMeta = async () => {
@@ -268,6 +311,19 @@ export default function ControleEntregasPage() {
             <option value={2027}>2027</option>
           </select>
         </div>
+
+        {/* Volta ao mês corrente: aparece só quando você está fora dele */}
+        {!ehMesCorrente && (
+          <button
+            type="button"
+            onClick={voltarParaMesCorrente}
+            className="btn-ghost py-2.5 px-3.5 text-xs whitespace-nowrap"
+            title="Voltar para o mês atual"
+          >
+            <Calendar className="w-3.5 h-3.5" />
+            Mês atual
+          </button>
+        )}
       </div>
 
       {/* ── Banner de Progresso & Ajuste de Meta Mensal ───────────── */}
