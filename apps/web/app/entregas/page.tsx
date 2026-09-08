@@ -24,6 +24,7 @@ import {
   criarVideoEntrega,
   excluirVideoEntrega,
   atualizarMetaCliente,
+  atualizarVideoEntrega,
 } from "@/actions/entregas";
 
 const MESES = [
@@ -62,6 +63,12 @@ export default function ControleEntregasPage() {
   const [novoTitulo, setNovoTitulo] = useState("");
   const [novoFormato, setNovoFormato] = useState("outro");
   const [novoConcluido, setNovoConcluido] = useState(false);
+  const [novoProjetoId, setNovoProjetoId] = useState<string>("");
+
+  // Edição inline de uma entrega (título, formato, cliente)
+  const [editandoId, setEditandoId] = useState<string | null>(null);
+  const [edicao, setEdicao] = useState({ titulo: "", formato: "outro", projetoId: "" });
+  const [salvandoEdicao, setSalvandoEdicao] = useState(false);
 
   const [isPending, startTransition] = useTransition();
   const [copiado, setCopiado] = useState(false);
@@ -104,6 +111,11 @@ export default function ControleEntregasPage() {
     setMesSelecionado(dataHoje.getMonth() + 1);
     setAnoSelecionado(dataHoje.getFullYear());
   };
+
+  // Ao filtrar por um cliente, o formulário de novo vídeo já nasce apontando para ele
+  useEffect(() => {
+    setNovoProjetoId(projetoSelecionado !== "todos" ? projetoSelecionado : "");
+  }, [projetoSelecionado]);
 
   // Carrega lista ao mudar os filtros
   const recarregarDados = async () => {
@@ -167,7 +179,7 @@ export default function ControleEntregasPage() {
 
     const res = await criarVideoEntrega({
       titulo: novoTitulo,
-      projetoId: projetoSelecionado !== "todos" ? projetoSelecionado : null,
+      projetoId: novoProjetoId || null,
       formato: novoFormato,
       mes: mesSelecionado,
       ano: anoSelecionado,
@@ -188,6 +200,30 @@ export default function ControleEntregasPage() {
     });
   };
 
+  const iniciarEdicao = (video: any) => {
+    setEditandoId(video.id);
+    setEdicao({
+      titulo: video.titulo,
+      formato: video.formato || "outro",
+      projetoId: video.projetoId || "",
+    });
+  };
+
+  const salvarEdicao = async () => {
+    if (!editandoId || salvandoEdicao || !edicao.titulo.trim()) return;
+    setSalvandoEdicao(true);
+    const res = await atualizarVideoEntrega(editandoId, {
+      titulo: edicao.titulo,
+      formato: edicao.formato,
+      projetoId: edicao.projetoId || null,
+    });
+    setSalvandoEdicao(false);
+    if (res.success) {
+      setEditandoId(null);
+      recarregarDados();
+    }
+  };
+
   // Copiar resumo formatado para o cliente
   const handleCopiarResumo = () => {
     const nomeProjeto =
@@ -197,13 +233,13 @@ export default function ControleEntregasPage() {
     const nomeMes = MESES[mesSelecionado - 1];
 
     const concluidosCount = videos.filter(
-      (v) => v.estagio === "entregue" || v.estagio === "aprovado"
+      (v) => v.concluido === true || v.estagio === "entregue" || v.estagio === "aprovado"
     ).length;
 
     let texto = `🎬 *Relatório de Vídeos - ${nomeMes}/${anoSelecionado}*\n📌 *Cliente:* ${nomeProjeto}\n📊 *Progresso:* ${concluidosCount}/${metaTotal} concluídos\n\n`;
 
     videos.forEach((v) => {
-      const isDone = v.estagio === "entregue" || v.estagio === "aprovado";
+      const isDone = v.concluido === true || v.estagio === "entregue" || v.estagio === "aprovado";
       texto += `${isDone ? "✅" : "⏳"} ${v.titulo}\n`;
     });
 
@@ -447,6 +483,23 @@ export default function ControleEntregasPage() {
                 </select>
               </div>
 
+              {/* Cliente */}
+              <div className="flex items-center gap-2">
+                <span className="text-xs font-bold text-muted">Cliente:</span>
+                <select
+                  value={novoProjetoId}
+                  onChange={(e) => setNovoProjetoId(e.target.value)}
+                  className="input py-2 px-3 text-xs font-bold rounded-xl border-border bg-surface text-primary cursor-pointer min-w-[150px]"
+                >
+                  <option value="">Sem cliente</option>
+                  {projetos.map((p) => (
+                    <option key={p.id} value={p.id}>
+                      {p.nome}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
               {/* Status inicial */}
               <label className="flex items-center gap-2 text-xs font-bold text-secondary px-3 py-2 rounded-xl border border-border bg-surface cursor-pointer select-none hover:bg-surface-hover transition-all">
                 <input
@@ -514,52 +567,123 @@ export default function ControleEntregasPage() {
                       )}
                     </button>
 
-                    {/* Título com tachado se concluído */}
-                    <span
-                      className={`text-sm font-medium truncate ${
-                        isDone
-                          ? "line-through text-muted font-normal"
-                          : "font-semibold text-primary"
-                      }`}
-                    >
-                      {video.titulo}
-                    </span>
+                    {editandoId === video.id ? (
+                      <div className="flex flex-wrap items-center gap-2 flex-1 min-w-0">
+                        <input
+                          type="text"
+                          value={edicao.titulo}
+                          onChange={(e) => setEdicao({ ...edicao, titulo: e.target.value })}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") salvarEdicao();
+                            if (e.key === "Escape") setEditandoId(null);
+                          }}
+                          className="input py-2 px-3 text-sm font-semibold flex-1 min-w-[180px]"
+                          autoFocus
+                        />
+                        <select
+                          value={edicao.formato}
+                          onChange={(e) => setEdicao({ ...edicao, formato: e.target.value })}
+                          className="input py-2 px-3 text-xs font-bold w-auto"
+                        >
+                          {FORMATOS.map((f) => (
+                            <option key={f.value} value={f.value}>
+                              {f.label}
+                            </option>
+                          ))}
+                        </select>
+                        <select
+                          value={edicao.projetoId}
+                          onChange={(e) => setEdicao({ ...edicao, projetoId: e.target.value })}
+                          className="input py-2 px-3 text-xs font-bold w-auto"
+                        >
+                          <option value="">Sem cliente</option>
+                          {projetos.map((p) => (
+                            <option key={p.id} value={p.id}>
+                              {p.nome}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    ) : (
+                      <>
+                        {/* Título com tachado se concluído */}
+                        <span
+                          className={`text-sm font-medium truncate ${
+                            isDone
+                              ? "line-through text-muted font-normal"
+                              : "font-semibold text-primary"
+                          }`}
+                        >
+                          {video.titulo}
+                        </span>
 
-                    {/* Tag de Formato */}
-                    <span
-                      className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full border ${formatoObj.color} flex-shrink-0 hidden sm:inline-block`}
-                    >
-                      {formatoObj.label}
-                    </span>
+                        {/* Tag de Formato */}
+                        <span
+                          className={`text-[10px] font-bold px-2.5 py-0.5 rounded-full border ${formatoObj.color} flex-shrink-0 hidden sm:inline-block`}
+                        >
+                          {formatoObj.label}
+                        </span>
 
-                    {/* Tag de Projeto se "Todos os Clientes" estiver selecionado */}
-                    {projetoSelecionado === "todos" && video.projeto && (
-                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-surface text-secondary flex-shrink-0">
-                        {video.projeto.nome}
-                      </span>
-                    )}
+                        {/* Tag de Projeto se "Todos os Clientes" estiver selecionado */}
+                        {projetoSelecionado === "todos" && video.projeto && (
+                          <span className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-surface text-secondary flex-shrink-0">
+                            {video.projeto.nome}
+                          </span>
+                        )}
 
-                    {/* Veio do Pipeline: nasceu quando o vídeo chegou em ENVIADO */}
-                    {video.videoId && (
-                      <span
-                        className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-accent-subtle text-accent flex-shrink-0 hidden sm:inline-flex items-center gap-1"
-                        title="Criada automaticamente pelo Pipeline"
-                      >
-                        <Film className="w-3 h-3" />
-                        Pipeline
-                      </span>
+                        {/* Veio do Pipeline: nasceu quando o vídeo chegou em ENVIADO */}
+                        {video.videoId && (
+                          <span
+                            className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-accent-subtle text-accent flex-shrink-0 hidden sm:inline-flex items-center gap-1"
+                            title="Criada automaticamente pelo Pipeline"
+                          >
+                            <Film className="w-3 h-3" />
+                            Pipeline
+                          </span>
+                        )}
+                      </>
                     )}
                   </div>
 
-                  {/* Botão Excluir */}
-                  <button
-                    type="button"
-                    onClick={() => handleExcluir(video.id)}
-                    className="p-1.5 text-muted hover:text-danger rounded-lg hover:bg-danger-subtle transition-colors cursor-pointer ml-2"
-                    title="Excluir vídeo do controle"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
+                  {/* Ações */}
+                  {editandoId === video.id ? (
+                    <div className="flex items-center gap-1 ml-2 flex-shrink-0">
+                      <button
+                        type="button"
+                        onClick={salvarEdicao}
+                        disabled={salvandoEdicao || !edicao.titulo.trim()}
+                        className="btn-primary py-1.5 px-3 text-xs disabled:opacity-50"
+                      >
+                        {salvandoEdicao ? "Salvando..." : "Salvar"}
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setEditandoId(null)}
+                        className="btn-ghost py-1.5 px-3 text-xs"
+                      >
+                        Cancelar
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-0.5 ml-2 flex-shrink-0">
+                      <button
+                        type="button"
+                        onClick={() => iniciarEdicao(video)}
+                        className="p-1.5 text-muted hover:text-accent rounded-lg hover:bg-surface transition-colors cursor-pointer"
+                        title="Editar título, formato ou cliente"
+                      >
+                        <Edit3 className="w-4 h-4" />
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleExcluir(video.id)}
+                        className="p-1.5 text-muted hover:text-danger rounded-lg hover:bg-danger-subtle transition-colors cursor-pointer"
+                        title="Excluir vídeo do controle"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  )}
                 </div>
               );
             })}

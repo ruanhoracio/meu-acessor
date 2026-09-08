@@ -106,6 +106,47 @@ export async function atualizarMetaCliente(projetoId: string, meta: number) {
   }
 }
 
+export async function atualizarVideoEntrega(
+  entregaId: string,
+  dados: { titulo?: string; formato?: string; projetoId?: string | null }
+) {
+  try {
+    const titulo = dados.titulo?.trim();
+    if (dados.titulo !== undefined && !titulo) {
+      return { success: false, error: "Título é obrigatório." };
+    }
+
+    const entrega = await prisma.entregaMensal.update({
+      where: { id: entregaId },
+      data: {
+        ...(titulo !== undefined && { titulo }),
+        ...(dados.formato !== undefined && { formato: dados.formato }),
+        ...(dados.projetoId !== undefined && { projetoId: dados.projetoId || null }),
+      },
+    });
+
+    // Entrega que nasceu do Pipeline: leva a mudança para o vídeo também,
+    // senão a próxima sincronização desfaria a edição.
+    if (entrega.videoId) {
+      await prisma.video.update({
+        where: { id: entrega.videoId },
+        data: {
+          ...(titulo !== undefined && { titulo }),
+          ...(dados.formato !== undefined && { formato: dados.formato as any }),
+          ...(dados.projetoId !== undefined && { projetoId: dados.projetoId || null }),
+        },
+      });
+      revalidatePath("/pipeline");
+    }
+
+    revalidatePath("/entregas");
+    return { success: true, video: JSON.parse(JSON.stringify(entrega)) };
+  } catch (error: any) {
+    console.error("[atualizarVideoEntrega Error]:", error);
+    return { success: false, error: String(error) };
+  }
+}
+
 export async function excluirVideoEntrega(entregaId: string) {
   try {
     await prisma.entregaMensal.delete({
