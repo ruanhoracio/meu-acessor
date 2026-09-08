@@ -1,5 +1,6 @@
 import prisma from "@/lib/db";
 import { NextResponse } from "next/server";
+import { sincronizarEntregaDoVideo } from "@/lib/sincronizar-entrega";
 
 export const dynamic = "force-dynamic";
 
@@ -38,6 +39,9 @@ export async function POST(req: Request) {
       },
       include: { projeto: true },
     });
+
+    // Cadastrado já como enviado/aprovado → entra direto em Entregas
+    await sincronizarEntregaDoVideo(video.id);
 
     return NextResponse.json(video);
   } catch (error) {

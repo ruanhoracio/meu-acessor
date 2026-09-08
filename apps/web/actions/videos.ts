@@ -3,6 +3,7 @@
 import prisma from "@/lib/db";
 import type { EstagioVideo, FormatoVideo, AguardandoQuem } from "@prisma/client";
 import { revalidatePath } from "next/cache";
+import { sincronizarEntregaDoVideo } from "@/lib/sincronizar-entrega";
 
 export async function moverEstagioVideo(videoId: string, novoEstagio: EstagioVideo) {
   try {
@@ -32,8 +33,11 @@ export async function moverEstagioVideo(videoId: string, novoEstagio: EstagioVid
       }),
     ]);
 
+    await sincronizarEntregaDoVideo(videoId);
+
     revalidatePath("/pipeline");
     revalidatePath(`/pipeline/${videoId}`);
+    revalidatePath("/entregas");
     revalidatePath("/");
     return { success: true };
   } catch (error) {

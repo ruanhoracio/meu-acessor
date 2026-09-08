@@ -538,6 +538,17 @@ export default function ControleEntregasPage() {
                         {video.projeto.nome}
                       </span>
                     )}
+
+                    {/* Veio do Pipeline: nasceu quando o vídeo chegou em ENVIADO */}
+                    {video.videoId && (
+                      <span
+                        className="text-[10px] font-bold px-2 py-0.5 rounded-md bg-accent-subtle text-accent flex-shrink-0 hidden sm:inline-flex items-center gap-1"
+                        title="Criada automaticamente pelo Pipeline"
+                      >
+                        <Film className="w-3 h-3" />
+                        Pipeline
+                      </span>
+                    )}
                   </div>
 
                   {/* Botão Excluir */}

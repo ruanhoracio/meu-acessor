@@ -81,9 +81,13 @@ model EntregaMensal {
   mes       Int      // 1-12
   ano       Int      // 2026
   projetoId String?  @map("projeto_id")
+  // Preenchido quando a entrega nasce do Pipeline (vídeo que chegou em ENVIADO).
+  // Entregas cadastradas à mão continuam com videoId nulo.
+  videoId   String?  @unique @map("video_id")
   criadoEm  DateTime @default(now()) @map("criado_em")
 
   projeto   Projeto? @relation(fields: [projetoId], references: [id], onDelete: SetNull)
+  video     Video?   @relation(fields: [videoId], references: [id], onDelete: SetNull)
 
   @@map("entregas_mensais")
 }
@@ -173,6 +177,7 @@ model Video {
   videoEventos      VideoEvento[]
   sessoesFoco       SessaoFoco[]
   notas             Nota[]
+  entregaMensal     EntregaMensal?
 
   @@map("videos")
 }

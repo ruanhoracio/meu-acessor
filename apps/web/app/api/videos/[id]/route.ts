@@ -1,5 +1,6 @@
 import prisma from "@/lib/db";
 import { NextResponse } from "next/server";
+import { sincronizarEntregaDoVideo } from "@/lib/sincronizar-entrega";
 
 export const dynamic = "force-dynamic";
 
@@ -23,6 +24,18 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     const body = await req.json();
     const { titulo, projetoId, formato, estagio, prazoEntrega, estimativaHoras, aguardando, linkBruto, linkEntrega, rodadasAlteracao } = body;
 
+    // Só a server action registrava entregueEm; esta rota (Kanban, Tarefas)
+    // deixava a data em branco e a entrega cairia no mês errado.
+    const atual = estagio !== undefined
+      ? await prisma.video.findUnique({ where: { id }, select: { entregueEm: true } })
+      : null;
+    const entregueEm =
+      estagio === "entregue"
+        ? atual?.entregueEm ?? new Date()
+        : estagio !== undefined
+          ? null
+          : undefined;
+
     const videoAtualizado = await prisma.video.update({
       where: { id },
       data: {
@@ -30,6 +43,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
         ...(projetoId !== undefined && { projetoId: projetoId || null }),
         ...(formato !== undefined && { formato }),
         ...(estagio !== undefined && { estagio }),
+        ...(entregueEm !== undefined && { entregueEm }),
         ...(prazoEntrega !== undefined && { prazoEntrega: prazoEntrega ? new Date(prazoEntrega) : null }),
         ...(estimativaHoras !== undefined && { estimativaHoras: Number(estimativaHoras) }),
         ...(aguardando !== undefined && { aguardando }),
@@ -39,6 +53,9 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       },
       include: { projeto: true },
     });
+
+    // Título, cliente, formato ou estágio mudaram → espelha na aba Entregas
+    await sincronizarEntregaDoVideo(id);
 
     return NextResponse.json(videoAtualizado);
   } catch (error) {
