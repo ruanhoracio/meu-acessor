@@ -15,8 +15,8 @@ import {
   GripVertical,
 } from "lucide-react";
 import { ModalPortal } from "@/components/modals/modal-portal";
+import { FullScreenCalendar } from "@/components/ui/fullscreen-calendar";
 
-const DIAS_SEMANA = ["Dom", "Seg", "Ter", "Qua", "Qui", "Sex", "Sáb"];
 const MESES = [
   "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
   "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"
@@ -347,192 +347,21 @@ export default function AgendaPage() {
   const inicioGrade = new Date(primeiroDiaMes);
   inicioGrade.setDate(inicioGrade.getDate() - diaSemanaPrimeiro);
 
-  const diasGrade: Date[] = [];
-  const tempDate = new Date(inicioGrade);
-
-  for (let i = 0; i < 35; i++) {
-    diasGrade.push(new Date(tempDate));
-    tempDate.setDate(tempDate.getDate() + 1);
-  }
-
   const hoje = new Date();
 
   return (
     <div className="animate-fade-in-up space-y-6 max-w-7xl mx-auto pb-16">
-      {/* ── Topo do Calendário ─────────────────────────────────────── */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <h1 className="font-heading text-2xl font-light tracking-tight text-primary flex items-center gap-2">
-            <CalendarIcon className="w-6 h-6 text-accent" />
-            Agenda & Compromissos
-          </h1>
-          <p className="text-xs text-muted mt-1">
-            Arraste os compromissos para reordenar dias ou criar eventos recorrentes.
-          </p>
-        </div>
-
-        {/* Controles de Navegação de Mês */}
-        <div className="flex items-center gap-2 self-start md:self-auto">
-          <button
-            onClick={irParaHoje}
-            className="btn-ghost text-xs py-1.5 px-4 font-bold"
-          >
-            Hoje
-          </button>
-          <div className="flex items-center bg-card border border-border rounded-full p-1 shadow-xs">
-            <button
-              onClick={mesAnterior}
-              className="p-1.5 rounded-full hover:bg-surface transition-colors text-secondary"
-              title="Mês anterior"
-            >
-              <ChevronLeft className="w-4 h-4" />
-            </button>
-            <span className="font-heading text-xs font-bold px-3 min-w-[140px] text-center text-primary uppercase">
-              {MESES[mes]} {ano}
-            </span>
-            <button
-              onClick={proximoMes}
-              className="p-1.5 rounded-full hover:bg-surface transition-colors text-secondary"
-              title="Próximo mês"
-            >
-              <ChevronRight className="w-4 h-4" />
-            </button>
-          </div>
-
-          <button
-            onClick={() => abrirModalNovoNoDia(new Date())}
-            className="btn-primary text-xs py-2 px-5 flex items-center gap-1.5 font-bold cursor-pointer"
-          >
-            <Plus className="w-4 h-4" />
-            <span>Novo</span>
-          </button>
-        </div>
-      </div>
-
-      {/* ── Grade Mensal do Calendário ──────────────────────── */}
-      <div className="card p-0 overflow-hidden bg-card border border-border shadow-card rounded-3xl">
-        {/* Cabeçalho com dias da semana */}
-        <div
-          className="grid grid-cols-7 border-b bg-surface text-center py-2.5 text-xs font-bold text-muted uppercase tracking-wider relative z-10"
-          style={{ borderColor: "var(--border)" }}
-        >
-          {DIAS_SEMANA.map((dia) => (
-            <div key={dia}>{dia}</div>
-          ))}
-        </div>
-
-        {/* Grade de 35 células */}
-        <div className="grid grid-cols-7 auto-rows-fr bg-border gap-[1px] relative z-10">
-          {diasGrade.map((dia, idx) => {
-            const ehMesAtual = dia.getMonth() === dataAtual.getMonth();
-            const ehHoje =
-              dia.getDate() === hoje.getDate() &&
-              dia.getMonth() === hoje.getMonth() &&
-              dia.getFullYear() === hoje.getFullYear();
-
-            // Filtra eventos do dia
-            const inicioDia = new Date(dia.getFullYear(), dia.getMonth(), dia.getDate(), 0, 0, 0, 0);
-            const fimDia = new Date(dia.getFullYear(), dia.getMonth(), dia.getDate(), 23, 59, 59, 999);
-
-            const eventosDia = eventos.filter((ev) => {
-              const inicioEvt = new Date(ev.inicio);
-              const fimEvt = ev.fim ? new Date(ev.fim) : inicioEvt;
-
-              return inicioEvt <= fimDia && fimEvt >= inicioDia;
-            });
-
-            return (
-              <div
-                key={idx}
-                onClick={() => abrirModalNovoNoDia(dia)}
-                onDragOver={(e) => {
-                  e.preventDefault();
-                  e.dataTransfer.dropEffect = "move";
-                }}
-                onDrop={(e) => handleDropNoDia(e, dia)}
-                className={`min-h-[115px] p-2 bg-card flex flex-col justify-start transition-all hover:bg-surface cursor-pointer group relative ${
-                  !ehMesAtual ? "opacity-35" : ""
-                }`}
-              >
-                {/* Número do Dia */}
-                <div className="flex items-center justify-between mb-1 px-1">
-                  <span
-                    className={`text-xs font-mono font-bold inline-flex items-center justify-center h-6 rounded-md whitespace-nowrap transition-all ${
-                      // No dia 1 o rótulo vira "1 set." e não cabe em 24px:
-                      // a largura precisa acompanhar o texto, senão vaza.
-                      dia.getDate() === 1 ? "px-1.5" : "w-6"
-                    } ${
-                      ehHoje
-                        ? "bg-accent text-inverse shadow-xs font-extrabold"
-                        : ehMesAtual
-                        ? "text-primary"
-                        : "text-muted opacity-50"
-                    }`}
-                  >
-                    {dia.getDate() === 1
-                      ? `${dia.getDate()} ${MESES[dia.getMonth()].slice(0, 3).toLowerCase()}.`
-                      : dia.getDate()}
-                  </span>
-
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      abrirModalNovoNoDia(dia);
-                    }}
-                    className="opacity-0 group-hover:opacity-100 p-0.5 rounded text-muted hover:text-accent transition-opacity"
-                    title="Adicionar evento neste dia"
-                  >
-                    <Plus className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-
-                {/* Lista de pílulas de eventos (Arrastáveis!) */}
-                <div className="space-y-1 flex-1 overflow-y-auto max-h-[85px] custom-scrollbar">
-                  {eventosDia.map((ev) => {
-                    const horStr = new Date(ev.inicio).toLocaleTimeString("pt-BR", {
-                      hour: "2-digit",
-                      minute: "2-digit",
-                    });
-                    const cor = getCorEvento(ev);
-                    const isMensal = ev.recorrencia === "mensal";
-                    const isSemanal = ev.recorrencia === "semanal";
-
-                    const dtIni = new Date(ev.inicio);
-                    const dtFim = ev.fim ? new Date(ev.fim) : dtIni;
-                    const ehMultidias = dtIni.getDate() !== dtFim.getDate() || dtIni.getMonth() !== dtFim.getMonth();
-
-                    return (
-                      <div
-                        key={ev.id}
-                        draggable={true}
-                        onDragStart={(e) => {
-                          e.dataTransfer.setData("text/plain", ev.idOriginal || ev.id);
-                          e.dataTransfer.effectAllowed = "move";
-                        }}
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          abrirDetalhesEvento(ev);
-                        }}
-                        className="px-2 py-1 rounded text-[11px] font-medium text-white truncate shadow-xs flex items-center gap-1 transition-transform hover:scale-[1.02] cursor-grab active:cursor-grabbing select-none"
-                        style={{ background: cor }}
-                        title={`${horStr} — ${ev.titulo} ${ehMultidias ? "(Múltiplos dias)" : ""}`}
-                      >
-                        <GripVertical className="w-2.5 h-2.5 opacity-60 flex-shrink-0" />
-                        {isMensal || isSemanal ? (
-                          <Repeat className="w-3 h-3 flex-shrink-0 text-white animate-pulse" />
-                        ) : null}
-                        <span className="opacity-90 font-mono text-[10px]">{horStr}</span>
-                        <span className="truncate flex-1">{ev.titulo}</span>
-                        {ehMultidias && <span className="text-[9px] bg-black/30 px-1 rounded font-mono">2d+</span>}
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </div>
+      <FullScreenCalendar
+        mesExibido={dataAtual}
+        eventos={eventos}
+        onMesAnterior={mesAnterior}
+        onProximoMes={proximoMes}
+        onHoje={irParaHoje}
+        onNovoEvento={abrirModalNovoNoDia}
+        onAbrirEvento={abrirDetalhesEvento}
+        onSoltarEvento={handleDropNoDia}
+        corDoEvento={getCorEvento}
+      />
 
       {/* ── Modal Criar Novo Evento ─────────────────────────── */}
       <ModalPortal isOpen={modalOpen}>
