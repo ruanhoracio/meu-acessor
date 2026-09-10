@@ -45,6 +45,9 @@ model InboxItem {
   tarefas             Tarefa[]
   notas               Nota[]
 
+  userId String? @map("user_id")
+
+  @@index([userId])
   @@map("inbox_items")
 }
 
@@ -70,6 +73,9 @@ model Projeto {
   notas           Nota[]
   entregasMensais EntregaMensal[]
 
+  userId String? @map("user_id")
+
+  @@index([userId])
   @@map("projetos")
 }
 
@@ -89,6 +95,9 @@ model EntregaMensal {
   projeto   Projeto? @relation(fields: [projetoId], references: [id], onDelete: SetNull)
   video     Video?   @relation(fields: [videoId], references: [id], onDelete: SetNull)
 
+  userId String? @map("user_id")
+
+  @@index([userId])
   @@map("entregas_mensais")
 }
 
@@ -125,6 +134,9 @@ model Tarefa {
   projeto       Projeto?      @relation(fields: [projetoId], references: [id])
   origemInbox   InboxItem?    @relation(fields: [origemInboxId], references: [id])
 
+  userId String? @map("user_id")
+
+  @@index([userId])
   @@map("tarefas")
 }
 
@@ -179,6 +191,9 @@ model Video {
   notas             Nota[]
   entregaMensal     EntregaMensal?
 
+  userId String? @map("user_id")
+
+  @@index([userId])
   @@map("videos")
 }
 
@@ -222,6 +237,9 @@ model Evento {
 
   projeto        Projeto?  @relation(fields: [projetoId], references: [id])
 
+  userId String? @map("user_id")
+
+  @@index([userId])
   @@map("eventos")
 }
 
@@ -242,6 +260,9 @@ model Nota {
   video         Video?     @relation(fields: [videoId], references: [id])
   origemInbox   InboxItem? @relation(fields: [origemInboxId], references: [id])
 
+  userId String? @map("user_id")
+
+  @@index([userId])
   @@map("notas")
 }
 
@@ -256,6 +277,9 @@ model Referencia {
   thumbnail  String?
   criadoEm   DateTime @default(now()) @map("criado_em")
 
+  userId String? @map("user_id")
+
+  @@index([userId])
   @@map("referencias")
 }
 
@@ -280,6 +304,9 @@ model LembreteAgendado {
   chatId           String   @map("chat_id")
   criadoEm         DateTime @default(now()) @map("criado_em")
 
+  userId String? @map("user_id")
+
+  @@index([userId])
   @@map("lembretes_agendados")
 }
 
@@ -292,6 +319,8 @@ model User {
   email         String    @unique
   emailVerified Boolean   @default(false)
   image         String?
+  // Chat do Telegram cujas mensagens caem nos dados deste usuário
+  telegramChatId String?  @unique @map("telegram_chat_id")
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
   sessions      Session[]

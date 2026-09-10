@@ -1,4 +1,5 @@
 import prisma from "@/lib/db";
+import { usuarioAtualId } from "@/lib/sessao";
 import { NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
@@ -8,6 +9,9 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
     const { id } = await params;
     const body = await req.json();
 
+    const userId = await usuarioAtualId();
+    const dona = await prisma.referencia.findFirst({ where: { id, userId }, select: { id: true } });
+    if (!dona) return NextResponse.json({ error: "Referência não encontrada." }, { status: 404 });
     const referencia = await prisma.referencia.update({
       where: { id },
       data: {
@@ -28,7 +32,9 @@ export async function PUT(req: Request, { params }: { params: Promise<{ id: stri
 export async function DELETE(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params;
-    await prisma.referencia.delete({ where: { id } });
+    const userId = await usuarioAtualId();
+    const { count } = await prisma.referencia.deleteMany({ where: { id, userId } });
+    if (count === 0) return NextResponse.json({ error: "Referência não encontrada." }, { status: 404 });
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error("Erro ao excluir referência:", error);

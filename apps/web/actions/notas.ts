@@ -1,6 +1,7 @@
 "use server";
 
 import prisma from "@/lib/db";
+import { usuarioAtualId } from "@/lib/sessao";
 import { revalidatePath } from "next/cache";
 
 export async function criarNota(data: {
@@ -11,8 +12,10 @@ export async function criarNota(data: {
   videoId?: string;
 }) {
   try {
+    const userId = await usuarioAtualId();
     const novaNota = await prisma.nota.create({
       data: {
+        userId,
         titulo: data.titulo || null,
         conteudo: data.conteudo,
         tags: data.tags || [],
@@ -32,8 +35,9 @@ export async function criarNota(data: {
 
 export async function excluirNota(notaId: string) {
   try {
-    await prisma.nota.delete({
-      where: { id: notaId },
+    const userId = await usuarioAtualId();
+    await prisma.nota.deleteMany({
+      where: { id: notaId, userId },
     });
 
     revalidatePath("/notas");

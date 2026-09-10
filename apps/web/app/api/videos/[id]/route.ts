@@ -1,4 +1,5 @@
 import prisma from "@/lib/db";
+import { usuarioAtualId } from "@/lib/sessao";
 import { NextResponse } from "next/server";
 import { sincronizarEntregaDoVideo } from "@/lib/sincronizar-entrega";
 
@@ -7,8 +8,9 @@ export const dynamic = "force-dynamic";
 export async function GET(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params;
-    const video = await prisma.video.findUnique({
-      where: { id },
+    const userId = await usuarioAtualId();
+    const video = await prisma.video.findFirst({
+      where: { id, userId },
       include: { projeto: true },
     });
     if (!video) return NextResponse.json({ error: "Vídeo não encontrado" }, { status: 404 });
@@ -26,9 +28,9 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
 
     // Só a server action registrava entregueEm; esta rota (Kanban, Tarefas)
     // deixava a data em branco e a entrega cairia no mês errado.
-    const atual = estagio !== undefined
-      ? await prisma.video.findUnique({ where: { id }, select: { entregueEm: true } })
-      : null;
+    const userId = await usuarioAtualId();
+    const atual = await prisma.video.findFirst({ where: { id, userId }, select: { entregueEm: true } });
+    if (!atual) return NextResponse.json({ error: "Vídeo não encontrado" }, { status: 404 });
     const entregueEm =
       estagio === "entregue"
         ? atual?.entregueEm ?? new Date()
@@ -67,7 +69,9 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
 export async function DELETE(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params;
-    await prisma.video.delete({ where: { id } });
+    const userId = await usuarioAtualId();
+    const { count } = await prisma.video.deleteMany({ where: { id, userId } });
+    if (count === 0) return NextResponse.json({ error: "Vídeo não encontrado" }, { status: 404 });
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error("Erro ao excluir vídeo:", error);

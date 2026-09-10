@@ -1,4 +1,5 @@
 import prisma from "@/lib/db";
+import { usuarioAtualId } from "@/lib/sessao";
 import { NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
@@ -6,7 +7,7 @@ export const dynamic = "force-dynamic";
 export async function GET() {
   try {
     const projetos = await prisma.projeto.findMany({
-      where: { ativo: true },
+      where: { ativo: true, userId: await usuarioAtualId() },
       orderBy: { nome: "asc" },
     });
     return NextResponse.json(projetos);
@@ -25,8 +26,10 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Nome do cliente/projeto é obrigatório." }, { status: 400 });
     }
 
+    const userId = await usuarioAtualId();
     const projeto = await prisma.projeto.create({
       data: {
+        userId,
         nome: nome.trim(),
         tipo: (tipo || "cliente") as any,
         cor: cor || "#ff5a3d",

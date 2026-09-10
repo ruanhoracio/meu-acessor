@@ -1,4 +1,5 @@
 import prisma from "@/lib/db";
+import { usuarioAtualId } from "@/lib/sessao";
 import { NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
@@ -6,11 +7,13 @@ export const dynamic = "force-dynamic";
 export async function GET(req: Request) {
   try {
     const { searchParams } = new URL(req.url);
+    const userId = await usuarioAtualId();
     const inicio = searchParams.get("inicio");
     const fim = searchParams.get("fim");
 
     if (!inicio || !fim) {
       const eventos = await prisma.evento.findMany({
+        where: { userId },
         include: { projeto: true },
         orderBy: { inicio: "asc" },
       });
@@ -22,6 +25,7 @@ export async function GET(req: Request) {
 
     // Buscar todos os eventos para garantir que nenhum evento do usuário seja omitido
     const eventos = await prisma.evento.findMany({
+      where: { userId },
       include: { projeto: true },
       orderBy: { inicio: "asc" },
     });
@@ -110,8 +114,10 @@ export async function POST(req: Request) {
     const dataInicio = inicio ? new Date(inicio) : new Date();
     const dataFim = fim ? new Date(fim) : new Date(dataInicio.getTime() + 60 * 60 * 1000);
 
+    const userId = await usuarioAtualId();
     const evento = await prisma.evento.create({
       data: {
+        userId,
         titulo: titulo.trim(),
         inicio: dataInicio,
         fim: dataFim,

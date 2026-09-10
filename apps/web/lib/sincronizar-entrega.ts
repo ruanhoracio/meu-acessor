@@ -48,6 +48,7 @@ export async function sincronizarEntregaDoVideo(videoId: string) {
   await prisma.entregaMensal.create({
     data: {
       videoId,
+      userId: video.userId,
       titulo: video.titulo,
       formato: video.formato,
       projetoId: video.projetoId,

@@ -19,9 +19,16 @@ export async function POST(req: NextRequest) {
       const msg = body.message;
       const chatId = String(msg.chat?.id);
 
-      if (ALLOWED_CHAT_ID && chatId !== ALLOWED_CHAT_ID) {
+      // O chat precisa pertencer a um usuário do app (User.telegramChatId).
+      // Rede de segurança: o chat autorizado por env cai no primeiro usuário.
+      let dono = await prisma.user.findFirst({ where: { telegramChatId: chatId }, select: { id: true } });
+      if (!dono && ALLOWED_CHAT_ID && chatId === ALLOWED_CHAT_ID) {
+        dono = await prisma.user.findFirst({ orderBy: { createdAt: "asc" }, select: { id: true } });
+      }
+      if (!dono) {
         return NextResponse.json({ status: "ignored_unauthorized" });
       }
+      const userId = dono.id;
 
       const telegramMsgId = String(msg.message_id);
       const textContent = msg.text || msg.caption || "";
@@ -37,6 +44,7 @@ export async function POST(req: NextRequest) {
       try {
         inboxItem = await prisma.inboxItem.create({
           data: {
+            userId,
             origem: "telegram",
             tipoMidia,
             conteudoBruto: textContent || "[Mídia de Áudio Recebida]",
@@ -85,7 +93,7 @@ export async function POST(req: NextRequest) {
       }
 
       // Buscar projetos ativos
-      const projs = await prisma.projeto.findMany({ where: { ativo: true }, select: { nome: true } });
+      const projs = await prisma.projeto.findMany({ where: { ativo: true, userId }, select: { nome: true } });
       const projetosAtivosNomes = projs.map((p) => p.nome);
 
       const agora = new Date();
@@ -179,7 +187,7 @@ Responda APENAS o array JSON, sem texto ao redor:
         let projetoId = null;
         if (c.projeto) {
           const proj = await prisma.projeto.findFirst({
-            where: { nome: { contains: c.projeto, mode: "insensitive" } },
+            where: { userId, ativo: true, nome: { contains: c.projeto, mode: "insensitive" } },
           });
           if (proj) projetoId = proj.id;
         }
@@ -192,6 +200,7 @@ Responda APENAS o array JSON, sem texto ao redor:
 
           await prisma.lembreteAgendado.create({
             data: {
+              userId,
               mensagem: c.titulo,
               horarioAlvo,
               horarioNotificar,
@@ -201,6 +210,7 @@ Responda APENAS o array JSON, sem texto ao redor:
         } else if (c.tipo === "video") {
           await prisma.video.create({
             data: {
+              userId,
               titulo: c.titulo,
               projetoId,
               formato: c.formato || "outro",
@@ -211,6 +221,7 @@ Responda APENAS o array JSON, sem texto ao redor:
         } else if (c.tipo === "tarefa") {
           await prisma.tarefa.create({
             data: {
+              userId,
               titulo: c.titulo,
               projetoId,
               prazo: c.prazo ? new Date(c.prazo) : null,
@@ -222,6 +233,7 @@ Responda APENAS o array JSON, sem texto ao redor:
           const fim = new Date(inicio.getTime() + 60 * 60 * 1000);
           await prisma.evento.create({
             data: {
+              userId,
               titulo: c.titulo,
               inicio,
               fim,
@@ -231,6 +243,7 @@ Responda APENAS o array JSON, sem texto ao redor:
         } else if (c.tipo === "nota") {
           await prisma.nota.create({
             data: {
+              userId,
               titulo: c.titulo,
               conteudo: textoParaClassificar,
               projetoId,

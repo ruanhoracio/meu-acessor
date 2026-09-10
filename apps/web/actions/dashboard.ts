@@ -1,9 +1,11 @@
 "use server";
 
 import prisma from "@/lib/db";
+import { usuarioAtualId } from "@/lib/sessao";
 
 export async function getDashboardData() {
   try {
+    const userId = await usuarioAtualId();
     const hoje = new Date();
     hoje.setHours(0, 0, 0, 0);
 
@@ -13,6 +15,7 @@ export async function getDashboardData() {
     const [tarefasHoje, tarefasConcluidas, videosAtivos, eventosHoje, todosVideosAtivos] = await Promise.all([
       prisma.tarefa.findMany({
         where: {
+          userId,
           status: { in: ["aberta", "fazendo"] },
           OR: [
             { prazo: null },
@@ -24,6 +27,7 @@ export async function getDashboardData() {
       }),
       prisma.tarefa.findMany({
         where: {
+          userId,
           status: "concluida",
           criadoEm: { gte: hoje },
         },
@@ -31,6 +35,7 @@ export async function getDashboardData() {
       }),
       prisma.video.findMany({
         where: {
+          userId,
           estagio: { notIn: ["entregue", "aprovado"] },
         },
         include: { projeto: true },
@@ -38,13 +43,14 @@ export async function getDashboardData() {
       }),
       prisma.evento.findMany({
         where: {
+          userId,
           inicio: { gte: hoje, lt: amanha },
         },
         include: { projeto: true },
         orderBy: { inicio: "asc" },
       }),
       prisma.video.findMany({
-        where: { estagio: { notIn: ["entregue", "aprovado"] } },
+        where: { userId, estagio: { notIn: ["entregue", "aprovado"] } },
         select: { estimativaHoras: true, criadoEm: true, id: true },
       }),
     ]);

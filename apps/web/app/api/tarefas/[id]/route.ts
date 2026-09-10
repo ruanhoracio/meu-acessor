@@ -1,4 +1,5 @@
 import prisma from "@/lib/db";
+import { usuarioAtualId } from "@/lib/sessao";
 import { NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
@@ -8,6 +9,9 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
     const { id } = await params;
     const body = await req.json();
     const { titulo, projetoId, prioridade, prazo, status, descricao } = body;
+    const userId = await usuarioAtualId();
+    const dona = await prisma.tarefa.findFirst({ where: { id, userId }, select: { id: true } });
+    if (!dona) return NextResponse.json({ error: "Tarefa não encontrada" }, { status: 404 });
 
     const tarefaAtualizada = await prisma.tarefa.update({
       where: { id },
@@ -32,7 +36,9 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
 export async function DELETE(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params;
-    await prisma.tarefa.delete({ where: { id } });
+    const userId = await usuarioAtualId();
+    const { count } = await prisma.tarefa.deleteMany({ where: { id, userId } });
+    if (count === 0) return NextResponse.json({ error: "Tarefa não encontrada" }, { status: 404 });
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error("Erro ao excluir tarefa:", error);

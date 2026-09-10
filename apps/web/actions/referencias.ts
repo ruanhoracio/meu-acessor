@@ -1,6 +1,7 @@
 "use server";
 
 import prisma from "@/lib/db";
+import { usuarioAtualId } from "@/lib/sessao";
 import { revalidatePath } from "next/cache";
 
 export async function criarReferencia(data: {
@@ -11,8 +12,10 @@ export async function criarReferencia(data: {
   thumbnail?: string;
 }) {
   try {
+    const userId = await usuarioAtualId();
     const novaRef = await prisma.referencia.create({
       data: {
+        userId,
         url: data.url,
         titulo: data.titulo || null,
         tags: data.tags || [],

@@ -4,7 +4,6 @@ import { enviarTelegram, escaparMarkdown, telegramConfigurado } from "@/lib/tele
 
 export const dynamic = "force-dynamic";
 
-const ALLOWED_CHAT_ID = process.env.TELEGRAM_ALLOWED_CHAT_ID || "";
 
 // Brasil não usa horário de verão: UTC-3 o ano inteiro.
 const BRT_OFFSET_HORAS = 3;
@@ -55,8 +54,8 @@ function dataBRTFormatada(data: Date): string {
  * (semanal/mensal) — mesma lógica da agenda do app. Sem isso, "Culto toda
  * semana" só aparecia no resumo na data original em que foi criado.
  */
-async function eventosDoDiaBRT(ano: number, mes: number, dia: number) {
-  const todos = await prisma.evento.findMany({ include: { projeto: true } });
+async function eventosDoDiaBRT(userId: string, ano: number, mes: number, dia: number) {
+  const todos = await prisma.evento.findMany({ where: { userId }, include: { projeto: true } });
 
   const inicioDia = inicioDoDiaBRT(ano, mes, dia);
   const fimDia = new Date(inicioDia.getTime() + 24 * 3600000 - 1);
@@ -113,28 +112,28 @@ async function enviarERegistrar(chave: string, texto: string, chatId: string): P
 }
 
 // ── Resumo diário (08:00 e 16:00 BRT) ──────────────────────────────
-async function enviarResumoAgendado(tipo: "08" | "16", agora: Date, chatId: string) {
+async function enviarResumoAgendado(tipo: "08" | "16", agora: Date, userId: string, chatId: string, nome: string) {
   const hojeStr = diaBRT(agora);
   const p = partesBRT(agora);
 
   const tarefas = await prisma.tarefa.findMany({
-    where: { status: { in: ["aberta", "fazendo"] } },
+    where: { userId, status: { in: ["aberta", "fazendo"] } },
     include: { projeto: true },
     orderBy: { prioridade: "asc" },
   });
   const tarefasHoje = tarefas.filter((t) => !t.prazo || diaBRT(new Date(t.prazo)) <= hojeStr);
 
   // Inclui recorrentes (semanal/mensal) projetados para hoje
-  const eventosHoje = await eventosDoDiaBRT(p.ano, p.mes, p.dia);
+  const eventosHoje = await eventosDoDiaBRT(userId, p.ano, p.mes, p.dia);
 
   const entregas = await prisma.entregaMensal.findMany({
-    where: { mes: p.mes + 1, ano: p.ano, concluido: false },
+    where: { userId, mes: p.mes + 1, ano: p.ano, concluido: false },
     include: { projeto: true },
   });
 
   let msg =
     tipo === "08"
-      ? `☀️ *Bom dia, Ruan!* Seu resumo de ${dataBRTFormatada(agora)}\n\n`
+      ? `☀️ *Bom dia, ${escaparMarkdown(nome)}!* Seu resumo de ${dataBRTFormatada(agora)}\n\n`
       : `⚡ *Checagem da tarde (16:00)* — ${dataBRTFormatada(agora)}\n\n`;
 
   if (eventosHoje.length > 0) {
@@ -171,17 +170,17 @@ async function enviarResumoAgendado(tipo: "08" | "16", agora: Date, chatId: stri
 
   msg += tipo === "08" ? `🚀 *Bom trabalho hoje!*` : `💪 *Reta final — bora fechar essas!*`;
 
-  return enviarERegistrar(`digest_${tipo}_${hojeStr}`, msg, chatId);
+  return enviarERegistrar(`digest_${tipo}_${hojeStr}_${userId}`, msg, chatId);
 }
 
 // ── Lembretes de compromissos: 2 dias antes e 1 dia antes ──────────
-async function enviarLembretesDeAgenda(agora: Date, chatId: string) {
+async function enviarLembretesDeAgenda(agora: Date, userId: string, chatId: string) {
   const p = partesBRT(agora);
   const enviados: string[] = [];
 
   for (const distancia of [2, 1] as const) {
     // Também projeta recorrentes: um evento semanal gera lembrete a cada ocorrência
-    const ocorrencias = await eventosDoDiaBRT(p.ano, p.mes, p.dia + distancia);
+    const ocorrencias = await eventosDoDiaBRT(userId, p.ano, p.mes, p.dia + distancia);
 
     for (const { evento: ev, inicio } of ocorrencias) {
       const chave = `agenda_d${distancia}_${ev.id}_${diaBRT(inicio)}`;
@@ -203,7 +202,7 @@ async function enviarLembretesDeAgenda(agora: Date, chatId: string) {
 // ── Lembretes pontuais criados pelo usuário (5 min antes) ──────────
 async function enviarLembretesPontuais(agora: Date, chatIdPadrao: string) {
   const pendentes = await prisma.lembreteAgendado.findMany({
-    where: { enviado: false, horarioNotificar: { lte: agora } },
+    where: { enviado: false, horarioNotificar: { lte: agora }, chatId: chatIdPadrao },
   });
 
   let enviados = 0;
@@ -234,26 +233,34 @@ export async function GET(_req: NextRequest) {
       );
     }
 
-    const chatId = ALLOWED_CHAT_ID;
-    if (!chatId) {
+    // Um usuário só recebe rotinas se tiver um chat do Telegram vinculado.
+    const usuarios = await prisma.user.findMany({
+      where: { telegramChatId: { not: null } },
+      select: { id: true, name: true, telegramChatId: true },
+    });
+    if (usuarios.length === 0) {
       return NextResponse.json(
-        { status: "error", motivo: "TELEGRAM_ALLOWED_CHAT_ID não configurado na Vercel" },
+        { status: "error", motivo: "Nenhum usuário com telegramChatId vinculado" },
         { status: 500 }
       );
     }
 
     const agora = new Date();
     const horaBRT = partesBRT(agora).hora;
-
-    const lembretesPontuais = await enviarLembretesPontuais(agora, chatId);
-    const lembretesAgenda = await enviarLembretesDeAgenda(agora, chatId);
-
-    // Janelas amplas: se o cron atrasar, o resumo ainda sai no mesmo dia.
+    let lembretesPontuais = 0;
+    const lembretesAgenda: string[] = [];
     let resumoEnviado: string | null = null;
-    if (horaBRT >= 6 && horaBRT < 16) {
-      if (await enviarResumoAgendado("08", agora, chatId)) resumoEnviado = "08";
-    } else if (horaBRT >= 16) {
-      if (await enviarResumoAgendado("16", agora, chatId)) resumoEnviado = "16";
+
+    for (const u of usuarios) {
+      const chatId = u.telegramChatId as string;
+      lembretesPontuais += await enviarLembretesPontuais(agora, chatId);
+      lembretesAgenda.push(...(await enviarLembretesDeAgenda(agora, u.id, chatId)));
+      // Janelas amplas: se o cron atrasar, o resumo ainda sai no mesmo dia.
+      if (horaBRT >= 6 && horaBRT < 16) {
+        if (await enviarResumoAgendado("08", agora, u.id, chatId, u.name)) resumoEnviado = "08";
+      } else if (horaBRT >= 16) {
+        if (await enviarResumoAgendado("16", agora, u.id, chatId, u.name)) resumoEnviado = "16";
+      }
     }
 
     return NextResponse.json({

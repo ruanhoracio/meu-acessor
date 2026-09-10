@@ -1,4 +1,5 @@
 import prisma from "@/lib/db";
+import { usuarioAtualId } from "@/lib/sessao";
 import { NextResponse } from "next/server";
 import { sincronizarEntregaDoVideo } from "@/lib/sincronizar-entrega";
 
@@ -6,7 +7,9 @@ export const dynamic = "force-dynamic";
 
 export async function GET() {
   try {
+    const userId = await usuarioAtualId();
     const videos = await prisma.video.findMany({
+      where: { userId },
       include: { projeto: true },
       orderBy: { criadoEm: "desc" },
     });
@@ -26,8 +29,10 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Título é obrigatório." }, { status: 400 });
     }
 
+    const userId = await usuarioAtualId();
     const video = await prisma.video.create({
       data: {
+        userId,
         titulo: titulo.trim(),
         projetoId: projetoId || null,
         formato: formato || "outro",

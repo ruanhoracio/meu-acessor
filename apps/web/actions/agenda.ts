@@ -1,12 +1,15 @@
 "use server";
 
 import prisma from "@/lib/db";
+import { usuarioAtualId } from "@/lib/sessao";
 import { revalidatePath } from "next/cache";
 
 export async function getEventos(dataInicio: Date, dataFim: Date) {
   try {
     // Buscar todos os eventos do usuário
+    const userId = await usuarioAtualId();
     const eventos = await prisma.evento.findMany({
+      where: { userId },
       include: {
         projeto: true,
       },
@@ -101,8 +104,10 @@ export async function criarEvento(data: {
   recorrencia?: string;
 }) {
   try {
+    const userId = await usuarioAtualId();
     const novoEvento = await prisma.evento.create({
       data: {
+        userId,
         titulo: data.titulo.trim(),
         inicio: data.inicio,
         fim: data.fim,
@@ -134,6 +139,9 @@ export async function atualizarEvento(
     // Tratar se for id projetado (ex: cuid_172345678)
     const targetId = eventoId.includes("_") ? eventoId.split("_")[0] : eventoId;
 
+    const userId = await usuarioAtualId();
+    const dono = await prisma.evento.findFirst({ where: { id: targetId, userId }, select: { id: true } });
+    if (!dono) return { success: false, error: "Evento não encontrado." };
     const eventoAtualizado = await prisma.evento.update({
       where: { id: targetId },
       data: {
@@ -158,8 +166,9 @@ export async function excluirEvento(eventoId: string) {
   try {
     const targetId = eventoId.includes("_") ? eventoId.split("_")[0] : eventoId;
 
-    await prisma.evento.delete({
-      where: { id: targetId },
+    const userId = await usuarioAtualId();
+    await prisma.evento.deleteMany({
+      where: { id: targetId, userId },
     });
 
     revalidatePath("/agenda");

@@ -1,12 +1,13 @@
 "use server";
 
 import prisma from "@/lib/db";
+import { usuarioAtualId } from "@/lib/sessao";
 import { revalidatePath } from "next/cache";
 
 export async function getProjetos() {
   try {
     return await prisma.projeto.findMany({
-      where: { ativo: true },
+      where: { ativo: true, userId: await usuarioAtualId() },
       orderBy: { nome: "asc" },
     });
   } catch (error) {
@@ -21,8 +22,10 @@ export async function criarProjeto(data: {
   cor?: string;
 }) {
   try {
+    const userId = await usuarioAtualId();
     const novoProjeto = await prisma.projeto.create({
       data: {
+        userId,
         nome: data.nome,
         tipo: data.tipo as any,
         cor: data.cor || "#ff5a3d",
@@ -41,8 +44,9 @@ export async function criarProjeto(data: {
 
 export async function excluirProjeto(projetoId: string) {
   try {
-    await prisma.projeto.update({
-      where: { id: projetoId },
+    const userId = await usuarioAtualId();
+    await prisma.projeto.updateMany({
+      where: { id: projetoId, userId },
       data: { ativo: false },
     });
 

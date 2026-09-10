@@ -1,10 +1,14 @@
 "use server";
 
 import prisma from "@/lib/db";
+import { usuarioAtualId } from "@/lib/sessao";
 import { revalidatePath } from "next/cache";
 
 export async function iniciarSessaoFoco(videoId: string) {
   try {
+    const userId = await usuarioAtualId();
+    const dono = await prisma.video.findFirst({ where: { id: videoId, userId }, select: { id: true } });
+    if (!dono) return { success: false, error: "Vídeo não encontrado." };
     const sessao = await prisma.sessaoFoco.create({
       data: {
         videoId,
@@ -23,8 +27,9 @@ export async function iniciarSessaoFoco(videoId: string) {
 
 export async function encerrarSessaoFoco(sessaoId: string) {
   try {
-    const sessao = await prisma.sessaoFoco.findUnique({
-      where: { id: sessaoId },
+    const userId = await usuarioAtualId();
+    const sessao = await prisma.sessaoFoco.findFirst({
+      where: { id: sessaoId, video: { userId } },
     });
 
     if (!sessao) return { success: false, error: "Sessão não encontrada" };

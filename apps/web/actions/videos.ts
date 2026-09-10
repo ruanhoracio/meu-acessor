@@ -1,14 +1,16 @@
 "use server";
 
 import prisma from "@/lib/db";
+import { usuarioAtualId } from "@/lib/sessao";
 import type { EstagioVideo, FormatoVideo, AguardandoQuem } from "@prisma/client";
 import { revalidatePath } from "next/cache";
 import { sincronizarEntregaDoVideo } from "@/lib/sincronizar-entrega";
 
 export async function moverEstagioVideo(videoId: string, novoEstagio: EstagioVideo) {
   try {
-    const videoAntigo = await prisma.video.findUnique({
-      where: { id: videoId },
+    const userId = await usuarioAtualId();
+    const videoAntigo = await prisma.video.findFirst({
+      where: { id: videoId, userId },
       select: { estagio: true },
     });
 
@@ -56,8 +58,10 @@ export async function criarVideo(data: {
   linkBruto?: string;
 }) {
   try {
+    const userId = await usuarioAtualId();
     const novoVideo = await prisma.video.create({
       data: {
+        userId,
         titulo: data.titulo,
         projetoId: data.projetoId || null,
         formato: data.formato,
@@ -84,8 +88,9 @@ export async function atualizarLinksVideo(
   linkEntrega?: string
 ) {
   try {
-    await prisma.video.update({
-      where: { id: videoId },
+    const userId = await usuarioAtualId();
+    await prisma.video.updateMany({
+      where: { id: videoId, userId },
       data: {
         linkBruto,
         linkEntrega,
@@ -102,8 +107,9 @@ export async function atualizarLinksVideo(
 
 export async function incrementarRodadaAlteracao(videoId: string) {
   try {
-    await prisma.video.update({
-      where: { id: videoId },
+    const userId = await usuarioAtualId();
+    await prisma.video.updateMany({
+      where: { id: videoId, userId },
       data: {
         rodadasAlteracao: { increment: 1 },
       },

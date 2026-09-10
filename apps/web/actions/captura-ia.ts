@@ -1,6 +1,7 @@
 "use server";
 
 import prisma from "@/lib/db";
+import { usuarioAtualId } from "@/lib/sessao";
 import OpenAI from "openai";
 import { revalidatePath } from "next/cache";
 
@@ -13,7 +14,8 @@ export async function processarCapturaInteligente(texto: string) {
   if (!texto.trim()) return { success: false, error: "Digite algo para capturar." };
 
   try {
-    const projetos = await prisma.projeto.findMany({ select: { id: true, nome: true } });
+    const userId = await usuarioAtualId();
+    const projetos = await prisma.projeto.findMany({ where: { userId, ativo: true }, select: { id: true, nome: true } });
     const projetosNomes = projetos.map((p) => p.nome);
 
     let classificacao = {
@@ -77,6 +79,7 @@ Classifique o texto do usuário e responda APENAS um JSON válido no formato:
     if (classificacao.tipo === "video") {
       await prisma.video.create({
         data: {
+          userId,
           titulo: classificacao.titulo,
           projetoId,
           formato: (classificacao.formato as any) || "outro",
@@ -91,6 +94,7 @@ Classifique o texto do usuário e responda APENAS um JSON válido no formato:
       const fim = new Date(inicio.getTime() + 60 * 60 * 1000);
       await prisma.evento.create({
         data: {
+          userId,
           titulo: classificacao.titulo,
           inicio,
           fim,
@@ -101,6 +105,7 @@ Classifique o texto do usuário e responda APENAS um JSON válido no formato:
     } else if (classificacao.tipo === "nota") {
       await prisma.nota.create({
         data: {
+          userId,
           titulo: classificacao.titulo,
           conteudo: texto,
           projetoId,
@@ -110,6 +115,7 @@ Classifique o texto do usuário e responda APENAS um JSON válido no formato:
     } else if (classificacao.tipo === "referencia") {
       await prisma.referencia.create({
         data: {
+          userId,
           url: texto.includes("http") ? texto : "https://youtube.com",
           titulo: classificacao.titulo,
           tags: ["inspiração"],
@@ -119,6 +125,7 @@ Classifique o texto do usuário e responda APENAS um JSON válido no formato:
     } else {
       await prisma.tarefa.create({
         data: {
+          userId,
           titulo: classificacao.titulo,
           projetoId,
           prazo: classificacao.prazo ? new Date(classificacao.prazo) : null,

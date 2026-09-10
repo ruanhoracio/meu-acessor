@@ -1,11 +1,14 @@
 import prisma from "@/lib/db";
+import { usuarioAtualId } from "@/lib/sessao";
 import { NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
 
 export async function GET() {
   try {
+    const userId = await usuarioAtualId();
     const notas = await prisma.nota.findMany({
+      where: { userId },
       include: { projeto: true },
       orderBy: { atualizadoEm: "desc" },
     });
@@ -25,8 +28,10 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "Conteúdo da nota é obrigatório." }, { status: 400 });
     }
 
+    const userId = await usuarioAtualId();
     const nota = await prisma.nota.create({
       data: {
+        userId,
         titulo: titulo?.trim() || null,
         conteudo: conteudo.trim(),
         tags: Array.isArray(tags) ? tags : [],

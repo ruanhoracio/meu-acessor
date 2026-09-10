@@ -1,11 +1,14 @@
 "use server";
 
 import prisma from "@/lib/db";
+import { usuarioAtualId } from "@/lib/sessao";
 import { revalidatePath } from "next/cache";
 
 export async function getEntregasMensais(projetoId: string | null, mes: number, ano: number) {
   try {
+    const userId = await usuarioAtualId();
     const whereCondition: any = {
+      userId,
       mes,
       ano,
     };
@@ -25,7 +28,7 @@ export async function getEntregasMensais(projetoId: string | null, mes: number, 
     });
 
     const projetos = await prisma.projeto.findMany({
-      where: { ativo: true },
+      where: { ativo: true, userId },
       orderBy: { nome: "asc" },
     });
 
@@ -42,6 +45,9 @@ export async function getEntregasMensais(projetoId: string | null, mes: number, 
 
 export async function toggleVideoConcluido(entregaId: string, concluido: boolean) {
   try {
+    const userId = await usuarioAtualId();
+    const dona = await prisma.entregaMensal.findFirst({ where: { id: entregaId, userId }, select: { id: true } });
+    if (!dona) return { success: false, error: "Entrega não encontrada." };
     const entregaAtualizada = await prisma.entregaMensal.update({
       where: { id: entregaId },
       data: {
@@ -70,8 +76,10 @@ export async function criarVideoEntrega(data: {
       return { success: false, error: "Título é obrigatório." };
     }
 
+    const userId = await usuarioAtualId();
     const novaEntrega = await prisma.entregaMensal.create({
       data: {
+        userId,
         titulo: data.titulo.trim(),
         projetoId: data.projetoId && data.projetoId !== "todos" ? data.projetoId : null,
         formato: data.formato || "outro",
@@ -93,6 +101,9 @@ export async function atualizarMetaCliente(projetoId: string, meta: number) {
   try {
     if (!projetoId || projetoId === "todos") return { success: false, error: "Selecione um cliente válido." };
 
+    const userId = await usuarioAtualId();
+    const dono = await prisma.projeto.findFirst({ where: { id: projetoId, userId }, select: { id: true } });
+    if (!dono) return { success: false, error: "Cliente não encontrado." };
     const projetoAtualizado = await prisma.projeto.update({
       where: { id: projetoId },
       data: { metaVideosMensal: meta },
@@ -116,6 +127,9 @@ export async function atualizarVideoEntrega(
       return { success: false, error: "Título é obrigatório." };
     }
 
+    const userId = await usuarioAtualId();
+    const dona = await prisma.entregaMensal.findFirst({ where: { id: entregaId, userId }, select: { id: true } });
+    if (!dona) return { success: false, error: "Entrega não encontrada." };
     const entrega = await prisma.entregaMensal.update({
       where: { id: entregaId },
       data: {
@@ -149,8 +163,9 @@ export async function atualizarVideoEntrega(
 
 export async function excluirVideoEntrega(entregaId: string) {
   try {
-    await prisma.entregaMensal.delete({
-      where: { id: entregaId },
+    const userId = await usuarioAtualId();
+    await prisma.entregaMensal.deleteMany({
+      where: { id: entregaId, userId },
     });
 
     revalidatePath("/entregas");

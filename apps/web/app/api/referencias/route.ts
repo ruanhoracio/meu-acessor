@@ -1,11 +1,14 @@
 import prisma from "@/lib/db";
+import { usuarioAtualId } from "@/lib/sessao";
 import { NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
 
 export async function GET() {
   try {
+    const userId = await usuarioAtualId();
     const referencias = await prisma.referencia.findMany({
+      where: { userId },
       orderBy: { criadoEm: "desc" },
     });
     return NextResponse.json(referencias);
@@ -24,8 +27,10 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "URL da referência é obrigatória." }, { status: 400 });
     }
 
+    const userId = await usuarioAtualId();
     const referencia = await prisma.referencia.create({
       data: {
+        userId,
         url: url.trim(),
         titulo: titulo?.trim() || null,
         tags: Array.isArray(tags) ? tags : [],
