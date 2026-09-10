@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { useSession, signOut } from "@/lib/auth-client";
+import { obterPerfil, salvarAvatar } from "@/actions/perfil";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
 import {
@@ -39,12 +40,13 @@ export function Sidebar() {
   const { data: sessao } = useSession();
 
   useEffect(() => {
+    // Foto e nome vêm da conta logada, não do navegador
     const syncUser = () => {
-      const avatarSalvo = localStorage.getItem("ruan_user_avatar");
-      if (avatarSalvo) setUserAvatar(avatarSalvo);
-
-      const nomeSalvo = localStorage.getItem("ruan_user_name");
-      if (nomeSalvo) setNomeUsuario(nomeSalvo);
+      obterPerfil().then((p) => {
+        if (!p.success) return;
+        setUserAvatar(p.avatar);
+        if (p.nome) setNomeUsuario(p.nome);
+      });
     };
 
     syncUser();
@@ -85,8 +87,8 @@ export function Sidebar() {
             const sy = (img.height - minDim) / 2;
             ctx.drawImage(img, sx, sy, minDim, minDim, 0, 0, size, size);
             const croppedBase64 = canvas.toDataURL("image/jpeg", 0.9);
-            localStorage.setItem("ruan_user_avatar", croppedBase64);
             setUserAvatar(croppedBase64);
+            salvarAvatar(croppedBase64).then(() => window.dispatchEvent(new Event("storage_user_updated")));
           }
         };
         img.src = evt.target?.result as string;

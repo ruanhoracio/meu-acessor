@@ -5,6 +5,7 @@ import { Plus, Trash2, Check, Clock, Bot, Sliders, User, Camera, CheckCircle2, L
 import { getProjetos, criarProjeto, excluirProjeto } from "@/actions/projetos";
 import { listarUsuarios, criarUsuario, excluirUsuario } from "@/actions/usuarios";
 import { authClient, useSession, signOut } from "@/lib/auth-client";
+import { obterPerfil, salvarAvatar } from "@/actions/perfil";
 import { ModalCropper } from "@/components/modals/modal-cropper";
 
 export default function ConfigPage() {
@@ -106,11 +107,12 @@ export default function ConfigPage() {
   useEffect(() => {
     // Carregar configurações salvas do localStorage
     try {
-      const avatar = localStorage.getItem("ruan_user_avatar");
-      if (avatar) setUserAvatar(avatar);
-
-      const nome = localStorage.getItem("ruan_user_name");
-      if (nome) setNomeUsuario(nome);
+      // Foto e nome são da conta logada (ver actions/perfil.ts)
+      obterPerfil().then((p) => {
+        if (!p.success) return;
+        setUserAvatar(p.avatar);
+        if (p.nome) setNomeUsuario(p.nome);
+      });
 
       const hDia = localStorage.getItem("ruan_horas_dia");
       if (hDia) setHorasDia(hDia);
@@ -236,20 +238,32 @@ export default function ConfigPage() {
   };
 
   // Ao salvar o recorte do modal cropper
-  const handleCropSave = (croppedBase64: string) => {
-    try {
-      localStorage.setItem("ruan_user_avatar", croppedBase64);
-      setUserAvatar(croppedBase64);
-      window.dispatchEvent(new Event("storage_user_updated"));
-      exibirSucesso("Foto de perfil enquadrada e salva com sucesso!");
-    } catch (e) {
-      exibirErro("Erro ao salvar foto de perfil.");
+  const handleCropSave = async (croppedBase64: string) => {
+    setUserAvatar(croppedBase64);
+    const res = await salvarAvatar(croppedBase64);
+    if (!res.success) {
+      exibirErro(res.error || "Erro ao salvar foto de perfil.");
+      return;
     }
+    window.dispatchEvent(new Event("storage_user_updated"));
+    exibirSucesso("Foto de perfil salva na sua conta.");
   };
 
-  const handleSalvarTudo = () => {
+  const handleRemoverFoto = async () => {
+    setUserAvatar(null);
+    await salvarAvatar(null);
+    window.dispatchEvent(new Event("storage_user_updated"));
+    exibirSucesso("Foto removida.");
+  };
+
+  const handleSalvarTudo = async () => {
     try {
-      localStorage.setItem("ruan_user_name", nomeUsuario);
+      // Nome fica na conta (e a sessão é atualizada na hora)
+      const nome = nomeUsuario.trim();
+      if (nome && nome !== sessao?.user?.name) {
+        const { error } = await authClient.updateUser({ name: nome });
+        if (error) throw new Error(error.message || "Falha ao salvar o nome.");
+      }
       localStorage.setItem("ruan_horas_dia", horasDia);
       localStorage.setItem("ruan_horario_resumo", horarioResumo);
       localStorage.setItem("ruan_horario_checagem", horarioChecagem);
@@ -350,6 +364,16 @@ export default function ConfigPage() {
               <Crop className="w-3.5 h-3.5" />
               Enquadrar foto
             </button>
+            {userAvatar && (
+              <button
+                type="button"
+                onClick={handleRemoverFoto}
+                className="text-xs text-muted font-semibold flex items-center gap-1 hover:text-danger cursor-pointer"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                Remover foto
+              </button>
+            )}
           </div>
 
           <div className="flex-1 w-full space-y-3">

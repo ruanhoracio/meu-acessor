@@ -321,6 +321,8 @@ model User {
   image         String?
   // Chat do Telegram cujas mensagens caem nos dados deste usuário
   telegramChatId String?  @unique @map("telegram_chat_id")
+  // Foto de perfil (base64). Fora da sessão do Better Auth de propósito.
+  avatarDataUrl  String?  @map("avatar_data_url") @db.Text
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
   sessions      Session[]
