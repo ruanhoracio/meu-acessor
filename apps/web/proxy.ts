@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { getCookieCache, getSessionCookie } from "better-auth/cookies";
 import { auth } from "@/lib/auth";
+import { obterSegredoAuth } from "@/lib/auth-secret";
 
 /**
  * Exige sessão para as APIs e para as server actions (POST com header
@@ -16,9 +17,8 @@ import { auth } from "@/lib/auth";
 const ROTAS_PUBLICAS = ["/api/auth", "/api/telegram", "/api/cron"];
 
 async function temSessao(request: NextRequest): Promise<boolean> {
-  const secret = process.env.BETTER_AUTH_SECRET;
   try {
-    const cache = secret ? await getCookieCache(request, { secret }) : null;
+    const cache = await getCookieCache(request, { secret: obterSegredoAuth() });
     if (cache?.session) return true;
   } catch {
     // cache inválido ou de outro segredo: cai para a verificação no banco

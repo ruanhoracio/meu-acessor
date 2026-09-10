@@ -1,10 +1,11 @@
 import { betterAuth } from "better-auth";
 import { prismaAdapter } from "better-auth/adapters/prisma";
 import prisma from "@/lib/db";
+import { obterSegredoAuth } from "@/lib/auth-secret";
 
 export const auth = betterAuth({
   database: prismaAdapter(prisma, { provider: "postgresql" }),
-  secret: process.env.BETTER_AUTH_SECRET,
+  secret: obterSegredoAuth(),
   baseURL: process.env.NEXT_PUBLIC_APP_URL || "https://meu-acessor-web.vercel.app",
   emailAndPassword: {
     enabled: true,
