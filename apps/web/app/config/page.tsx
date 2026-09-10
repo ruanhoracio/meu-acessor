@@ -1,8 +1,10 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { Plus, Trash2, Check, Clock, Bot, Sliders, User, Camera, CheckCircle2, Loader2, AlertCircle, Crop, Shield } from "lucide-react";
+import { Plus, Trash2, Check, Clock, Bot, Sliders, User, Camera, CheckCircle2, Loader2, AlertCircle, Crop, Shield, LogOut, Users, KeyRound } from "lucide-react";
 import { getProjetos, criarProjeto, excluirProjeto } from "@/actions/projetos";
+import { listarUsuarios, criarUsuario, excluirUsuario } from "@/actions/usuarios";
+import { authClient, useSession, signOut } from "@/lib/auth-client";
 import { ModalCropper } from "@/components/modals/modal-cropper";
 
 export default function ConfigPage() {
@@ -33,6 +35,73 @@ export default function ConfigPage() {
   // Feedback
   const [mensagemSucesso, setMensagemSucesso] = useState<string | null>(null);
   const [mensagemErro, setMensagemErro] = useState<string | null>(null);
+
+  // Conta e usuários (Better Auth)
+  const { data: sessao } = useSession();
+  const [usuarios, setUsuarios] = useState<any[]>([]);
+  const [senhaAtual, setSenhaAtual] = useState("");
+  const [novaSenha, setNovaSenha] = useState("");
+  const [trocandoSenha, setTrocandoSenha] = useState(false);
+  const [novoUsuario, setNovoUsuario] = useState({ nome: "", email: "", senha: "" });
+  const [criandoUsuario, setCriandoUsuario] = useState(false);
+
+  const carregarUsuarios = async () => {
+    const res = await listarUsuarios();
+    if (res.success) setUsuarios(res.usuarios);
+  };
+
+  useEffect(() => {
+    carregarUsuarios();
+  }, []);
+
+  const handleTrocarSenha = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (trocandoSenha) return;
+    if (novaSenha.length < 8) {
+      exibirErro("A nova senha precisa ter pelo menos 8 caracteres.");
+      return;
+    }
+    setTrocandoSenha(true);
+    const { error } = await authClient.changePassword({
+      currentPassword: senhaAtual,
+      newPassword: novaSenha,
+      revokeOtherSessions: true,
+    });
+    setTrocandoSenha(false);
+    if (error) {
+      exibirErro(error.message || "Não foi possível trocar a senha. Confira a senha atual.");
+      return;
+    }
+    setSenhaAtual("");
+    setNovaSenha("");
+    exibirSucesso("Senha alterada. Os outros aparelhos vão precisar entrar de novo.");
+  };
+
+  const handleCriarUsuario = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (criandoUsuario) return;
+    setCriandoUsuario(true);
+    const res = await criarUsuario(novoUsuario);
+    setCriandoUsuario(false);
+    if (!res.success) {
+      exibirErro(res.error || "Não foi possível criar o usuário.");
+      return;
+    }
+    setNovoUsuario({ nome: "", email: "", senha: "" });
+    exibirSucesso("Acesso criado. Passe o e-mail e a senha para a pessoa; ela pode trocar a senha depois de entrar.");
+    carregarUsuarios();
+  };
+
+  const handleExcluirUsuario = async (u: any) => {
+    if (!confirm(`Remover o acesso de ${u.name} (${u.email})?`)) return;
+    const res = await excluirUsuario(u.id);
+    if (!res.success) {
+      exibirErro(res.error || "Não foi possível remover.");
+      return;
+    }
+    exibirSucesso("Acesso removido.");
+    carregarUsuarios();
+  };
 
   useEffect(() => {
     // Carregar configurações salvas do localStorage
@@ -470,64 +539,126 @@ export default function ConfigPage() {
         </div>
       </section>
 
-      {/* ── Segurança do App (Better Auth / Senha de Acesso) ───────────────────────── */}
+      {/* ── Sua conta ─────────────────────────────────────────── */}
       <section className="card p-6">
         <h2 className="font-heading text-lg font-semibold tracking-tight mb-2 flex items-center gap-2">
           <Shield className="w-5 h-5 text-accent" />
-          Segurança do App (Better Auth)
+          Sua conta
         </h2>
         <p className="text-xs mb-6 text-muted">
-          Proteja o seu painel com uma senha simples de acesso rápido.
+          Você está logado como <span className="font-semibold text-primary">{sessao?.user?.email}</span>.
         </p>
 
-        <div className="space-y-4">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-xl bg-surface border border-border">
-            <div>
-              <p className="text-sm font-bold text-primary">Senha de Acesso do App</p>
-              <p className="text-xs text-muted">Defina uma nova senha de segurança para proteger o acesso ao painel.</p>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <input
-                type="text"
-                placeholder="Nova Senha"
-                id="novaSenhaInput"
-                className="input w-36 text-center font-bold text-sm"
-              />
-              <button
-                type="button"
-                onClick={() => {
-                  const input = document.getElementById("novaSenhaInput") as HTMLInputElement;
-                  if (input && input.value.trim()) {
-                    localStorage.setItem("assessor_custom_password", input.value.trim());
-                    exibirSucesso(`Nova senha configurada com sucesso: "${input.value.trim()}"`);
-                    input.value = "";
-                  }
-                }}
-                className="btn-primary text-xs py-2.5 px-4 cursor-pointer"
-              >
-                Salvar Senha
-              </button>
-            </div>
+        <form onSubmit={handleTrocarSenha} className="p-4 rounded-xl bg-surface border border-border space-y-3">
+          <div className="flex items-center gap-2">
+            <KeyRound className="w-4 h-4 text-accent" />
+            <p className="text-sm font-bold text-primary">Trocar senha</p>
           </div>
-
-          <div className="flex items-center justify-between p-4 rounded-xl bg-danger-subtle border border-danger/30">
-            <div>
-              <p className="text-sm font-bold text-danger">Sair e Bloquear App</p>
-              <p className="text-xs text-danger">Exibe a tela de bloqueio e exige a senha para entrar novamente.</p>
-            </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <input
+              type="password"
+              autoComplete="current-password"
+              placeholder="Senha atual"
+              value={senhaAtual}
+              onChange={(e) => setSenhaAtual(e.target.value)}
+              className="input text-sm"
+              required
+            />
+            <input
+              type="password"
+              autoComplete="new-password"
+              placeholder="Nova senha (mín. 8 caracteres)"
+              value={novaSenha}
+              onChange={(e) => setNovaSenha(e.target.value)}
+              className="input text-sm"
+              required
+            />
+          </div>
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <button type="submit" disabled={trocandoSenha} className="btn-primary text-xs py-2.5 px-4 cursor-pointer disabled:opacity-60">
+              {trocandoSenha ? "Salvando..." : "Salvar nova senha"}
+            </button>
             <button
               type="button"
-              onClick={() => {
-                localStorage.removeItem("assessor_auth_session");
-                window.location.reload();
-              }}
-              className="px-4 py-2.5 rounded-xl bg-danger hover:bg-danger/80 text-white text-xs font-bold transition-all cursor-pointer shadow-xs"
+              onClick={() => signOut()}
+              className="btn-ghost text-xs py-2.5 px-4 text-danger flex items-center gap-1.5 cursor-pointer"
             >
-              🔒 Bloquear App Agora
+              <LogOut className="w-4 h-4" /> Sair da conta
             </button>
           </div>
+        </form>
+      </section>
+
+      {/* ── Usuários com acesso ───────────────────────────────── */}
+      <section className="card p-6">
+        <h2 className="font-heading text-lg font-semibold tracking-tight mb-2 flex items-center gap-2">
+          <Users className="w-5 h-5 text-accent" />
+          Usuários com acesso
+        </h2>
+        <p className="text-xs mb-6 text-muted">
+          Não existe cadastro aberto: só quem está logado cria contas. Crie o acesso, passe e-mail e senha para a pessoa, e ela troca a senha depois.
+        </p>
+
+        <div className="space-y-2 mb-5">
+          {usuarios.map((u) => (
+            <div key={u.id} className="flex items-center justify-between gap-3 p-3 rounded-xl bg-surface border border-border">
+              <div className="min-w-0">
+                <p className="text-sm font-bold text-primary truncate">
+                  {u.name}
+                  {u.id === sessao?.user?.id && (
+                    <span className="ml-2 text-[10px] font-mono uppercase tracking-wider text-muted">você</span>
+                  )}
+                </p>
+                <p className="text-xs text-muted truncate">{u.email}</p>
+              </div>
+              {u.id !== sessao?.user?.id && (
+                <button
+                  type="button"
+                  onClick={() => handleExcluirUsuario(u)}
+                  className="p-2 text-muted hover:text-danger rounded-lg hover:bg-danger-subtle transition-colors cursor-pointer"
+                  title="Remover acesso"
+                >
+                  <Trash2 className="w-4 h-4" />
+                </button>
+              )}
+            </div>
+          ))}
         </div>
+
+        <form onSubmit={handleCriarUsuario} className="p-4 rounded-xl bg-surface border border-border space-y-3">
+          <p className="text-sm font-bold text-primary">Criar novo acesso</p>
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <input
+              type="text"
+              placeholder="Nome"
+              value={novoUsuario.nome}
+              onChange={(e) => setNovoUsuario({ ...novoUsuario, nome: e.target.value })}
+              className="input text-sm"
+              required
+            />
+            <input
+              type="email"
+              placeholder="E-mail"
+              value={novoUsuario.email}
+              onChange={(e) => setNovoUsuario({ ...novoUsuario, email: e.target.value })}
+              className="input text-sm"
+              required
+            />
+            <input
+              type="text"
+              autoComplete="off"
+              placeholder="Senha inicial (mín. 8)"
+              value={novoUsuario.senha}
+              onChange={(e) => setNovoUsuario({ ...novoUsuario, senha: e.target.value })}
+              className="input text-sm"
+              required
+            />
+          </div>
+          <button type="submit" disabled={criandoUsuario} className="btn-primary text-xs py-2.5 px-4 cursor-pointer disabled:opacity-60 flex items-center gap-1.5">
+            <Plus className="w-4 h-4" />
+            {criandoUsuario ? "Criando..." : "Criar acesso"}
+          </button>
+        </form>
       </section>
 
       {/* Botão Salvar */}

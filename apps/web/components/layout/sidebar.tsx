@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
+import { useSession, signOut } from "@/lib/auth-client";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
 import {
@@ -15,6 +16,7 @@ import {
   Inbox,
   Settings,
   Camera,
+  LogOut,
 } from "lucide-react";
 
 const NAV_ITEMS = [
@@ -34,6 +36,7 @@ export function Sidebar() {
   const [userAvatar, setUserAvatar] = useState<string | null>(null);
   const [nomeUsuario, setNomeUsuario] = useState("Ruan");
   const fileInputRef = useRef<HTMLInputElement | null>(null);
+  const { data: sessao } = useSession();
 
   useEffect(() => {
     const syncUser = () => {
@@ -197,10 +200,19 @@ export function Sidebar() {
           <div className="min-w-0 flex-1">
             <div className="flex items-center gap-1.5">
               <span className="w-2 h-2 rounded-full bg-success animate-pulse flex-shrink-0" />
-              <p className="text-xs font-bold truncate text-primary">{nomeUsuario}</p>
+              <p className="text-xs font-bold truncate text-primary">{sessao?.user?.name || nomeUsuario}</p>
             </div>
-            <p className="text-[10px] font-mono text-muted truncate">Editor / Producer</p>
+            <p className="text-[10px] font-mono text-muted truncate">{sessao?.user?.email || "Editor / Producer"}</p>
           </div>
+
+          <button
+            type="button"
+            onClick={() => signOut()}
+            className="p-1.5 rounded-lg text-muted hover:text-danger hover:bg-danger-subtle transition-colors cursor-pointer flex-shrink-0"
+            title="Sair da conta"
+          >
+            <LogOut className="w-4 h-4" />
+          </button>
         </div>
       </div>
     </aside>

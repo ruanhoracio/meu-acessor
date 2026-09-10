@@ -1,10 +1,21 @@
 import { betterAuth } from "better-auth";
+import { prismaAdapter } from "better-auth/adapters/prisma";
 import prisma from "@/lib/db";
 
 export const auth = betterAuth({
-  secret: process.env.BETTER_AUTH_SECRET || "meu-assessor-secret-key-1025",
+  database: prismaAdapter(prisma, { provider: "postgresql" }),
+  secret: process.env.BETTER_AUTH_SECRET,
   baseURL: process.env.NEXT_PUBLIC_APP_URL || "https://meu-acessor-web.vercel.app",
   emailAndPassword: {
     enabled: true,
+    // Cadastro público desligado: contas novas só por quem já está logado
+    // (actions/usuarios.ts). App pessoal aberto na internet não pode ter
+    // "criar conta" livre.
+    disableSignUp: true,
+    minPasswordLength: 8,
+  },
+  session: {
+    // Sessão assinada no cookie: o proxy valida sem consultar o banco.
+    cookieCache: { enabled: true, maxAge: 60 * 60 },
   },
 });
