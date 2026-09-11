@@ -11,6 +11,8 @@
 import { useState } from "react";
 import { ArrowRight, Eye, EyeOff, Loader2 } from "lucide-react";
 import { signIn } from "@/lib/auth-client";
+import { obterCofreSalt } from "@/actions/cofre";
+import { derivarChave, guardarChave } from "@/lib/cofre-crypto";
 
 export default function Login16() {
   const [email, setEmail] = useState("");
@@ -36,6 +38,12 @@ export default function Login16() {
       setEntrando(false);
       return;
     }
+    // Cofre: deriva a chave agora, enquanto a senha está em mãos, para não
+    // pedir de novo nesta aba. Melhor esforço — o cofre pede se faltar.
+    try {
+      const { salt } = await obterCofreSalt();
+      if (salt) await guardarChave(await derivarChave(senha, salt));
+    } catch {}
     // useSession() no AuthGate percebe a sessão nova e troca a tela sozinho.
   };
 

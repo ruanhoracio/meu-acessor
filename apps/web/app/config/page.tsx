@@ -4,7 +4,9 @@ import { useState, useEffect, useRef } from "react";
 import { Plus, Trash2, Check, Clock, Bot, Sliders, User, Camera, CheckCircle2, Loader2, AlertCircle, Crop, Shield, LogOut, Users, KeyRound } from "lucide-react";
 import { getProjetos, criarProjeto, excluirProjeto } from "@/actions/projetos";
 import { listarUsuarios, criarUsuario, excluirUsuario } from "@/actions/usuarios";
-import { authClient, useSession, signOut } from "@/lib/auth-client";
+import { authClient, useSession, sairDaConta } from "@/lib/auth-client";
+import { obterCofre, reencriptarCofre } from "@/actions/cofre";
+import { derivarChave, cifrar, decifrar, gerarSalt, verificadorDe, chaveConfere, guardarChave } from "@/lib/cofre-crypto";
 import { obterPerfil, salvarAvatar } from "@/actions/perfil";
 import { ModalCropper } from "@/components/modals/modal-cropper";
 
@@ -63,6 +65,33 @@ export default function ConfigPage() {
       return;
     }
     setTrocandoSenha(true);
+
+    // O cofre é cifrado com a senha de login: recifra tudo com a nova.
+    // Só chama o servidor depois que a troca de senha der certo.
+    let cofreNovo: { salt: string; verificador: string; itens: { id: string; cifra: string }[]; chave: CryptoKey } | null = null;
+    try {
+      const info = await obterCofre();
+      if (info.success && info.salt && info.verificador) {
+        const chaveAntiga = await derivarChave(senhaAtual, info.salt);
+        if (!(await chaveConfere(chaveAntiga, info.verificador))) {
+          setTrocandoSenha(false);
+          exibirErro("Senha atual incorreta.");
+          return;
+        }
+        const novoSalt = gerarSalt();
+        const chaveNova = await derivarChave(novaSenha, novoSalt);
+        const itens = [] as { id: string; cifra: string }[];
+        for (const i of info.itens) {
+          itens.push({ id: i.id, cifra: await cifrar(chaveNova, await decifrar(chaveAntiga, i.cifra)) });
+        }
+        cofreNovo = { salt: novoSalt, verificador: await verificadorDe(chaveNova), itens, chave: chaveNova };
+      }
+    } catch (e) {
+      setTrocandoSenha(false);
+      exibirErro("Não foi possível preparar o cofre para a senha nova. A senha não foi alterada.");
+      return;
+    }
+
     const { error } = await authClient.changePassword({
       currentPassword: senhaAtual,
       newPassword: novaSenha,
@@ -72,6 +101,14 @@ export default function ConfigPage() {
     if (error) {
       exibirErro(error.message || "Não foi possível trocar a senha. Confira a senha atual.");
       return;
+    }
+    if (cofreNovo) {
+      const r = await reencriptarCofre({ salt: cofreNovo.salt, verificador: cofreNovo.verificador, itens: cofreNovo.itens });
+      if (!r.success) {
+        exibirErro("Senha alterada, mas o cofre não foi recifrado: " + (r.error || "") + " Para abrir o cofre, use a senha antiga e tente trocar de novo.");
+        return;
+      }
+      await guardarChave(cofreNovo.chave);
     }
     setSenhaAtual("");
     setNovaSenha("");
@@ -604,7 +641,7 @@ export default function ConfigPage() {
             </button>
             <button
               type="button"
-              onClick={() => signOut()}
+              onClick={() => sairDaConta()}
               className="btn-ghost text-xs py-2.5 px-4 text-danger flex items-center gap-1.5 cursor-pointer"
             >
               <LogOut className="w-4 h-4" /> Sair da conta

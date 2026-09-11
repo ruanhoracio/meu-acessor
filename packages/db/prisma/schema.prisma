@@ -323,6 +323,9 @@ model User {
   telegramChatId String?  @unique @map("telegram_chat_id")
   // Foto de perfil (base64). Fora da sessão do Better Auth de propósito.
   avatarDataUrl  String?  @map("avatar_data_url") @db.Text
+  // Cofre: salt do PBKDF2 e bloco cifrado usado so para conferir a senha
+  cofreSalt        String?  @map("cofre_salt")
+  cofreVerificador String?  @map("cofre_verificador") @db.Text
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
   sessions      Session[]
@@ -376,4 +379,20 @@ model Verification {
 
   @@index([identifier])
   @@map("verification")
+}
+
+// ── Cofre de logins e senhas ────────────────────────────────────
+// `cifra` e AES-256-GCM feito no navegador; o servidor nunca tem a chave.
+model CofreItem {
+  id           String   @id @default(cuid())
+  userId       String   @map("user_id")
+  nome         String
+  categoria    String?
+  favorito     Boolean  @default(false)
+  cifra        String   @db.Text
+  criadoEm     DateTime @default(now()) @map("criado_em")
+  atualizadoEm DateTime @updatedAt @map("atualizado_em")
+
+  @@index([userId])
+  @@map("cofre_itens")
 }

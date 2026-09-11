@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
-import { useSession, signOut } from "@/lib/auth-client";
+import { useSession, sairDaConta } from "@/lib/auth-client";
 import { obterPerfil, salvarAvatar } from "@/actions/perfil";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
@@ -18,6 +18,7 @@ import {
   Settings,
   Camera,
   LogOut,
+  KeyRound,
 } from "lucide-react";
 
 const NAV_ITEMS = [
@@ -29,6 +30,7 @@ const NAV_ITEMS = [
   { href: "/notas", label: "Notas", icon: FileText },
   { href: "/referencias", label: "Referências", icon: Bookmark },
   { href: "/inbox", label: "Inbox", icon: Inbox },
+  { href: "/cofre", label: "Cofre", icon: KeyRound },
 ];
 
 export function Sidebar() {
@@ -209,7 +211,7 @@ export function Sidebar() {
 
           <button
             type="button"
-            onClick={() => signOut()}
+            onClick={() => sairDaConta()}
             className="p-1.5 rounded-lg text-muted hover:text-danger hover:bg-danger-subtle transition-colors cursor-pointer flex-shrink-0"
             title="Sair da conta"
           >
