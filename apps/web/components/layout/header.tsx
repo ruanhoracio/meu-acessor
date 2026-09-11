@@ -13,7 +13,7 @@ const PAGE_TITLES: Record<string, string> = {
   "/tarefas": "Tarefas",
   "/agenda": "Agenda",
   "/notas": "Notas",
-  "/referencias": "Referências",
+  "/referencias": "Links Úteis",
   "/inbox": "Inbox",
   "/config": "Configurações",
 };

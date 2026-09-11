@@ -150,7 +150,7 @@ Responda APENAS o array JSON, sem texto ao redor:
               evento: "📅 Compromisso agendado na Agenda",
               nota: "📝 Nota salva",
               lembrete: "⏰ Lembrete agendado",
-              referencia: "🔖 Referência salva",
+              referencia: "🔗 Link guardado em Links Úteis",
               tarefa: "✅ Tarefa criada",
             };
             const quando = c.prazo ? ` — ${formatarBRT(new Date(c.prazo))}` : "";
@@ -240,6 +240,13 @@ Responda APENAS o array JSON, sem texto ao redor:
               projetoId,
             },
           });
+        } else if (c.tipo === "referencia") {
+          const url = (c.url as string | undefined) || (textoParaClassificar.match(/https?:\/\/\S+/)?.[0] ?? "");
+          if (url) {
+            await prisma.referencia.create({
+              data: { userId, url, titulo: null, colecao: "Do Telegram", tags: ["telegram"] },
+            });
+          }
         } else if (c.tipo === "nota") {
           await prisma.nota.create({
             data: {

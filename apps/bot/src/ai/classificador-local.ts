@@ -276,7 +276,7 @@ export function tentarClassificacaoInstantanea(
         titulo: "Link de referência",
         url: msgTrim,
         confianca: 0.95,
-        confirmacao: "🔖 Referência salva com sucesso!",
+        confirmacao: "🔗 Link guardado em *Links Úteis* (coleção \"Do Telegram\").",
       },
     ];
   }

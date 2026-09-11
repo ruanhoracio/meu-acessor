@@ -13,7 +13,7 @@ import {
   ClipboardCheck,
   Calendar,
   FileText,
-  Bookmark,
+  Link2,
   Inbox,
   Settings,
   Camera,
@@ -28,7 +28,7 @@ const NAV_ITEMS = [
   { href: "/tarefas", label: "Tarefas", icon: CheckSquare },
   { href: "/agenda", label: "Agenda", icon: Calendar },
   { href: "/notas", label: "Notas", icon: FileText },
-  { href: "/referencias", label: "Referências", icon: Bookmark },
+  { href: "/referencias", label: "Links", icon: Link2 },
   { href: "/inbox", label: "Inbox", icon: Inbox },
   { href: "/cofre", label: "Cofre", icon: KeyRound },
 ];

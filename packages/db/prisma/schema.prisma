@@ -268,10 +268,15 @@ model Nota {
 
 // ── Referências ─────────────────────────────────────────────
 
+// Links uteis, agrupados em colecoes (ex.: "Conteudo", "Trafego 2026", "IAs").
 model Referencia {
   id         String   @id @default(cuid())
   url        String
   titulo     String?
+  descricao  String?
+  colecao    String?
+  favorito   Boolean  @default(false)
+  ordem      Int      @default(0)
   tags       String[] @default([])
   observacao String?  @db.Text
   thumbnail  String?
