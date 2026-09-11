@@ -13,6 +13,7 @@ import { ArrowRight, Eye, EyeOff, Loader2 } from "lucide-react";
 import { signIn } from "@/lib/auth-client";
 import { obterCofreSalt } from "@/actions/cofre";
 import { derivarChave, guardarChave } from "@/lib/cofre-crypto";
+import { GradientBlurBg } from "@/components/ui/gradient-blur-bg";
 
 export default function Login16() {
   const [email, setEmail] = useState("");
@@ -48,8 +49,9 @@ export default function Login16() {
   };
 
   return (
-    <section className="flex min-h-dvh items-center justify-center bg-background px-6 py-16">
-      <div className="w-full max-w-sm">
+    <section className="relative flex min-h-dvh items-center justify-center bg-background px-6 py-16">
+      <GradientBlurBg lado="esquerda" />
+      <div className="relative z-10 w-full max-w-sm">
         <div className="flex flex-col items-center gap-3 text-center">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src="/logo-header.svg" alt="Meu Assessor" className="h-10 w-auto" />

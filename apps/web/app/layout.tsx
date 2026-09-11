@@ -5,6 +5,7 @@ import { Sidebar } from "@/components/layout/sidebar";
 import { BottomNav } from "@/components/layout/bottom-nav";
 import { Header } from "@/components/layout/header";
 import { AuthGate } from "@/components/auth/auth-gate";
+import { GradientBlurBg } from "@/components/ui/gradient-blur-bg";
 
 const inter = Inter({
   subsets: ["latin"],
@@ -76,9 +77,10 @@ export default function RootLayout({
             <Sidebar />
 
             {/* Main content */}
-            <main className="flex-1 md:ml-[260px] pb-[96px] md:pb-0">
+            <main className="flex-1 md:ml-[260px] pb-[96px] md:pb-0 relative">
+              <GradientBlurBg lado="direita" />
               <Header />
-              <div className="px-4 md:px-8 py-6 max-w-[1400px] mx-auto">
+              <div className="relative z-10 px-4 md:px-8 py-6 max-w-[1400px] mx-auto">
                 {children}
               </div>
             </main>
