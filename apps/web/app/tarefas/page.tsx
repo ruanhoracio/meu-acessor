@@ -505,7 +505,7 @@ export default function TarefasPage() {
       <div style={{ paddingLeft: nivel * 28 }}>
         <div
           onClick={() => iniciarEdicao(i)}
-          className="group flex items-start gap-3 py-2.5 border-b border-border cursor-pointer hover:bg-surface/60 -mx-2 px-2 rounded-lg transition-colors"
+          className="group flex items-start gap-3 py-3 border-b border-border cursor-pointer hover:bg-surface rounded-lg px-2 -mx-2 transition-colors"
         >
           <Circulo i={i} />
           <div className="min-w-0 flex-1">
@@ -667,7 +667,7 @@ export default function TarefasPage() {
         </div>
       </div>
     ) : (
-      <button type="button" onClick={() => abrirAdd(chave, prazoPadrao)} className="group flex items-center gap-2 py-2.5 text-sm text-muted hover:text-red-500 cursor-pointer">
+      <button type="button" onClick={() => abrirAdd(chave, prazoPadrao)} className="group flex items-center gap-2 py-2.5 px-2 -mx-2 text-sm text-muted hover:text-red-500 cursor-pointer">
         <span className="w-[18px] h-[18px] rounded-full flex items-center justify-center bg-transparent group-hover:bg-red-500 transition-colors">
           <Plus className="w-4 h-4 text-red-500 group-hover:text-white" />
         </span>
@@ -679,7 +679,7 @@ export default function TarefasPage() {
     const fechada = secoesFechadas.has(chave);
     return (
       <section>
-        <div className="flex items-center justify-between py-2 border-b border-border sticky top-0 bg-background/95 backdrop-blur z-[1]">
+        <div className="flex items-center justify-between py-2 border-b border-border">
           <button type="button" onClick={() => alternarSecao(chave)} className="flex items-center gap-1.5 font-semibold text-sm text-primary cursor-pointer">
             {fechada ? <ChevronRight className="w-4 h-4 text-muted" /> : <ChevronDown className="w-4 h-4 text-muted" />}
             {titulo}
@@ -769,13 +769,14 @@ export default function TarefasPage() {
           <MoreHorizontal className="w-4 h-4" /> {tituloVista}
         </button>
         {menuMobile && <div className="card p-3 mt-2"><Lateral /></div>}
+
       </div>
 
-      <div className="flex gap-8">
-        <div className="hidden lg:block"><Lateral /></div>
+      <div className="flex gap-6 items-start">
+        <div className="hidden lg:block card p-3 sticky top-20"><Lateral /></div>
 
-        <main className="flex-1 min-w-0">
-          <div className="mb-4">
+        <main className="flex-1 min-w-0 card p-6 md:p-8">
+          <div className="mb-5">
             <h1 className="font-heading text-2xl font-semibold text-primary">{tituloVista}</h1>
             <p className="text-xs text-muted mt-1 flex items-center gap-1">
               <CheckCircle2 className="w-3.5 h-3.5" /> {vista.tipo === "concluidas" ? `${concluidos.length} concluídas` : `${totalVista} ${totalVista === 1 ? "tarefa" : "tarefas"}`}
