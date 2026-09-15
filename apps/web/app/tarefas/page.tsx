@@ -197,8 +197,16 @@ export default function TarefasPage() {
       subtarefas: Array.isArray(x.subtarefas) ? x.subtarefas : [],
       criadoEm: x.criadoEm,
     }));
+    // Todo vídeo da pipeline vira tarefa (mesmo sem prazo). Entregues só
+    // aparecem por 30 dias, pra não lotar "Concluídas" com o histórico.
+    const limiteEntregues = Date.now() - 30 * 86400000;
     const v: Item[] = videos
-      .filter((x) => x.prazoEntrega)
+      .filter((x) => {
+        const pronto = x.estagio === "entregue" || x.estagio === "aprovado";
+        if (!pronto) return true;
+        const ref = x.entregueEm || x.atualizadoEm || x.criadoEm;
+        return ref ? new Date(ref).getTime() >= limiteEntregues : false;
+      })
       .map((x) => ({
         id: x.id,
         titulo: x.titulo,
@@ -223,8 +231,10 @@ export default function TarefasPage() {
   // ── Contadores da barra lateral ───────────────────────────────
   const hojeS = diaStr(hoje);
   const pendentes = itens.filter((i) => !i.concluido && raiz(i));
-  const contEntrada = pendentes.filter((i) => !i.projetoId && !i.ehVideo).length;
-  const contHoje = pendentes.filter((i) => i.prazo && diaStr(i.prazo) <= hojeS).length;
+  // Vídeo sem prazo é trabalho em andamento: entra em "Hoje" por padrão
+  const ehHoje = (i: Item) => (i.prazo ? diaStr(i.prazo) <= hojeS : i.ehVideo);
+  const contEntrada = pendentes.filter((i) => !i.projetoId).length;
+  const contHoje = pendentes.filter(ehHoje).length;
   const contPorProjeto = (id: string) => pendentes.filter((i) => i.projetoId === id).length;
   const etiquetasTodas = useMemo(() => {
     const m = new Map<string, number>();
@@ -237,8 +247,8 @@ export default function TarefasPage() {
   const naVista = (i: Item) => {
     if (q) return [i.titulo, i.descricao, i.projeto?.nome, ...i.etiquetas].some((c) => c?.toLowerCase().includes(q));
     switch (vista.tipo) {
-      case "entrada": return !i.projetoId && !i.ehVideo;
-      case "hoje": return !!i.prazo && diaStr(i.prazo) <= hojeS;
+      case "entrada": return !i.projetoId;
+      case "hoje": return ehHoje(i);
       case "embreve": return true;
       case "projeto": return i.projetoId === vista.id;
       case "etiqueta": return i.etiquetas.includes(vista.nome);
@@ -803,10 +813,13 @@ export default function TarefasPage() {
               <Secao
                 chave="principal"
                 titulo={vista.tipo === "hoje" ? cabecalhoDia(hoje, hoje) : vista.tipo === "entrada" ? "Entrada" : q ? "Resultados" : tituloVista}
-                itens={vista.tipo === "hoje" ? semAtraso : semAtraso.filter((i) => i.prazo || vista.tipo !== "embreve")}
+                itens={vista.tipo === "hoje" ? semAtraso.filter((i) => i.prazo) : semAtraso.filter((i) => i.prazo || vista.tipo !== "embreve")}
               >
                 {!q && <AdicionarRapido chave="principal" prazoPadrao={vista.tipo === "hoje" ? hoje : undefined} />}
               </Secao>
+              {vista.tipo === "hoje" && semData.length > 0 && !q && (
+                <Secao chave="pipeline" titulo="Vídeos na pipeline" itens={semData} />
+              )}
               {vista.tipo !== "hoje" && vista.tipo !== "entrada" && semData.length > 0 && !q && (
                 <Secao chave="semdata" titulo="Sem data" itens={semData} />
               )}
