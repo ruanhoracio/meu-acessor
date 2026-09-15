@@ -1,729 +1,855 @@
 "use client";
 
-import { useState, useEffect } from "react";
+/**
+ * Tarefas — no modelo do Todoist.
+ *
+ * Barra lateral (Entrada, Hoje, Em breve, Filtros e Etiquetas, Meus
+ * projetos), seções Atrasada/Hoje/por dia, prioridades P1–P4 no círculo,
+ * adicionar rápido com linguagem natural, subtarefas, recorrência e
+ * edição inline. Os vídeos do Pipeline com prazo aparecem como tarefas,
+ * como já acontecia.
+ */
+
+import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import {
-  Circle,
-  CheckCircle2,
-  Calendar,
-  Filter,
-  Loader2,
-  Trash2,
-  RefreshCw,
-  Edit3,
+  Inbox,
+  CalendarDays,
+  CalendarRange,
+  Tags,
+  Hash,
   Plus,
-  Clapperboard,
-  ChevronLeft,
-  ChevronRight,
-  LayoutGrid,
-  List,
-  Clock,
-  MessageSquare,
   Check,
-  AlertCircle,
+  Search,
+  ChevronDown,
+  ChevronRight,
+  Repeat,
+  Flag,
+  Trash2,
+  Calendar,
+  Clapperboard,
+  GitBranch,
+  Loader2,
+  MoreHorizontal,
+  CheckCircle2,
 } from "lucide-react";
-import { ModalEditarTarefa } from "@/components/modals/modal-editar-tarefa";
 import { ModalEditarVideo } from "@/components/modals/modal-editar-video";
-import { ModalNovo } from "@/components/modals/modal-novo";
+import {
+  interpretarLinhaRapida,
+  proximaOcorrencia,
+  PRIORIDADE_PARA_P,
+  P_PARA_PRIORIDADE,
+  type PrioridadeApp,
+} from "@/lib/tarefas-rapido";
 
-const DIAS_SEMANA_SIGLAS = ["D", "S", "T", "Q", "Q", "S", "S"];
-const DIAS_SEMANA_NOMES = [
-  "Domingo",
-  "Segunda-feira",
-  "Terça-feira",
-  "Quarta-feira",
-  "Quinta-feira",
-  "Sexta-feira",
-  "Sábado",
-];
-const MESES_ABREV = [
-  "jan.", "fev.", "mar.", "abr.", "mai.", "jun.",
-  "jul.", "ago.", "set.", "out.", "nov.", "dez."
-];
-const MESES_COMPLETOS = [
-  "Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
-  "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"
-];
+// ── Helpers ────────────────────────────────────────────────────
+function diaStr(d: Date | string | null | undefined): string {
+  if (!d) return "";
+  const x = new Date(d);
+  if (isNaN(x.getTime())) return "";
+  return `${x.getFullYear()}-${String(x.getMonth() + 1).padStart(2, "0")}-${String(x.getDate()).padStart(2, "0")}`;
+}
+function hojeDate(): Date {
+  const d = new Date();
+  d.setHours(0, 0, 0, 0);
+  return d;
+}
+function maisDias(d: Date, n: number): Date {
+  const x = new Date(d);
+  x.setDate(x.getDate() + n);
+  return x;
+}
+const DIAS_SEMANA = ["Domingo", "Segunda-feira", "Terça-feira", "Quarta-feira", "Quinta-feira", "Sexta-feira", "Sábado"];
+const MESES_ABREV = ["jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"];
 
-function getDiaString(dateInput: Date | string | null): string {
-  if (!dateInput) return "";
-  const d = new Date(dateInput);
-  if (isNaN(d.getTime())) return "";
-
-  if (typeof dateInput === "string" && /^\d{4}-\d{2}-\d{2}$/.test(dateInput.trim())) {
-    return dateInput.trim();
-  }
-
-  if (d.getUTCHours() === 0 && d.getUTCMinutes() === 0 && d.getUTCSeconds() === 0) {
-    return d.toISOString().split("T")[0];
-  }
-
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return `${y}-${m}-${day}`;
+function rotuloData(d: Date | string, hoje: Date): { texto: string; tom: "atrasada" | "hoje" | "amanha" | "futuro" } {
+  const s = diaStr(d);
+  const h = diaStr(hoje);
+  const a = diaStr(maisDias(hoje, 1));
+  const x = new Date(d);
+  if (s < h) return { texto: `${x.getDate()} ${MESES_ABREV[x.getMonth()]}`, tom: "atrasada" };
+  if (s === h) return { texto: "Hoje", tom: "hoje" };
+  if (s === a) return { texto: "Amanhã", tom: "amanha" };
+  const diff = Math.round((x.getTime() - hoje.getTime()) / 86400000);
+  if (diff < 7) return { texto: DIAS_SEMANA[x.getDay()].replace("-feira", ""), tom: "futuro" };
+  return { texto: `${x.getDate()} ${MESES_ABREV[x.getMonth()]}`, tom: "futuro" };
+}
+function cabecalhoDia(d: Date, hoje: Date): string {
+  const s = diaStr(d);
+  const sufixo = s === diaStr(hoje) ? " · Hoje" : s === diaStr(maisDias(hoje, 1)) ? " · Amanhã" : "";
+  return `${d.getDate()} ${MESES_ABREV[d.getMonth()]}${sufixo} · ${DIAS_SEMANA[d.getDay()]}`;
+}
+function temHorario(d: Date | string): boolean {
+  const x = new Date(d);
+  return !(x.getHours() === 0 && x.getMinutes() === 0) && !(x.getUTCHours() === 0 && x.getUTCMinutes() === 0);
+}
+function horaStr(d: Date | string): string {
+  return new Date(d).toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
 }
 
-function formatarHeaderDiaTodoist(dataObj: Date, hojeObj: Date): string {
-  const diaNum = dataObj.getDate();
-  const mesStr = MESES_ABREV[dataObj.getMonth()];
-  const diaSemanaStr = DIAS_SEMANA_NOMES[dataObj.getDay()];
+// Cores dos círculos de prioridade (Todoist: P1 vermelho, P2 laranja, P3 azul, P4 cinza)
+const COR_P: Record<1 | 2 | 3 | 4, { anel: string; fundo: string; texto: string }> = {
+  1: { anel: "border-red-500", fundo: "bg-red-50", texto: "text-red-500" },
+  2: { anel: "border-orange-500", fundo: "bg-orange-50", texto: "text-orange-500" },
+  3: { anel: "border-blue-500", fundo: "bg-blue-50", texto: "text-blue-500" },
+  4: { anel: "border-gray-400", fundo: "bg-gray-50", texto: "text-gray-400" },
+};
 
-  const dtStr = getDiaString(dataObj);
-  const hojeStr = getDiaString(hojeObj);
+type Vista = { tipo: "entrada" } | { tipo: "hoje" } | { tipo: "embreve" } | { tipo: "projeto"; id: string } | { tipo: "etiqueta"; nome: string } | { tipo: "concluidas" };
 
-  const amanhãObj = new Date(hojeObj);
-  amanhãObj.setDate(hojeObj.getDate() + 1);
-  const amanhãStr = getDiaString(amanhãObj);
-
-  if (dtStr === hojeStr) {
-    return `${diaNum} ${mesStr} · Hoje · ${diaSemanaStr}`;
-  } else if (dtStr === amanhãStr) {
-    return `${diaNum} ${mesStr} · Amanhã · ${diaSemanaStr}`;
-  } else {
-    return `${diaNum} ${mesStr} · ${diaSemanaStr}`;
-  }
+interface Item {
+  id: string;
+  titulo: string;
+  descricao?: string | null;
+  prazo: string | null;
+  prioridade: PrioridadeApp;
+  status: string;
+  projetoId: string | null;
+  projeto?: { id: string; nome: string; cor?: string } | null;
+  recorrencia?: string | null;
+  parentId?: string | null;
+  etiquetas: string[];
+  ordem: number;
+  concluido: boolean;
+  ehVideo: boolean;
+  subtarefas: { id: string; status: string }[];
+  criadoEm?: string;
 }
 
-export default function TarefasTodoistPage() {
-  const [reagendando, setReagendando] = useState(false);
+export default function TarefasPage() {
   const [tarefas, setTarefas] = useState<any[]>([]);
   const [videos, setVideos] = useState<any[]>([]);
   const [projetos, setProjetos] = useState<any[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [filtroProjeto, setFiltroProjeto] = useState<string | null>(null);
-
-  // Modo de Exibição: "todoist" (Lista Em Breve estilo Todoist) ou "kanban" (Quadro de Colunas)
-  const [modoExibicao, setModoExibicao] = useState<"todoist" | "kanban">("todoist");
-
-  // Modais
-  const [tarefaParaEditar, setTarefaParaEditar] = useState<any | null>(null);
+  const [carregando, setCarregando] = useState(true);
+  const [vista, setVista] = useState<Vista>({ tipo: "hoje" });
+  const [busca, setBusca] = useState("");
+  const [secoesFechadas, setSecoesFechadas] = useState<Set<string>>(new Set());
+  const [expandidas, setExpandidas] = useState<Set<string>>(new Set());
+  const [mostrarConcluidas, setMostrarConcluidas] = useState(false);
   const [videoParaEditar, setVideoParaEditar] = useState<any | null>(null);
-  const [modalNovoOpen, setModalNovoOpen] = useState(false);
-  const [dataNovaTarefaPrePreenchida, setDataNovaTarefaPrePreenchida] = useState<string | null>(null);
+  const [menuMobile, setMenuMobile] = useState(false);
 
-  // Data selecionada na barra superior do calendário Todoist
-  const [dataSelecionadaBarra, setDataSelecionadaBarra] = useState(new Date());
+  // Adicionar rápido (qual bloco está com o formulário aberto)
+  const [addAberto, setAddAberto] = useState<string | null>(null);
+  const [addTexto, setAddTexto] = useState("");
+  const [addDescricao, setAddDescricao] = useState("");
+  const [addProjetoId, setAddProjetoId] = useState<string>("");
+  const [addPrioridade, setAddPrioridade] = useState<PrioridadeApp | null>(null);
+  const [addPrazo, setAddPrazo] = useState<string>("");
+  const [salvandoAdd, setSalvandoAdd] = useState(false);
+  const addRef = useRef<HTMLInputElement | null>(null);
 
-  const carregarDados = async () => {
+  // Edição inline
+  const [editandoId, setEditandoId] = useState<string | null>(null);
+  const [edit, setEdit] = useState({ titulo: "", descricao: "", prazo: "", prioridade: "media" as PrioridadeApp, projetoId: "", recorrencia: "", etiquetas: "" });
+  const [salvandoEdit, setSalvandoEdit] = useState(false);
+
+  // Subtarefa sendo adicionada
+  const [subDe, setSubDe] = useState<string | null>(null);
+  const [subTexto, setSubTexto] = useState("");
+
+  const hoje = hojeDate();
+
+  // ── Carga ─────────────────────────────────────────────────────
+  const carregar = async () => {
     try {
-      const [resT, resV, resP] = await Promise.all([
+      const [t, v, p] = await Promise.all([
         fetch("/api/tarefas", { cache: "no-store" }).then((r) => r.json()).catch(() => []),
         fetch("/api/videos", { cache: "no-store" }).then((r) => r.json()).catch(() => []),
         fetch("/api/projetos", { cache: "no-store" }).then((r) => r.json()).catch(() => []),
       ]);
-
-      if (Array.isArray(resT)) setTarefas(resT);
-      if (Array.isArray(resV)) setVideos(resV);
-      if (Array.isArray(resP)) setProjetos(resP);
-    } catch (e) {
-      console.error("Erro ao carregar tarefas:", e);
+      if (Array.isArray(t)) setTarefas(t);
+      if (Array.isArray(v)) setVideos(v);
+      if (Array.isArray(p)) setProjetos(p);
     } finally {
-      setLoading(false);
+      setCarregando(false);
     }
   };
-
   useEffect(() => {
-    carregarDados();
-    const interval = setInterval(carregarDados, 4000);
-    const onFocus = () => carregarDados();
-    const onDadosUpdated = () => carregarDados();
-
-    window.addEventListener("focus", onFocus);
-    window.addEventListener("dados_updated", onDadosUpdated);
+    carregar();
+    const i = setInterval(carregar, 6000);
+    const onUp = () => carregar();
+    window.addEventListener("dados_updated", onUp);
+    window.addEventListener("focus", onUp);
     return () => {
-      clearInterval(interval);
-      window.removeEventListener("focus", onFocus);
-      window.removeEventListener("dados_updated", onDadosUpdated);
+      clearInterval(i);
+      window.removeEventListener("dados_updated", onUp);
+      window.removeEventListener("focus", onUp);
     };
   }, []);
 
-  const handleToggleStatus = async (id: string, statusAtual: string, isVideo: boolean, e?: React.MouseEvent) => {
-    if (e) e.stopPropagation();
+  // ── Normalização: tarefas + vídeos com prazo ───────────────────
+  const itens: Item[] = useMemo(() => {
+    const t: Item[] = tarefas.map((x) => ({
+      id: x.id,
+      titulo: x.titulo,
+      descricao: x.descricao,
+      prazo: x.prazo,
+      prioridade: (x.prioridade || "media") as PrioridadeApp,
+      status: x.status,
+      projetoId: x.projetoId,
+      projeto: x.projeto,
+      recorrencia: x.recorrencia,
+      parentId: x.parentId,
+      etiquetas: Array.isArray(x.etiquetas) ? x.etiquetas : [],
+      ordem: x.ordem ?? 0,
+      concluido: x.status === "concluida",
+      ehVideo: false,
+      subtarefas: Array.isArray(x.subtarefas) ? x.subtarefas : [],
+      criadoEm: x.criadoEm,
+    }));
+    const v: Item[] = videos
+      .filter((x) => x.prazoEntrega)
+      .map((x) => ({
+        id: x.id,
+        titulo: x.titulo,
+        prazo: x.prazoEntrega,
+        prioridade: "alta",
+        status: x.estagio,
+        projetoId: x.projetoId,
+        projeto: x.projeto,
+        etiquetas: [],
+        ordem: 0,
+        concluido: x.estagio === "entregue" || x.estagio === "aprovado",
+        ehVideo: true,
+        subtarefas: [],
+        criadoEm: x.criadoEm,
+      }));
+    return [...t, ...v];
+  }, [tarefas, videos]);
 
-    if (isVideo) {
-      const novoEstagio = statusAtual === "entregue" ? "briefing" : "entregue";
-      setVideos((prev) =>
-        prev.map((v) => (v.id === id ? { ...v, estagio: novoEstagio } : v))
-      );
-      await fetch(`/api/videos/${id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ estagio: novoEstagio }),
-      });
+  const raiz = (i: Item) => !i.parentId;
+  const filhosDe = (id: string) => itens.filter((i) => i.parentId === id).sort((a, b) => a.ordem - b.ordem);
+
+  // ── Contadores da barra lateral ───────────────────────────────
+  const hojeS = diaStr(hoje);
+  const pendentes = itens.filter((i) => !i.concluido && raiz(i));
+  const contEntrada = pendentes.filter((i) => !i.projetoId && !i.ehVideo).length;
+  const contHoje = pendentes.filter((i) => i.prazo && diaStr(i.prazo) <= hojeS).length;
+  const contPorProjeto = (id: string) => pendentes.filter((i) => i.projetoId === id).length;
+  const etiquetasTodas = useMemo(() => {
+    const m = new Map<string, number>();
+    for (const i of itens) if (!i.concluido) for (const e of i.etiquetas) m.set(e, (m.get(e) || 0) + 1);
+    return Array.from(m.entries()).sort(([a], [b]) => a.localeCompare(b));
+  }, [itens]);
+
+  // ── Itens da vista atual ──────────────────────────────────────
+  const q = busca.trim().toLowerCase();
+  const naVista = (i: Item) => {
+    if (q) return [i.titulo, i.descricao, i.projeto?.nome, ...i.etiquetas].some((c) => c?.toLowerCase().includes(q));
+    switch (vista.tipo) {
+      case "entrada": return !i.projetoId && !i.ehVideo;
+      case "hoje": return !!i.prazo && diaStr(i.prazo) <= hojeS;
+      case "embreve": return true;
+      case "projeto": return i.projetoId === vista.id;
+      case "etiqueta": return i.etiquetas.includes(vista.nome);
+      case "concluidas": return true;
+    }
+  };
+  const ordenar = (a: Item, b: Item) =>
+    PRIORIDADE_PARA_P[a.prioridade] - PRIORIDADE_PARA_P[b.prioridade] ||
+    (a.prazo ? new Date(a.prazo).getTime() : Infinity) - (b.prazo ? new Date(b.prazo).getTime() : Infinity) ||
+    a.ordem - b.ordem;
+
+  const abertos = itens.filter((i) => raiz(i) && !i.concluido && naVista(i)).sort(ordenar);
+  const concluidos = itens.filter((i) => raiz(i) && i.concluido && naVista(i)).sort((a, b) => (b.criadoEm || "").localeCompare(a.criadoEm || ""));
+
+  // Seções (estilo Todoist): Atrasada / dias
+  const atrasadas = abertos.filter((i) => i.prazo && diaStr(i.prazo) < hojeS);
+  const semData = abertos.filter((i) => !i.prazo);
+  const diasEmBreve = useMemo(() => {
+    if (vista.tipo !== "embreve" || q) return [];
+    const out: { data: Date; itens: Item[] }[] = [];
+    for (let k = 0; k < 14; k++) {
+      const d = maisDias(hoje, k);
+      const s = diaStr(d);
+      out.push({ data: d, itens: abertos.filter((i) => i.prazo && diaStr(i.prazo) === s) });
+    }
+    return out;
+  }, [vista, q, abertos, hoje]);
+
+  const tituloVista =
+    q ? `Busca: “${busca}”`
+    : vista.tipo === "entrada" ? "Entrada"
+    : vista.tipo === "hoje" ? "Hoje"
+    : vista.tipo === "embreve" ? "Em breve"
+    : vista.tipo === "projeto" ? projetos.find((p) => p.id === vista.id)?.nome || "Projeto"
+    : vista.tipo === "etiqueta" ? `@${vista.nome}`
+    : "Concluídas";
+
+  // ── Ações ─────────────────────────────────────────────────────
+  const patchTarefa = async (id: string, body: any) => {
+    await fetch(`/api/tarefas/${id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+  };
+
+  const concluir = async (i: Item, e?: React.MouseEvent) => {
+    e?.stopPropagation();
+    if (i.ehVideo) {
+      const novo = i.concluido ? "briefing" : "entregue";
+      setVideos((prev) => prev.map((v) => (v.id === i.id ? { ...v, estagio: novo } : v)));
+      await fetch(`/api/videos/${i.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ estagio: novo }) });
+    } else if (!i.concluido && i.recorrencia && i.prazo) {
+      // Recorrente: em vez de concluir, pula para a próxima ocorrência (como o Todoist)
+      const prox = proximaOcorrencia(new Date(i.prazo), i.recorrencia).toISOString();
+      setTarefas((prev) => prev.map((t) => (t.id === i.id ? { ...t, prazo: prox } : t)));
+      await patchTarefa(i.id, { prazo: prox });
     } else {
-      const novoStatus = statusAtual === "concluida" ? "aberta" : "concluida";
-      setTarefas((prev) =>
-        prev.map((t) => (t.id === id ? { ...t, status: novoStatus } : t))
-      );
-      await fetch(`/api/tarefas/${id}`, {
-        method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status: novoStatus }),
-      });
+      const novo = i.concluido ? "aberta" : "concluida";
+      setTarefas((prev) => prev.map((t) => (t.id === i.id ? { ...t, status: novo } : t)));
+      await patchTarefa(i.id, { status: novo });
     }
     window.dispatchEvent(new Event("dados_updated"));
-    carregarDados();
   };
 
-  const handleExcluir = async (id: string, isVideo: boolean, e: React.MouseEvent) => {
-    e.stopPropagation();
-    if (confirm(`Deseja apagar este ${isVideo ? "vídeo" : "tarefa"}?`)) {
-      if (isVideo) {
-        setVideos((prev) => prev.filter((v) => v.id !== id));
-        await fetch(`/api/videos/${id}`, { method: "DELETE" });
-      } else {
-        setTarefas((prev) => prev.filter((t) => t.id !== id));
-        await fetch(`/api/tarefas/${id}`, { method: "DELETE" });
-      }
-      window.dispatchEvent(new Event("dados_updated"));
-      carregarDados();
+  const excluir = async (i: Item, e?: React.MouseEvent) => {
+    e?.stopPropagation();
+    if (!confirm(`Apagar “${i.titulo}”?`)) return;
+    if (i.ehVideo) {
+      setVideos((prev) => prev.filter((v) => v.id !== i.id));
+      await fetch(`/api/videos/${i.id}`, { method: "DELETE" });
+    } else {
+      setTarefas((prev) => prev.filter((t) => t.id !== i.id && t.parentId !== i.id));
+      await fetch(`/api/tarefas/${i.id}`, { method: "DELETE" });
     }
+    window.dispatchEvent(new Event("dados_updated"));
   };
 
-  const handleReagendarAtrasadas = async () => {
-    if (reagendando || itensAtrasados.length === 0) return;
-    setReagendando(true);
-    const agora = new Date().toISOString();
+  const mudarPrioridade = async (i: Item, p: 1 | 2 | 3 | 4) => {
+    const prio = P_PARA_PRIORIDADE[`p${p}`];
+    setTarefas((prev) => prev.map((t) => (t.id === i.id ? { ...t, prioridade: prio } : t)));
+    await patchTarefa(i.id, { prioridade: prio });
+  };
 
-    // A seção atrasada mistura tarefas e vídeos. Antes daqui só saíam tarefas,
-    // e o botão não fazia nada quando os atrasados eram vídeos. Agora reagenda
-    // exatamente os itens à vista, cada um no seu endpoint.
-    const respostas = await Promise.allSettled(
-      itensAtrasados.map((item) =>
-        item.tipoItem === "video"
-          ? fetch(`/api/videos/${item.id}`, {
-              method: "PATCH",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ prazoEntrega: agora }),
-            })
-          : fetch(`/api/tarefas/${item.id}`, {
-              method: "PATCH",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ prazo: agora }),
-            })
+  const reagendarAtrasadas = async () => {
+    const agora = new Date().toISOString();
+    setTarefas((prev) => prev.map((t) => (atrasadas.some((a) => a.id === t.id && !a.ehVideo) ? { ...t, prazo: agora } : t)));
+    setVideos((prev) => prev.map((v) => (atrasadas.some((a) => a.id === v.id && a.ehVideo) ? { ...v, prazoEntrega: agora } : v)));
+    await Promise.all(
+      atrasadas.map((a) =>
+        a.ehVideo
+          ? fetch(`/api/videos/${a.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ prazoEntrega: agora }) })
+          : patchTarefa(a.id, { prazo: agora })
       )
     );
-
-    const falhas = respostas.filter(
-      (r) => r.status === "rejected" || !(r as any).value?.ok
-    ).length;
-    if (falhas > 0) console.error(`[Reagendar] ${falhas} item(ns) não foram reagendados`);
-
     window.dispatchEvent(new Event("dados_updated"));
-    await carregarDados();
-    setReagendando(false);
   };
 
-  // Normalização unificada de tarefas + vídeos
-  const todosItens: any[] = [
-    ...tarefas.map((t) => ({
-      ...t,
-      tipoItem: "tarefa",
-      dataPrazo: t.prazo,
-      isConcluido: t.status === "concluida",
-    })),
-    ...videos.map((v) => ({
-      ...v,
-      tipoItem: "video",
-      dataPrazo: v.prazoEntrega,
-      isConcluido: v.estagio === "entregue" || v.estagio === "aprovado",
-      prioridade: "alta",
-    })),
-  ];
-
-  const itensFiltrados = todosItens.filter((t) => {
-    if (filtroProjeto && t.projetoId !== filtroProjeto) return false;
-    return true;
-  });
-
-  const hojeObj = new Date();
-  const hojeStr = getDiaString(hojeObj);
-
-  // Atrasadas (prazo < hojeStr)
-  const itensAtrasados = itensFiltrados.filter(
-    (t) => !t.isConcluido && t.dataPrazo && getDiaString(t.dataPrazo) < hojeStr
-  );
-
-  // Gerar os próximos 14 dias para o Feed Estilo Todoist
-  const diasFeed: { dataObj: Date; dtStr: string; label: string; itens: any[] }[] = [];
-  for (let i = 0; i < 14; i++) {
-    const d = new Date(hojeObj);
-    d.setDate(hojeObj.getDate() + i);
-    const dtStr = getDiaString(d);
-
-    const itensDia = itensFiltrados.filter((t) => {
-      if (t.isConcluido) return false;
-      if (i === 0 && !t.dataPrazo) return true; // Itens sem prazo ficam na seção Hoje por padrão
-      return getDiaString(t.dataPrazo) === dtStr;
-    });
-
-    diasFeed.push({
-      dataObj: d,
-      dtStr,
-      label: formatarHeaderDiaTodoist(d, hojeObj),
-      itens: itensDia,
-    });
-  }
-
-  // Itens concluídos
-  const itensConcluidos = itensFiltrados.filter((t) => t.isConcluido);
-
-  // Barra de Dias Superior do Todoist (Semana de 7 dias)
-  const inicioSemana = new Date(dataSelecionadaBarra);
-  const diaSemanaIdx = inicioSemana.getDay();
-  inicioSemana.setDate(inicioSemana.getDate() - diaSemanaIdx);
-
-  const diasBarraSuperior: Date[] = [];
-  for (let i = 0; i < 7; i++) {
-    const d = new Date(inicioSemana);
-    d.setDate(inicioSemana.getDate() + i);
-    diasBarraSuperior.push(d);
-  }
-
-  const abrirModalComData = (dtStr: string) => {
-    setDataNovaTarefaPrePreenchida(dtStr);
-    setModalNovoOpen(true);
+  const abrirAdd = (chave: string, prazoPadrao?: Date) => {
+    setAddAberto(chave);
+    setAddTexto("");
+    setAddDescricao("");
+    setAddPrioridade(null);
+    setAddProjetoId(vista.tipo === "projeto" ? vista.id : "");
+    setAddPrazo(prazoPadrao ? diaStr(prazoPadrao) : vista.tipo === "hoje" ? hojeS : "");
+    setTimeout(() => addRef.current?.focus(), 30);
   };
 
-  return (
-    <div className="space-y-6 pb-16 max-w-5xl mx-auto">
-      {/* Modais */}
-      <ModalEditarTarefa
-        isOpen={!!tarefaParaEditar}
-        tarefa={tarefaParaEditar}
-        onClose={() => setTarefaParaEditar(null)}
-        onSaved={() => { window.dispatchEvent(new Event("dados_updated")); carregarDados(); }}
-      />
+  const interpretado = useMemo(() => interpretarLinhaRapida(addTexto, projetos), [addTexto, projetos]);
 
-      <ModalEditarVideo
-        isOpen={!!videoParaEditar}
-        video={videoParaEditar}
-        onClose={() => setVideoParaEditar(null)}
-        onSaved={() => { window.dispatchEvent(new Event("dados_updated")); carregarDados(); }}
-        onDeleted={() => { window.dispatchEvent(new Event("dados_updated")); carregarDados(); }}
-      />
+  const salvarAdd = async () => {
+    const titulo = interpretado.titulo.trim();
+    if (!titulo || salvandoAdd) return;
+    setSalvandoAdd(true);
+    const projetoId =
+      addProjetoId ||
+      (interpretado.projetoNome ? projetos.find((p) => p.nome === interpretado.projetoNome)?.id : undefined) ||
+      null;
+    const prazo = interpretado.prazo ? interpretado.prazo.toISOString() : addPrazo ? new Date(`${addPrazo}T09:00:00`).toISOString() : null;
+    const prioridade = addPrioridade || interpretado.prioridade || "media";
+    await fetch("/api/tarefas", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ titulo, descricao: addDescricao.trim() || null, projetoId, prazo, prioridade, recorrencia: interpretado.recorrencia, etiquetas: interpretado.etiquetas }),
+    });
+    setSalvandoAdd(false);
+    setAddTexto("");
+    setAddDescricao("");
+    setAddPrioridade(null);
+    addRef.current?.focus();
+    window.dispatchEvent(new Event("dados_updated"));
+    carregar();
+  };
 
-      <ModalNovo
-        isOpen={modalNovoOpen}
-        onClose={() => { setModalNovoOpen(false); setDataNovaTarefaPrePreenchida(null); }}
-      />
+  const salvarSub = async (pai: Item) => {
+    const titulo = subTexto.trim();
+    if (!titulo) return;
+    setSubTexto("");
+    await fetch("/api/tarefas", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ titulo, parentId: pai.id, projetoId: pai.projetoId, prazo: pai.prazo, prioridade: "media" }),
+    });
+    setExpandidas((s) => new Set(s).add(pai.id));
+    carregar();
+  };
 
-      {/* ── Topo do Todoist: Título & Botões de Alternância ────────────────── */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h1 className="font-heading text-2xl font-light tracking-tight text-primary flex items-center gap-2">
-            Tarefas & Checklists
-          </h1>
-          <p className="text-xs font-mono text-muted mt-0.5">
-            Organização cronológica inteligente estilo Todoist "Em Breve".
-          </p>
-        </div>
+  const iniciarEdicao = (i: Item) => {
+    if (i.ehVideo) {
+      setVideoParaEditar(videos.find((v) => v.id === i.id));
+      return;
+    }
+    setEditandoId(i.id);
+    setEdit({
+      titulo: i.titulo,
+      descricao: i.descricao || "",
+      prazo: i.prazo ? diaStr(i.prazo) : "",
+      prioridade: i.prioridade,
+      projetoId: i.projetoId || "",
+      recorrencia: i.recorrencia || "",
+      etiquetas: i.etiquetas.join(", "),
+    });
+  };
 
-        <div className="flex items-center gap-2">
-          {/* Alternador de Modo: Todoist vs Kanban */}
-          <div className="flex items-center bg-card p-1 rounded-lg border border-dashed border-border shadow-2xs">
-            <button
-              onClick={() => setModoExibicao("todoist")}
-              className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-mono font-bold rounded transition-all cursor-pointer ${
-                modoExibicao === "todoist"
-                  ? "bg-accent text-inverse shadow-xs"
-                  : "text-muted hover:text-primary"
-              }`}
-            >
-              <List className="w-3.5 h-3.5" />
-              <span>Lista (Todoist)</span>
-            </button>
+  const salvarEdicao = async () => {
+    if (!editandoId || salvandoEdit || !edit.titulo.trim()) return;
+    setSalvandoEdit(true);
+    const original = itens.find((i) => i.id === editandoId);
+    const manterHora = original?.prazo && edit.prazo === diaStr(original.prazo) ? new Date(original.prazo) : null;
+    const prazo = edit.prazo ? (manterHora ? manterHora.toISOString() : new Date(`${edit.prazo}T09:00:00`).toISOString()) : null;
+    await patchTarefa(editandoId, {
+      titulo: edit.titulo.trim(),
+      descricao: edit.descricao.trim() || null,
+      prazo,
+      prioridade: edit.prioridade,
+      projetoId: edit.projetoId || null,
+      recorrencia: edit.recorrencia || null,
+      etiquetas: edit.etiquetas.split(",").map((s) => s.trim().replace(/^@/, "").toLowerCase()).filter(Boolean),
+    });
+    setSalvandoEdit(false);
+    setEditandoId(null);
+    window.dispatchEvent(new Event("dados_updated"));
+    carregar();
+  };
 
-            <button
-              onClick={() => setModoExibicao("kanban")}
-              className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-mono font-bold rounded transition-all cursor-pointer ${
-                modoExibicao === "kanban"
-                  ? "bg-accent text-inverse shadow-xs"
-                  : "text-muted hover:text-primary"
-              }`}
-            >
-              <LayoutGrid className="w-3.5 h-3.5" />
-              <span>Kanban</span>
-            </button>
-          </div>
+  const alternarSecao = (k: string) =>
+    setSecoesFechadas((s) => {
+      const n = new Set(s);
+      if (n.has(k)) n.delete(k); else n.add(k);
+      return n;
+    });
 
-          <button
-            type="button"
-            onClick={() => abrirModalComData(hojeStr)}
-            className="btn-primary flex items-center gap-1.5 text-xs py-2 px-4 shadow-sm"
-          >
-            <Plus className="w-4 h-4" />
-            <span>Adicionar Tarefa</span>
+  // Atalhos: "q" abre adicionar, Esc fecha
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const alvo = e.target as HTMLElement;
+      const digitando = ["INPUT", "TEXTAREA", "SELECT"].includes(alvo?.tagName) || alvo?.isContentEditable;
+      if (e.key === "Escape") {
+        setAddAberto(null);
+        setEditandoId(null);
+        setSubDe(null);
+      } else if (!digitando && e.key.toLowerCase() === "q") {
+        e.preventDefault();
+        abrirAdd("topo");
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [vista]);
+
+  // ── Componentes ───────────────────────────────────────────────
+  const Circulo = ({ i }: { i: Item }) => {
+    const p = PRIORIDADE_PARA_P[i.prioridade];
+    const c = COR_P[p];
+    return (
+      <button
+        type="button"
+        onClick={(e) => concluir(i, e)}
+        className={`mt-0.5 w-[18px] h-[18px] rounded-full border-2 flex items-center justify-center flex-shrink-0 cursor-pointer transition-colors ${
+          i.concluido ? "bg-gray-400 border-gray-400 text-white" : `${c.anel} ${c.fundo} hover:opacity-80`
+        }`}
+        title={i.recorrencia && !i.concluido ? "Concluir esta ocorrência (pula para a próxima)" : i.concluido ? "Reabrir" : "Concluir"}
+        aria-label="Concluir"
+      >
+        <Check className={`w-3 h-3 stroke-[3] ${i.concluido ? "" : `opacity-0 hover:opacity-100 ${c.texto}`}`} />
+      </button>
+    );
+  };
+
+  const MetaLinha = ({ i }: { i: Item }) => {
+    const subs = filhosDe(i.id);
+    const feitas = subs.filter((s) => s.concluido).length;
+    const r = i.prazo ? rotuloData(i.prazo, hoje) : null;
+    const corData = r?.tom === "atrasada" ? "text-red-500" : r?.tom === "hoje" ? "text-green-600" : r?.tom === "amanha" ? "text-orange-500" : "text-purple-500";
+    return (
+      <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-0.5 text-[11px]">
+        {subs.length > 0 && (
+          <button type="button" onClick={(e) => { e.stopPropagation(); setExpandidas((s) => { const n = new Set(s); if (n.has(i.id)) n.delete(i.id); else n.add(i.id); return n; }); }} className="flex items-center gap-1 text-muted hover:text-primary cursor-pointer">
+            <GitBranch className="w-3 h-3" /> {feitas}/{subs.length}
           </button>
-        </div>
-      </div>
-
-      {/* ── Filtro de Clientes / Projetos ───────────────────────────────────── */}
-      <div className="flex items-center gap-2 overflow-x-auto pb-1 border-b border-border">
-        <span className="text-xs font-bold text-muted flex items-center gap-1 flex-shrink-0">
-          <Filter className="w-3.5 h-3.5" />
-          Projetos:
-        </span>
-        <button
-          onClick={() => setFiltroProjeto(null)}
-          className={`px-3 py-1 text-xs font-semibold rounded-full transition-all flex-shrink-0 ${
-            filtroProjeto === null
-              ? "bg-primary text-inverse font-bold"
-              : "bg-surface text-secondary hover:bg-surface-hover"
-          }`}
-        >
-          Todos
-        </button>
-        {projetos.map((p) => (
-          <button
-            key={p.id}
-            onClick={() => setFiltroProjeto(filtroProjeto === p.id ? null : p.id)}
-            className="px-3 py-1 rounded-full text-xs font-semibold transition-all flex-shrink-0 border flex items-center gap-1.5"
-            style={{
-              borderColor: p.cor || "#ff5a3d",
-              background: filtroProjeto === p.id ? p.cor || "#ff5a3d" : "transparent",
-              color: filtroProjeto === p.id ? "#ffffff" : "var(--text-primary)",
-            }}
-          >
-            <span className="w-2 h-2 rounded-full" style={{ background: filtroProjeto === p.id ? "#ffffff" : p.cor }} />
-            {p.nome}
+        )}
+        {r && (
+          <span className={`flex items-center gap-1 font-medium ${corData}`}>
+            <Calendar className="w-3 h-3" />
+            {r.texto}
+            {temHorario(i.prazo!) && <span className="opacity-80">{horaStr(i.prazo!)}</span>}
+            {i.recorrencia && <Repeat className="w-3 h-3" />}
+          </span>
+        )}
+        {i.etiquetas.map((e) => (
+          <button key={e} type="button" onClick={(ev) => { ev.stopPropagation(); setVista({ tipo: "etiqueta", nome: e }); }} className="text-muted hover:text-accent cursor-pointer">
+            @{e}
           </button>
         ))}
+        {i.ehVideo && (
+          <span className="flex items-center gap-1 text-muted"><Clapperboard className="w-3 h-3" /> vídeo</span>
+        )}
       </div>
+    );
+  };
 
-      {modoExibicao === "todoist" ? (
-        /* ═════════════════════════════════════════════════════════════════════
-           MODELO TODOIST (EM BREVE / UPCOMING LIST VIEW)
-           ═════════════════════════════════════════════════════════════════════ */
-        <div className="space-y-6">
-          {/* ── Barra Superior de Calendário Todoist (Mês & Dias) ─────────────── */}
-          <div className="card p-4 bg-card border border-border shadow-sm rounded-2xl space-y-3">
-            <div className="flex items-center justify-between">
-              <span className="font-heading text-sm font-bold text-primary">
-                {MESES_ABREV[dataSelecionadaBarra.getMonth()]} de {dataSelecionadaBarra.getFullYear()} ›
-              </span>
-
-              <div className="flex items-center gap-1">
-                <button
-                  onClick={() => {
-                    const d = new Date(dataSelecionadaBarra);
-                    d.setDate(d.getDate() - 7);
-                    setDataSelecionadaBarra(d);
-                  }}
-                  className="p-1 rounded-lg hover:bg-surface-hover text-secondary"
-                >
-                  <ChevronLeft className="w-4 h-4" />
-                </button>
-                <button
-                  onClick={() => setDataSelecionadaBarra(new Date())}
-                  className="px-2.5 py-1 text-xs font-bold rounded-lg border border-border hover:bg-surface-hover text-secondary"
-                >
-                  Hoje
-                </button>
-                <button
-                  onClick={() => {
-                    const d = new Date(dataSelecionadaBarra);
-                    d.setDate(d.getDate() + 7);
-                    setDataSelecionadaBarra(d);
-                  }}
-                  className="p-1 rounded-lg hover:bg-surface-hover text-secondary"
-                >
-                  <ChevronRight className="w-4 h-4" />
-                </button>
-              </div>
-            </div>
-
-            {/* Grid dos 7 dias da semana */}
-            <div className="grid grid-cols-7 text-center gap-1">
-              {diasBarraSuperior.map((d, i) => {
-                const ehHoje = getDiaString(d) === hojeStr;
-                const ehSelecionado = getDiaString(d) === getDiaString(dataSelecionadaBarra);
-
-                return (
-                  <button
-                    key={i}
-                    onClick={() => setDataSelecionadaBarra(d)}
-                    className="flex flex-col items-center py-1.5 rounded-xl transition-all cursor-pointer hover:bg-surface-hover"
-                  >
-                    <span className="text-[11px] font-bold text-muted uppercase">
-                      {DIAS_SEMANA_SIGLAS[d.getDay()]}
-                    </span>
-                    <span
-                      className={`text-xs font-bold w-7 h-7 flex items-center justify-center rounded-full mt-1 ${
-                        ehHoje
-                          ? "bg-accent text-white shadow-xs"
-                          : ehSelecionado
-                          ? "border-2 border-primary text-primary"
-                          : "text-secondary"
-                      }`}
-                    >
-                      {d.getDate()}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
+  const Linha = ({ i, nivel = 0 }: { i: Item; nivel?: number }) => {
+    const subs = filhosDe(i.id);
+    const expandida = expandidas.has(i.id);
+    if (editandoId === i.id) return <EditorInline i={i} />;
+    return (
+      <div style={{ paddingLeft: nivel * 28 }}>
+        <div
+          onClick={() => iniciarEdicao(i)}
+          className="group flex items-start gap-3 py-2.5 border-b border-border cursor-pointer hover:bg-surface/60 -mx-2 px-2 rounded-lg transition-colors"
+        >
+          <Circulo i={i} />
+          <div className="min-w-0 flex-1">
+            <p className={`text-sm leading-snug ${i.concluido ? "line-through text-muted" : "text-primary"}`}>{i.titulo}</p>
+            {i.descricao && <p className="text-xs text-muted truncate mt-0.5">{i.descricao}</p>}
+            <MetaLinha i={i} />
           </div>
-
-          {/* ── 1. SEÇÃO DE TAREFAS ATRASADAS (Red Alert Header) ──────────────── */}
-          {itensAtrasados.length > 0 && (
-            <div className="space-y-2">
-              <div className="flex items-center justify-between pb-1.5 border-b border-danger/30">
-                <h3 className="font-heading text-sm font-bold text-danger flex items-center gap-1.5">
-                  <AlertCircle className="w-4 h-4 text-danger" />
-                  Atrasada
-                </h3>
-                <button
-                  onClick={handleReagendarAtrasadas}
-                  disabled={reagendando}
-                  className="text-xs font-bold text-danger hover:underline cursor-pointer disabled:opacity-50 disabled:cursor-wait"
-                >
-                  {reagendando
-                    ? "Reagendando..."
-                    : `Reagendar para Hoje (${itensAtrasados.length}) ➔`}
-                </button>
-              </div>
-
-              <div className="space-y-1">
-                {itensAtrasados.map((item) => (
-                  <RenderItemTodoist
-                    key={item.id}
-                    item={item}
-                    onToggle={handleToggleStatus}
-                    onEditar={() => (item.tipoItem === "video" ? setVideoParaEditar(item) : setTarefaParaEditar(item))}
-                    onExcluir={handleExcluir}
-                  />
-                ))}
-              </div>
-            </div>
-          )}
-
-          {/* ── 2. FEED CRONOLÓGICO DOS DIAS ESTILO TODOIST ─────────────────────── */}
-          {diasFeed.map((dia) => (
-            <div key={dia.dtStr} className="space-y-2 pt-2">
-              {/* Header do Dia Todoist: "10 ago. · Hoje · Segunda-feira" */}
-              <div className="pb-1.5 border-b border-border flex items-center justify-between">
-                <h3 className="font-heading text-sm font-bold text-primary tracking-tight">
-                  {dia.label}
-                </h3>
-                {dia.itens.length > 0 && (
-                  <span className="text-xs font-semibold text-muted">
-                    {dia.itens.length} {dia.itens.length === 1 ? "tarefa" : "tarefas"}
-                  </span>
-                )}
-              </div>
-
-              {/* Lista de Tarefas do Dia */}
-              {dia.itens.length > 0 ? (
-                <div className="space-y-1">
-                  {dia.itens.map((item) => (
-                    <RenderItemTodoist
-                      key={item.id}
-                      item={item}
-                      onToggle={handleToggleStatus}
-                      onEditar={() => (item.tipoItem === "video" ? setVideoParaEditar(item) : setTarefaParaEditar(item))}
-                      onExcluir={handleExcluir}
-                    />
-                  ))}
-                </div>
+          <div className="flex items-center gap-2 flex-shrink-0">
+            {/* Projeto à direita, como no Todoist */}
+            <span className="text-[11px] text-muted flex items-center gap-1 group-hover:hidden">
+              {i.projeto ? (
+                <>
+                  {i.projeto.nome} <span className="w-2 h-2 rounded-full" style={{ background: i.projeto.cor || "var(--accent)" }} />
+                </>
               ) : (
-                <p className="text-xs text-muted italic py-1 pl-2">Nenhuma tarefa agendada.</p>
+                <>Entrada <Inbox className="w-3 h-3" /></>
               )}
-
-              {/* Botão Inline Todoist: "+ Adicionar tarefa" */}
-              <button
-                onClick={() => abrirModalComData(dia.dtStr)}
-                className="flex items-center gap-2 text-xs font-semibold text-muted hover:text-accent py-1.5 px-2 rounded-lg hover:bg-surface-hover transition-colors cursor-pointer w-full text-left group"
-              >
-                <Plus className="w-4 h-4 text-accent transition-transform group-hover:scale-110" />
-                <span>Adicionar tarefa</span>
+            </span>
+            {/* Toolbar no hover */}
+            <div className="hidden group-hover:flex items-center gap-0.5">
+              {!i.ehVideo && (
+                <>
+                  <button type="button" onClick={(e) => { e.stopPropagation(); setSubDe(i.id); setSubTexto(""); setExpandidas((s) => new Set(s).add(i.id)); }} className="p-1 rounded text-muted hover:text-primary hover:bg-surface cursor-pointer" title="Adicionar subtarefa">
+                    <GitBranch className="w-3.5 h-3.5" />
+                  </button>
+                  <div className="flex items-center rounded-md border border-border overflow-hidden" title="Prioridade">
+                    {([1, 2, 3, 4] as const).map((p) => (
+                      <button key={p} type="button" onClick={(e) => { e.stopPropagation(); mudarPrioridade(i, p); }} className={`px-1 py-0.5 hover:bg-surface cursor-pointer ${PRIORIDADE_PARA_P[i.prioridade] === p ? "bg-surface" : ""}`}>
+                        <Flag className={`w-3 h-3 ${COR_P[p].texto}`} fill={PRIORIDADE_PARA_P[i.prioridade] === p ? "currentColor" : "none"} />
+                      </button>
+                    ))}
+                  </div>
+                </>
+              )}
+              <button type="button" onClick={(e) => excluir(i, e)} className="p-1 rounded text-muted hover:text-danger hover:bg-danger-subtle cursor-pointer" title="Apagar">
+                <Trash2 className="w-3.5 h-3.5" />
               </button>
             </div>
-          ))}
-
-          {/* ── 3. SEÇÃO DE CONCLUÍDAS ──────────────────────────────────────── */}
-          {itensConcluidos.length > 0 && (
-            <div className="pt-6 border-t border-border space-y-2">
-              <h3 className="font-heading text-xs font-bold text-muted uppercase tracking-wider">
-                Concluídas ({itensConcluidos.length})
-              </h3>
-              <div className="space-y-1">
-                {itensConcluidos.map((item) => (
-                  <RenderItemTodoist
-                    key={item.id}
-                    item={item}
-                    onToggle={handleToggleStatus}
-                    onEditar={() => (item.tipoItem === "video" ? setVideoParaEditar(item) : setTarefaParaEditar(item))}
-                    onExcluir={handleExcluir}
-                  />
-                ))}
-              </div>
-            </div>
-          )}
+          </div>
         </div>
-      ) : (
-        /* ═════════════════════════════════════════════════════════════════════
-           MODELO KANBAN (QUADRO EM COLUNAS)
-           ═════════════════════════════════════════════════════════════════════ */
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          {[
-            {
-              key: "hoje",
-              titulo: "📌 HOJE",
-              cor: "#ff5a3d",
-              itens: itensFiltrados.filter((t) => !t.isConcluido && (!t.dataPrazo || getDiaString(t.dataPrazo) <= hojeStr)),
-            },
-            {
-              key: "amanha",
-              titulo: "⚡ AMANHÃ",
-              cor: "#f59e0b",
-              itens: itensFiltrados.filter((t) => !t.isConcluido && t.dataPrazo && getDiaString(t.dataPrazo) === getDiaString(new Date(Date.now() + 86400000))),
-            },
-            {
-              key: "proximos",
-              titulo: "📅 PRÓXIMOS DIAS",
-              cor: "#3b82f6",
-              itens: itensFiltrados.filter((t) => !t.isConcluido && t.dataPrazo && getDiaString(t.dataPrazo) > getDiaString(new Date(Date.now() + 86400000))),
-            },
-            {
-              key: "concluidas",
-              titulo: "✅ CONCLUÍDAS",
-              cor: "#10b981",
-              itens: itensConcluidos,
-            },
-          ].map((col) => (
-            <div key={col.key} className="flex flex-col bg-surface p-3.5 rounded-2xl border border-border min-h-[350px]">
-              <div className="flex items-center justify-between mb-3 pb-2 border-b border-border px-1">
-                <h3 className="text-xs font-bold tracking-wider" style={{ color: col.cor }}>
-                  {col.titulo}
-                </h3>
-                <span className="w-5 h-5 rounded-full bg-surface-hover flex items-center justify-center text-[10px] font-bold text-secondary">
-                  {col.itens.length}
-                </span>
-              </div>
 
-              <div className="space-y-2.5 flex-1 overflow-y-auto">
-                {col.itens.map((item) => (
-                  <RenderItemTodoist
-                    key={item.id}
-                    item={item}
-                    onToggle={handleToggleStatus}
-                    onEditar={() => (item.tipoItem === "video" ? setVideoParaEditar(item) : setTarefaParaEditar(item))}
-                    onExcluir={handleExcluir}
-                  />
-                ))}
-              </div>
-            </div>
+        {expandida && subs.map((s) => <Linha key={s.id} i={s} nivel={nivel + 1} />)}
+
+        {subDe === i.id && (
+          <div style={{ paddingLeft: (nivel + 1) * 28 }} className="py-2 flex items-center gap-2">
+            <GitBranch className="w-3.5 h-3.5 text-muted" />
+            <input
+              type="text"
+              value={subTexto}
+              onChange={(e) => setSubTexto(e.target.value)}
+              onKeyDown={(e) => { if (e.key === "Enter") salvarSub(i); if (e.key === "Escape") setSubDe(null); }}
+              placeholder="Subtarefa… Enter salva, Esc cancela"
+              className="input py-1.5 px-3 text-sm flex-1"
+              autoFocus
+            />
+          </div>
+        )}
+      </div>
+    );
+  };
+
+  const EditorInline = ({ i }: { i: Item }) => (
+    <div className="my-2 rounded-xl border border-accent bg-card p-3 shadow-sm space-y-2">
+      <input
+        type="text"
+        value={edit.titulo}
+        onChange={(e) => setEdit({ ...edit, titulo: e.target.value })}
+        onKeyDown={(e) => { if (e.key === "Enter") salvarEdicao(); if (e.key === "Escape") setEditandoId(null); }}
+        className="w-full bg-transparent border-0 outline-none text-sm font-semibold text-primary"
+        autoFocus
+      />
+      <input
+        type="text"
+        value={edit.descricao}
+        onChange={(e) => setEdit({ ...edit, descricao: e.target.value })}
+        placeholder="Descrição"
+        className="w-full bg-transparent border-0 outline-none text-xs text-secondary"
+      />
+      <div className="flex flex-wrap items-center gap-2 pt-1">
+        <input type="date" value={edit.prazo} onChange={(e) => setEdit({ ...edit, prazo: e.target.value })} className="input py-1.5 px-2 text-xs w-auto" />
+        <div className="flex items-center rounded-lg border border-border overflow-hidden">
+          {([1, 2, 3, 4] as const).map((p) => (
+            <button key={p} type="button" onClick={() => setEdit({ ...edit, prioridade: P_PARA_PRIORIDADE[`p${p}`] })} className={`px-2 py-1.5 text-xs flex items-center gap-1 cursor-pointer ${PRIORIDADE_PARA_P[edit.prioridade] === p ? "bg-surface font-semibold" : "hover:bg-surface"}`}>
+              <Flag className={`w-3 h-3 ${COR_P[p].texto}`} fill={PRIORIDADE_PARA_P[edit.prioridade] === p ? "currentColor" : "none"} /> P{p}
+            </button>
           ))}
         </div>
-      )}
+        <select value={edit.projetoId} onChange={(e) => setEdit({ ...edit, projetoId: e.target.value })} className="input py-1.5 px-2 text-xs w-auto">
+          <option value="">Entrada</option>
+          {projetos.map((p) => <option key={p.id} value={p.id}>{p.nome}</option>)}
+        </select>
+        <select value={edit.recorrencia} onChange={(e) => setEdit({ ...edit, recorrencia: e.target.value })} className="input py-1.5 px-2 text-xs w-auto">
+          <option value="">Não repete</option>
+          <option value="diaria">Todo dia</option>
+          <option value="semanal">Toda semana</option>
+          <option value="mensal">Todo mês</option>
+          <option value="seg,qua,sex">Seg, qua, sex</option>
+          <option value="seg,ter,qua,qui,sex">Dias úteis</option>
+        </select>
+        <input type="text" value={edit.etiquetas} onChange={(e) => setEdit({ ...edit, etiquetas: e.target.value })} placeholder="@etiquetas, separadas por vírgula" className="input py-1.5 px-2 text-xs flex-1 min-w-[160px]" />
+      </div>
+      <div className="flex justify-end gap-2 pt-1">
+        <button type="button" onClick={() => setEditandoId(null)} className="btn-ghost text-xs py-1.5 px-3">Cancelar</button>
+        <button type="button" onClick={salvarEdicao} disabled={salvandoEdit} className="btn-primary text-xs py-1.5 px-4 disabled:opacity-60">{salvandoEdit ? "Salvando…" : "Salvar"}</button>
+      </div>
     </div>
   );
-}
 
-// ── COMPONENTE DE ITEM INDIVIDUAL ESTILO TODOIST ──────────────────────────────
-function RenderItemTodoist({
-  item,
-  onToggle,
-  onEditar,
-  onExcluir,
-}: {
-  item: any;
-  onToggle: (id: string, status: string, isVideo: boolean, e?: React.MouseEvent) => void;
-  onEditar: () => void;
-  onExcluir: (id: string, isVideo: boolean, e: React.MouseEvent) => void;
-}) {
-  const isVideo = item.tipoItem === "video";
-  const concluido = item.isConcluido;
-  const prio = item.prioridade || "media";
+  const AdicionarRapido = ({ chave, prazoPadrao }: { chave: string; prazoPadrao?: Date }) =>
+    addAberto === chave ? (
+      <div className="my-2 rounded-xl border border-accent bg-card p-3 shadow-sm">
+        <input
+          ref={addRef}
+          type="text"
+          value={addTexto}
+          onChange={(e) => setAddTexto(e.target.value)}
+          onKeyDown={(e) => { if (e.key === "Enter") salvarAdd(); }}
+          placeholder="Nome da tarefa — ex.: Ligar pro cliente amanhã p1 #Petron @urgente"
+          className="w-full bg-transparent border-0 outline-none text-sm font-medium text-primary placeholder:text-faint"
+        />
+        <input
+          type="text"
+          value={addDescricao}
+          onChange={(e) => setAddDescricao(e.target.value)}
+          onKeyDown={(e) => { if (e.key === "Enter") salvarAdd(); }}
+          placeholder="Descrição"
+          className="w-full bg-transparent border-0 outline-none text-xs text-secondary placeholder:text-faint mt-1"
+        />
+        {/* O que o app entendeu do texto */}
+        {interpretado.trechos.length > 0 && (
+          <div className="flex flex-wrap gap-1.5 mt-2">
+            {interpretado.trechos.map((t, k) => (
+              <span key={k} className="badge badge-accent-subtle">{t.tipo === "data" ? "📅 " : t.tipo === "prioridade" ? "🚩 " : t.tipo === "projeto" ? "# " : t.tipo === "etiqueta" ? "@ " : "🔁 "}{t.texto}</span>
+            ))}
+          </div>
+        )}
+        <div className="flex flex-wrap items-center gap-2 mt-3 pt-3 border-t border-border">
+          <input type="date" value={interpretado.prazo ? diaStr(interpretado.prazo) : addPrazo} onChange={(e) => setAddPrazo(e.target.value)} className="input py-1.5 px-2 text-xs w-auto" title="Data" />
+          <div className="flex items-center rounded-lg border border-border overflow-hidden">
+            {([1, 2, 3, 4] as const).map((p) => {
+              const ativa = (addPrioridade || interpretado.prioridade || "media") === P_PARA_PRIORIDADE[`p${p}`];
+              return (
+                <button key={p} type="button" onClick={() => setAddPrioridade(P_PARA_PRIORIDADE[`p${p}`])} className={`px-2 py-1.5 text-xs flex items-center gap-1 cursor-pointer ${ativa ? "bg-surface font-semibold" : "hover:bg-surface"}`} title={`Prioridade ${p}`}>
+                  <Flag className={`w-3 h-3 ${COR_P[p].texto}`} fill={ativa ? "currentColor" : "none"} /> P{p}
+                </button>
+              );
+            })}
+          </div>
+          <select value={addProjetoId || (interpretado.projetoNome ? projetos.find((p) => p.nome === interpretado.projetoNome)?.id || "" : "")} onChange={(e) => setAddProjetoId(e.target.value)} className="input py-1.5 px-2 text-xs w-auto">
+            <option value="">Entrada</option>
+            {projetos.map((p) => <option key={p.id} value={p.id}>{p.nome}</option>)}
+          </select>
+          <div className="ml-auto flex gap-2">
+            <button type="button" onClick={() => setAddAberto(null)} className="btn-ghost text-xs py-1.5 px-3">Cancelar</button>
+            <button type="button" onClick={salvarAdd} disabled={!interpretado.titulo.trim() || salvandoAdd} className="btn-primary text-xs py-1.5 px-4 disabled:opacity-50 flex items-center gap-1">
+              {salvandoAdd ? <Loader2 className="w-3 h-3 animate-spin" /> : null} Adicionar tarefa
+            </button>
+          </div>
+        </div>
+      </div>
+    ) : (
+      <button type="button" onClick={() => abrirAdd(chave, prazoPadrao)} className="group flex items-center gap-2 py-2.5 text-sm text-muted hover:text-red-500 cursor-pointer">
+        <span className="w-[18px] h-[18px] rounded-full flex items-center justify-center bg-transparent group-hover:bg-red-500 transition-colors">
+          <Plus className="w-4 h-4 text-red-500 group-hover:text-white" />
+        </span>
+        Adicionar tarefa
+      </button>
+    );
 
-  // Cores dos Anéis dos Checkboxes estilo Todoist por prioridade
-  const corCheckRing =
-    prio === "urgente"
-      ? "border-danger text-danger hover:bg-danger-subtle"
-      : prio === "alta"
-      ? "border-amber-500 text-amber-500 hover:bg-amber-50"
-      : "border-blue-400 text-blue-400 hover:bg-blue-50";
+  const Secao = ({ chave, titulo, itens: lista, acao, children }: { chave: string; titulo: ReactNode; itens: Item[]; acao?: ReactNode; children?: ReactNode }) => {
+    const fechada = secoesFechadas.has(chave);
+    return (
+      <section>
+        <div className="flex items-center justify-between py-2 border-b border-border sticky top-0 bg-background/95 backdrop-blur z-[1]">
+          <button type="button" onClick={() => alternarSecao(chave)} className="flex items-center gap-1.5 font-semibold text-sm text-primary cursor-pointer">
+            {fechada ? <ChevronRight className="w-4 h-4 text-muted" /> : <ChevronDown className="w-4 h-4 text-muted" />}
+            {titulo}
+            <span className="text-xs font-normal text-muted ml-1">{lista.length > 0 ? lista.length : ""}</span>
+          </button>
+          {acao}
+        </div>
+        {!fechada && (
+          <div>
+            {lista.map((i) => <Linha key={i.id} i={i} />)}
+            {children}
+          </div>
+        )}
+      </section>
+    );
+  };
+
+  // ── Barra lateral ─────────────────────────────────────────────
+  const ItemNav = ({ ativo, onClick, icone, rotulo, cont, cor }: { ativo: boolean; onClick: () => void; icone: ReactNode; rotulo: string; cont?: number; cor?: string }) => (
+    <button
+      type="button"
+      onClick={() => { onClick(); setMenuMobile(false); setBusca(""); }}
+      className={`w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm cursor-pointer transition-colors ${ativo ? "bg-red-50 text-red-600 font-semibold" : "text-secondary hover:bg-surface"}`}
+    >
+      <span className={ativo ? "text-red-500" : cor ? "" : "text-muted"} style={cor && !ativo ? { color: cor } : undefined}>{icone}</span>
+      <span className="flex-1 text-left truncate">{rotulo}</span>
+      {cont !== undefined && cont > 0 && <span className={`text-xs ${ativo ? "text-red-500" : "text-muted"}`}>{cont}</span>}
+    </button>
+  );
+
+  const Lateral = () => (
+    <aside className="w-full lg:w-[240px] flex-shrink-0 space-y-1">
+      <button type="button" onClick={() => abrirAdd("topo")} className="w-full flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-semibold text-red-500 hover:bg-red-50 cursor-pointer">
+        <span className="w-5 h-5 rounded-full bg-red-500 text-white flex items-center justify-center"><Plus className="w-3.5 h-3.5 stroke-[3]" /></span>
+        Adicionar tarefa
+        <span className="ml-auto text-[10px] font-mono text-muted border border-border rounded px-1">q</span>
+      </button>
+      <div className="relative px-1 pb-1">
+        <Search className="w-4 h-4 text-muted absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+        <input type="text" value={busca} onChange={(e) => setBusca(e.target.value)} placeholder="Buscar" className="input pl-9 py-2 text-sm w-full" />
+      </div>
+      <ItemNav ativo={vista.tipo === "entrada" && !q} onClick={() => setVista({ tipo: "entrada" })} icone={<Inbox className="w-4 h-4" />} rotulo="Entrada" cont={contEntrada} />
+      <ItemNav ativo={vista.tipo === "hoje" && !q} onClick={() => setVista({ tipo: "hoje" })} icone={<CalendarDays className="w-4 h-4" />} rotulo="Hoje" cont={contHoje} />
+      <ItemNav ativo={vista.tipo === "embreve" && !q} onClick={() => setVista({ tipo: "embreve" })} icone={<CalendarRange className="w-4 h-4" />} rotulo="Em breve" />
+      <ItemNav ativo={vista.tipo === "concluidas" && !q} onClick={() => setVista({ tipo: "concluidas" })} icone={<CheckCircle2 className="w-4 h-4" />} rotulo="Concluídas" />
+
+      <div className="pt-4 pb-1 px-3 flex items-center justify-between">
+        <span className="text-xs font-semibold text-muted">Meus projetos</span>
+      </div>
+      {projetos.map((p) => (
+        <ItemNav key={p.id} ativo={vista.tipo === "projeto" && vista.id === p.id && !q} onClick={() => setVista({ tipo: "projeto", id: p.id })} icone={<Hash className="w-4 h-4" />} rotulo={p.nome} cont={contPorProjeto(p.id)} cor={p.cor} />
+      ))}
+      {projetos.length === 0 && <p className="px-3 py-1 text-xs text-muted">Crie clientes em Configurações.</p>}
+
+      {etiquetasTodas.length > 0 && (
+        <>
+          <div className="pt-4 pb-1 px-3 flex items-center gap-1.5">
+            <Tags className="w-3.5 h-3.5 text-muted" />
+            <span className="text-xs font-semibold text-muted">Etiquetas</span>
+          </div>
+          {etiquetasTodas.map(([nome, n]) => (
+            <ItemNav key={nome} ativo={vista.tipo === "etiqueta" && vista.nome === nome && !q} onClick={() => setVista({ tipo: "etiqueta", nome })} icone={<span className="text-xs font-mono">@</span>} rotulo={nome} cont={n} />
+          ))}
+        </>
+      )}
+    </aside>
+  );
+
+  // ── Render ────────────────────────────────────────────────────
+  if (carregando) {
+    return (
+      <div className="flex min-h-[400px] items-center justify-center">
+        <div className="w-8 h-8 rounded-full border-2 border-accent border-t-transparent animate-spin" />
+      </div>
+    );
+  }
+
+  const listaSimples = vista.tipo !== "embreve" || !!q;
+  const semAtraso = abertos.filter((i) => !atrasadas.includes(i));
+  const totalVista = abertos.length;
 
   return (
-    <div
-      onClick={onEditar}
-      className={`card group flex items-center justify-between gap-3 p-3 transition-all cursor-pointer rounded-2xl ${
-        concluido
-          ? "opacity-50 bg-surface border-border"
-          : "bg-card border-border hover:border-accent"
-      }`}
-    >
-      {/* Esquerda: Checkbox Redondo Emerald + Título */}
-      <div className="flex items-center gap-3 min-w-0 flex-1 relative z-10">
-        <button
-          type="button"
-          onClick={(e) => onToggle(item.id, isVideo ? item.estagio : item.status, isVideo, e)}
-          className={`w-5 h-5 rounded-full flex items-center justify-center transition-all cursor-pointer flex-shrink-0 border ${
-            concluido
-              ? "border-accent bg-accent text-inverse"
-              : "border-border hover:border-accent bg-surface text-accent"
-          }`}
-          title={concluido ? "Marcar como não concluído" : "Concluir tarefa"}
-        >
-          {concluido && <Check className="w-3 h-3 stroke-[3]" />}
+    <div className="animate-fade-in-up max-w-6xl mx-auto pb-16">
+      {/* Menu lateral no celular */}
+      <div className="lg:hidden mb-3">
+        <button type="button" onClick={() => setMenuMobile((v) => !v)} className="btn-neutral text-xs py-2 px-3 flex items-center gap-1.5">
+          <MoreHorizontal className="w-4 h-4" /> {tituloVista}
         </button>
-
-        <div className="min-w-0 flex-1">
-          <p
-            className={`text-xs font-bold truncate leading-snug ${
-              concluido
-                ? "line-through text-muted font-normal"
-                : "text-primary"
-            }`}
-          >
-            {item.titulo}
-          </p>
-
-          {/* Subtítulo ou tags secundárias */}
-          {item.descricao && (
-            <p className="text-[11px] text-muted truncate mt-0.5">{item.descricao}</p>
-          )}
-        </div>
+        {menuMobile && <div className="card p-3 mt-2"><Lateral /></div>}
       </div>
 
-      {/* Direita: Tag do Cliente / Entrada + Ícones de Ações Rápidas no Hover */}
-      <div className="flex items-center gap-2 flex-shrink-0">
-        {/* Tag de Entrada ou Cliente estilo Todoist */}
-        <div className="flex items-center gap-1 text-[11px] font-bold text-muted bg-surface px-2 py-0.5 rounded-lg group-hover:hidden">
-          {item.projeto ? (
-            <>
-              <span className="w-2 h-2 rounded-full" style={{ background: item.projeto.cor || "#ff5a3d" }} />
-              <span className="truncate max-w-[90px]">{item.projeto.nome}</span>
-            </>
-          ) : isVideo ? (
-            <>
-              <Clapperboard className="w-3 h-3 text-accent" />
-              <span>Vídeo</span>
-            </>
+      <div className="flex gap-8">
+        <div className="hidden lg:block"><Lateral /></div>
+
+        <main className="flex-1 min-w-0">
+          <div className="mb-4">
+            <h1 className="font-heading text-2xl font-semibold text-primary">{tituloVista}</h1>
+            <p className="text-xs text-muted mt-1 flex items-center gap-1">
+              <CheckCircle2 className="w-3.5 h-3.5" /> {vista.tipo === "concluidas" ? `${concluidos.length} concluídas` : `${totalVista} ${totalVista === 1 ? "tarefa" : "tarefas"}`}
+            </p>
+          </div>
+
+          <AdicionarRapido chave="topo" />
+
+          {vista.tipo === "concluidas" ? (
+            <div>
+              {concluidos.length === 0 && <p className="text-sm text-muted py-8 text-center">Nada concluído ainda.</p>}
+              {concluidos.map((i) => <Linha key={i.id} i={i} />)}
+            </div>
+          ) : listaSimples ? (
+            <div className="space-y-6">
+              {atrasadas.length > 0 && (
+                <Secao
+                  chave="atrasada"
+                  titulo="Atrasada"
+                  itens={atrasadas}
+                  acao={<button type="button" onClick={reagendarAtrasadas} className="text-xs font-semibold text-red-500 hover:underline cursor-pointer">Reagendar</button>}
+                />
+              )}
+              <Secao
+                chave="principal"
+                titulo={vista.tipo === "hoje" ? cabecalhoDia(hoje, hoje) : vista.tipo === "entrada" ? "Entrada" : q ? "Resultados" : tituloVista}
+                itens={vista.tipo === "hoje" ? semAtraso : semAtraso.filter((i) => i.prazo || vista.tipo !== "embreve")}
+              >
+                {!q && <AdicionarRapido chave="principal" prazoPadrao={vista.tipo === "hoje" ? hoje : undefined} />}
+              </Secao>
+              {vista.tipo !== "hoje" && vista.tipo !== "entrada" && semData.length > 0 && !q && (
+                <Secao chave="semdata" titulo="Sem data" itens={semData} />
+              )}
+              {abertos.length === 0 && !q && (
+                <div className="text-center py-10">
+                  <CheckCircle2 className="w-10 h-10 mx-auto text-green-500 mb-2" />
+                  <p className="text-sm font-semibold text-primary">Tudo em dia!</p>
+                  <p className="text-xs text-muted">Nenhuma tarefa {vista.tipo === "hoje" ? "para hoje" : "aqui"}.</p>
+                </div>
+              )}
+              {concluidos.length > 0 && (
+                <div>
+                  <button type="button" onClick={() => setMostrarConcluidas((v) => !v)} className="text-xs text-muted hover:text-primary cursor-pointer flex items-center gap-1">
+                    {mostrarConcluidas ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />} {concluidos.length} concluída{concluidos.length > 1 ? "s" : ""}
+                  </button>
+                  {mostrarConcluidas && concluidos.map((i) => <Linha key={i.id} i={i} />)}
+                </div>
+              )}
+            </div>
           ) : (
-            <span>Entrada 📥</span>
+            /* Em breve: Atrasada + um bloco por dia, 14 dias */
+            <div className="space-y-6">
+              {atrasadas.length > 0 && (
+                <Secao chave="atrasada" titulo="Atrasada" itens={atrasadas} acao={<button type="button" onClick={reagendarAtrasadas} className="text-xs font-semibold text-red-500 hover:underline cursor-pointer">Reagendar</button>} />
+              )}
+              {diasEmBreve.map(({ data, itens: lista }) => (
+                <Secao key={diaStr(data)} chave={`dia-${diaStr(data)}`} titulo={cabecalhoDia(data, hoje)} itens={lista}>
+                  <AdicionarRapido chave={`dia-${diaStr(data)}`} prazoPadrao={data} />
+                </Secao>
+              ))}
+              {semData.length > 0 && <Secao chave="semdata" titulo="Sem data" itens={semData} />}
+            </div>
           )}
-        </div>
-
-        {/* Toolbar de Ações no Hover estilo Todoist */}
-        <div className="hidden group-hover:flex items-center gap-1 transition-opacity">
-          <button
-            onClick={(e) => { e.stopPropagation(); onEditar(); }}
-            className="p-1 rounded-md text-muted hover:text-primary hover:bg-surface-hover"
-            title="Editar"
-          >
-            <Edit3 className="w-3.5 h-3.5" />
-          </button>
-          <button
-            onClick={(e) => onExcluir(item.id, isVideo, e)}
-            className="p-1 rounded-md text-muted hover:text-danger hover:bg-danger-subtle"
-            title="Excluir"
-          >
-            <Trash2 className="w-3.5 h-3.5" />
-          </button>
-        </div>
+        </main>
       </div>
+
+      {videoParaEditar && (
+        <ModalEditarVideo
+          isOpen={!!videoParaEditar}
+          video={videoParaEditar}
+          onClose={() => setVideoParaEditar(null)}
+          onSaved={() => { carregar(); window.dispatchEvent(new Event("dados_updated")); }}
+        />
+      )}
     </div>
   );
 }

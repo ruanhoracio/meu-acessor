@@ -8,7 +8,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
   try {
     const { id } = await params;
     const body = await req.json();
-    const { titulo, projetoId, prioridade, prazo, status, descricao } = body;
+    const { titulo, projetoId, prioridade, prazo, status, descricao, recorrencia, parentId, etiquetas, ordem } = body;
     const userId = await usuarioAtualId();
     const dona = await prisma.tarefa.findFirst({ where: { id, userId }, select: { id: true } });
     if (!dona) return NextResponse.json({ error: "Tarefa não encontrada" }, { status: 404 });
@@ -20,8 +20,12 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
         ...(projetoId !== undefined && { projetoId: projetoId || null }),
         ...(prioridade !== undefined && { prioridade }),
         ...(prazo !== undefined && { prazo: prazo ? new Date(prazo) : null }),
-        ...(status !== undefined && { status }),
+        ...(status !== undefined && { status, concluidaEm: status === "concluida" ? new Date() : null }),
         ...(descricao !== undefined && { descricao }),
+        ...(recorrencia !== undefined && { recorrencia: recorrencia || null }),
+        ...(parentId !== undefined && { parentId: parentId || null }),
+        ...(etiquetas !== undefined && { etiquetas: Array.isArray(etiquetas) ? etiquetas : [] }),
+        ...(ordem !== undefined && { ordem: Number(ordem) }),
       },
       include: { projeto: true },
     });

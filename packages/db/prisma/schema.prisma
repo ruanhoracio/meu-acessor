@@ -128,15 +128,23 @@ model Tarefa {
   recorrencia   String?       // "diaria", "semanal", "seg,qua,sex"
   origemInboxId String?       @map("origem_inbox_id")
   todoistId     String?       @map("todoist_id")
+  // Estilo Todoist: subtarefas (parentId), etiquetas (@etiqueta) e ordem manual
+  parentId      String?       @map("parent_id")
+  etiquetas     String[]      @default([])
+  ordem         Int           @default(0)
+  concluidaEm   DateTime?     @map("concluida_em")
   criadoEm      DateTime      @default(now()) @map("criado_em")
   atualizadoEm  DateTime      @updatedAt @map("atualizado_em")
 
   projeto       Projeto?      @relation(fields: [projetoId], references: [id])
   origemInbox   InboxItem?    @relation(fields: [origemInboxId], references: [id])
+  parent        Tarefa?       @relation("Subtarefas", fields: [parentId], references: [id], onDelete: Cascade)
+  subtarefas    Tarefa[]      @relation("Subtarefas")
 
   userId String? @map("user_id")
 
   @@index([userId])
+  @@index([parentId])
   @@map("tarefas")
 }
 

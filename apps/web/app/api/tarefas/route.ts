@@ -9,7 +9,7 @@ export async function GET() {
     const userId = await usuarioAtualId();
     const tarefas = await prisma.tarefa.findMany({
       where: { userId },
-      include: { projeto: true },
+      include: { projeto: true, subtarefas: { select: { id: true, status: true } } },
       orderBy: { criadoEm: "desc" },
     });
     return NextResponse.json(tarefas);
@@ -22,7 +22,7 @@ export async function GET() {
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-    const { titulo, descricao, projetoId, prazo, prioridade } = body;
+    const { titulo, descricao, projetoId, prazo, prioridade, recorrencia, parentId, etiquetas } = body;
 
     if (!titulo || !titulo.trim()) {
       return NextResponse.json({ error: "Título é obrigatório." }, { status: 400 });
@@ -38,6 +38,9 @@ export async function POST(req: Request) {
         prazo: prazo ? new Date(prazo) : null,
         prioridade: prioridade || "media",
         status: "aberta",
+        recorrencia: recorrencia || null,
+        parentId: parentId || null,
+        etiquetas: Array.isArray(etiquetas) ? etiquetas : [],
       },
     });
 
