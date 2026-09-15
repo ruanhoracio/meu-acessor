@@ -768,14 +768,14 @@ export default function TarefasPage() {
         <button type="button" onClick={() => setMenuMobile((v) => !v)} className="btn-neutral text-xs py-2 px-3 flex items-center gap-1.5">
           <MoreHorizontal className="w-4 h-4" /> {tituloVista}
         </button>
-        {menuMobile && <div className="card p-3 mt-2"><Lateral /></div>}
+        {menuMobile && <div className="card-solid p-3 mt-2" style={{ background: "var(--bg-card)" }}><Lateral /></div>}
 
       </div>
 
       <div className="flex gap-6 items-start">
-        <div className="hidden lg:block card p-3 sticky top-20"><Lateral /></div>
+        <div className="hidden lg:block card-solid p-3 sticky top-20" style={{ background: "var(--bg-card)" }}><Lateral /></div>
 
-        <main className="flex-1 min-w-0 card p-6 md:p-8">
+        <main className="flex-1 min-w-0 card-solid p-6 md:p-8" style={{ background: "var(--bg-card)" }}>
           <div className="mb-5">
             <h1 className="font-heading text-2xl font-semibold text-primary">{tituloVista}</h1>
             <p className="text-xs text-muted mt-1 flex items-center gap-1">
