@@ -41,7 +41,7 @@ const MESES: Record<string, number> = {
 
 function hojeLocal(): Date {
   const d = new Date();
-  d.setHours(9, 0, 0, 0);
+  d.setHours(0, 0, 0, 0);
   return d;
 }
 
@@ -140,19 +140,19 @@ export function interpretarLinhaRapida(entrada: string, projetos: { nome: string
       const d = parseInt(md[1], 10), mIdx = parseInt(md[2], 10) - 1;
       let ano = md[3] ? parseInt(md[3], 10) : hoje.getFullYear();
       if (ano < 100) ano += 2000;
-      const cand = new Date(ano, mIdx, d, 9, 0, 0, 0);
+      const cand = new Date(ano, mIdx, d, 0, 0, 0, 0);
       if (!md[3] && cand < hoje) cand.setFullYear(ano + 1);
       prazo = cand; tira(md, "data");
     }
     else if ((md = texto.match(/\b(\d{1,2})\s+de\s+(jan|fev|mar|abr|mai|jun|jul|ago|set|out|nov|dez)[a-zç]*\b/i))) {
       const d = parseInt(md[1], 10), mIdx = MESES[md[2].toLowerCase()];
-      const cand = new Date(hoje.getFullYear(), mIdx, d, 9, 0, 0, 0);
+      const cand = new Date(hoje.getFullYear(), mIdx, d, 0, 0, 0, 0);
       if (cand < hoje) cand.setFullYear(hoje.getFullYear() + 1);
       prazo = cand; tira(md, "data");
     }
     else if ((md = texto.match(/\b(?:no\s+)?dia\s+(\d{1,2})\b/i))) {
       const d = parseInt(md[1], 10);
-      const cand = new Date(hoje.getFullYear(), hoje.getMonth(), d, 9, 0, 0, 0);
+      const cand = new Date(hoje.getFullYear(), hoje.getMonth(), d, 0, 0, 0, 0);
       if (cand < hoje) cand.setMonth(cand.getMonth() + 1);
       prazo = cand; tira(md, "data");
     }

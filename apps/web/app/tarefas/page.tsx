@@ -10,7 +10,7 @@
  * como já acontecia.
  */
 
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { Fragment, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import {
   Inbox,
   CalendarDays,
@@ -231,8 +231,9 @@ export default function TarefasPage() {
   // ── Contadores da barra lateral ───────────────────────────────
   const hojeS = diaStr(hoje);
   const pendentes = itens.filter((i) => !i.concluido && raiz(i));
-  // Vídeo sem prazo é trabalho em andamento: entra em "Hoje" por padrão
-  const ehHoje = (i: Item) => (i.prazo ? diaStr(i.prazo) <= hojeS : i.ehVideo);
+  // Regra da casa: item sem data é pra hoje (tarefa ou vídeo da pipeline)
+  const diaDe = (i: Item) => (i.prazo ? diaStr(i.prazo) : hojeS);
+  const ehHoje = (i: Item) => diaDe(i) <= hojeS;
   const contEntrada = pendentes.filter((i) => !i.projetoId).length;
   const contHoje = pendentes.filter(ehHoje).length;
   const contPorProjeto = (id: string) => pendentes.filter((i) => i.projetoId === id).length;
@@ -257,22 +258,21 @@ export default function TarefasPage() {
   };
   const ordenar = (a: Item, b: Item) =>
     PRIORIDADE_PARA_P[a.prioridade] - PRIORIDADE_PARA_P[b.prioridade] ||
-    (a.prazo ? new Date(a.prazo).getTime() : Infinity) - (b.prazo ? new Date(b.prazo).getTime() : Infinity) ||
+    (a.prazo ? new Date(a.prazo).getTime() : hoje.getTime()) - (b.prazo ? new Date(b.prazo).getTime() : hoje.getTime()) ||
     a.ordem - b.ordem;
 
   const abertos = itens.filter((i) => raiz(i) && !i.concluido && naVista(i)).sort(ordenar);
   const concluidos = itens.filter((i) => raiz(i) && i.concluido && naVista(i)).sort((a, b) => (b.criadoEm || "").localeCompare(a.criadoEm || ""));
 
   // Seções (estilo Todoist): Atrasada / dias
-  const atrasadas = abertos.filter((i) => i.prazo && diaStr(i.prazo) < hojeS);
-  const semData = abertos.filter((i) => !i.prazo);
+  const atrasadas = abertos.filter((i) => diaDe(i) < hojeS);
   const diasEmBreve = useMemo(() => {
     if (vista.tipo !== "embreve" || q) return [];
     const out: { data: Date; itens: Item[] }[] = [];
     for (let k = 0; k < 14; k++) {
       const d = maisDias(hoje, k);
       const s = diaStr(d);
-      out.push({ data: d, itens: abertos.filter((i) => i.prazo && diaStr(i.prazo) === s) });
+      out.push({ data: d, itens: abertos.filter((i) => diaDe(i) === s) });
     }
     return out;
   }, [vista, q, abertos, hoje]);
@@ -349,7 +349,7 @@ export default function TarefasPage() {
     setAddDescricao("");
     setAddPrioridade(null);
     setAddProjetoId(vista.tipo === "projeto" ? vista.id : "");
-    setAddPrazo(prazoPadrao ? diaStr(prazoPadrao) : vista.tipo === "hoje" ? hojeS : "");
+    setAddPrazo(diaStr(prazoPadrao || hoje));
     setTimeout(() => addRef.current?.focus(), 30);
   };
 
@@ -363,7 +363,8 @@ export default function TarefasPage() {
       addProjetoId ||
       (interpretado.projetoNome ? projetos.find((p) => p.nome === interpretado.projetoNome)?.id : undefined) ||
       null;
-    const prazo = interpretado.prazo ? interpretado.prazo.toISOString() : addPrazo ? new Date(`${addPrazo}T09:00:00`).toISOString() : null;
+    // Sem data no texto nem no campo -> hoje
+    const prazo = (interpretado.prazo || new Date(`${addPrazo || hojeS}T00:00:00`)).toISOString();
     const prioridade = addPrioridade || interpretado.prioridade || "media";
     await fetch("/api/tarefas", {
       method: "POST",
@@ -386,7 +387,7 @@ export default function TarefasPage() {
     await fetch("/api/tarefas", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ titulo, parentId: pai.id, projetoId: pai.projetoId, prazo: pai.prazo, prioridade: "media" }),
+      body: JSON.stringify({ titulo, parentId: pai.id, projetoId: pai.projetoId, prazo: pai.prazo || hoje.toISOString(), prioridade: "media" }),
     });
     setExpandidas((s) => new Set(s).add(pai.id));
     carregar();
@@ -401,7 +402,7 @@ export default function TarefasPage() {
     setEdit({
       titulo: i.titulo,
       descricao: i.descricao || "",
-      prazo: i.prazo ? diaStr(i.prazo) : "",
+      prazo: diaStr(i.prazo || hoje),
       prioridade: i.prioridade,
       projetoId: i.projetoId || "",
       recorrencia: i.recorrencia || "",
@@ -414,7 +415,7 @@ export default function TarefasPage() {
     setSalvandoEdit(true);
     const original = itens.find((i) => i.id === editandoId);
     const manterHora = original?.prazo && edit.prazo === diaStr(original.prazo) ? new Date(original.prazo) : null;
-    const prazo = edit.prazo ? (manterHora ? manterHora.toISOString() : new Date(`${edit.prazo}T09:00:00`).toISOString()) : null;
+    const prazo = (manterHora || new Date(`${edit.prazo || hojeS}T00:00:00`)).toISOString();
     await patchTarefa(editandoId, {
       titulo: edit.titulo.trim(),
       descricao: edit.descricao.trim() || null,
@@ -457,7 +458,7 @@ export default function TarefasPage() {
   }, [vista]);
 
   // ── Componentes ───────────────────────────────────────────────
-  const Circulo = ({ i }: { i: Item }) => {
+  const renderCirculo = (i: Item) => {
     const p = PRIORIDADE_PARA_P[i.prioridade];
     const c = COR_P[p];
     return (
@@ -475,10 +476,10 @@ export default function TarefasPage() {
     );
   };
 
-  const MetaLinha = ({ i }: { i: Item }) => {
+  const renderMetaLinha = (i: Item) => {
     const subs = filhosDe(i.id);
     const feitas = subs.filter((s) => s.concluido).length;
-    const r = i.prazo ? rotuloData(i.prazo, hoje) : null;
+    const r = i.prazo ? rotuloData(i.prazo, hoje) : { texto: "Hoje", tom: "hoje" as const };
     const corData = r?.tom === "atrasada" ? "text-red-500" : r?.tom === "hoje" ? "text-green-600" : r?.tom === "amanha" ? "text-orange-500" : "text-purple-500";
     return (
       <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-0.5 text-[11px]">
@@ -491,7 +492,7 @@ export default function TarefasPage() {
           <span className={`flex items-center gap-1 font-medium ${corData}`}>
             <Calendar className="w-3 h-3" />
             {r.texto}
-            {temHorario(i.prazo!) && <span className="opacity-80">{horaStr(i.prazo!)}</span>}
+            {i.prazo && temHorario(i.prazo) && <span className="opacity-80">{horaStr(i.prazo)}</span>}
             {i.recorrencia && <Repeat className="w-3 h-3" />}
           </span>
         )}
@@ -507,21 +508,21 @@ export default function TarefasPage() {
     );
   };
 
-  const Linha = ({ i, nivel = 0 }: { i: Item; nivel?: number }) => {
+  const renderLinha = (i: Item, nivel = 0): ReactNode => {
     const subs = filhosDe(i.id);
     const expandida = expandidas.has(i.id);
-    if (editandoId === i.id) return <EditorInline i={i} />;
+    if (editandoId === i.id) return renderEditorInline();
     return (
       <div style={{ paddingLeft: nivel * 28 }}>
         <div
           onClick={() => iniciarEdicao(i)}
           className="group flex items-start gap-3 py-3 border-b border-border cursor-pointer hover:bg-surface rounded-lg px-2 -mx-2 transition-colors"
         >
-          <Circulo i={i} />
+          {renderCirculo(i)}
           <div className="min-w-0 flex-1">
             <p className={`text-sm leading-snug ${i.concluido ? "line-through text-muted" : "text-primary"}`}>{i.titulo}</p>
             {i.descricao && <p className="text-xs text-muted truncate mt-0.5">{i.descricao}</p>}
-            <MetaLinha i={i} />
+            {renderMetaLinha(i)}
           </div>
           <div className="flex items-center gap-2 flex-shrink-0">
             {/* Projeto à direita, como no Todoist */}
@@ -557,7 +558,7 @@ export default function TarefasPage() {
           </div>
         </div>
 
-        {expandida && subs.map((s) => <Linha key={s.id} i={s} nivel={nivel + 1} />)}
+        {expandida && subs.map((s) => <Fragment key={s.id}>{renderLinha(s, nivel + 1)}</Fragment>)}
 
         {subDe === i.id && (
           <div style={{ paddingLeft: (nivel + 1) * 28 }} className="py-2 flex items-center gap-2">
@@ -577,7 +578,7 @@ export default function TarefasPage() {
     );
   };
 
-  const EditorInline = ({ i }: { i: Item }) => (
+  const renderEditorInline = () => (
     <div className="my-2 rounded-xl border border-accent bg-card p-3 shadow-sm space-y-2">
       <input
         type="text"
@@ -624,7 +625,7 @@ export default function TarefasPage() {
     </div>
   );
 
-  const AdicionarRapido = ({ chave, prazoPadrao }: { chave: string; prazoPadrao?: Date }) =>
+  const renderAdicionarRapido = (chave: string, prazoPadrao?: Date) =>
     addAberto === chave ? (
       <div className="my-2 rounded-xl border border-accent bg-card p-3 shadow-sm">
         <input
@@ -634,7 +635,8 @@ export default function TarefasPage() {
           onChange={(e) => setAddTexto(e.target.value)}
           onKeyDown={(e) => { if (e.key === "Enter") salvarAdd(); }}
           placeholder="Nome da tarefa — ex.: Ligar pro cliente amanhã p1 #Petron @urgente"
-          className="w-full bg-transparent border-0 outline-none text-sm font-medium text-primary placeholder:text-faint"
+          autoComplete="off"
+          className="w-full bg-transparent border-0 outline-none appearance-none shadow-none ring-0 focus:ring-0 text-sm font-medium text-primary placeholder:text-faint"
         />
         <input
           type="text"
@@ -685,7 +687,7 @@ export default function TarefasPage() {
       </button>
     );
 
-  const Secao = ({ chave, titulo, itens: lista, acao, children }: { chave: string; titulo: ReactNode; itens: Item[]; acao?: ReactNode; children?: ReactNode }) => {
+  const renderSecao = ({ chave, titulo, itens: lista, acao, children }: { chave: string; titulo: ReactNode; itens: Item[]; acao?: ReactNode; children?: ReactNode }) => {
     const fechada = secoesFechadas.has(chave);
     return (
       <section>
@@ -699,7 +701,7 @@ export default function TarefasPage() {
         </div>
         {!fechada && (
           <div>
-            {lista.map((i) => <Linha key={i.id} i={i} />)}
+            {lista.map((i) => <Fragment key={i.id}>{renderLinha(i)}</Fragment>)}
             {children}
           </div>
         )}
@@ -793,36 +795,28 @@ export default function TarefasPage() {
             </p>
           </div>
 
-          <AdicionarRapido chave="topo" />
+          {renderAdicionarRapido("topo")}
 
           {vista.tipo === "concluidas" ? (
             <div>
               {concluidos.length === 0 && <p className="text-sm text-muted py-8 text-center">Nada concluído ainda.</p>}
-              {concluidos.map((i) => <Linha key={i.id} i={i} />)}
+              {concluidos.map((i) => <Fragment key={i.id}>{renderLinha(i)}</Fragment>)}
             </div>
           ) : listaSimples ? (
             <div className="space-y-6">
-              {atrasadas.length > 0 && (
-                <Secao
-                  chave="atrasada"
-                  titulo="Atrasada"
-                  itens={atrasadas}
-                  acao={<button type="button" onClick={reagendarAtrasadas} className="text-xs font-semibold text-red-500 hover:underline cursor-pointer">Reagendar</button>}
-                />
-              )}
-              <Secao
-                chave="principal"
-                titulo={vista.tipo === "hoje" ? cabecalhoDia(hoje, hoje) : vista.tipo === "entrada" ? "Entrada" : q ? "Resultados" : tituloVista}
-                itens={vista.tipo === "hoje" ? semAtraso.filter((i) => i.prazo) : semAtraso.filter((i) => i.prazo || vista.tipo !== "embreve")}
-              >
-                {!q && <AdicionarRapido chave="principal" prazoPadrao={vista.tipo === "hoje" ? hoje : undefined} />}
-              </Secao>
-              {vista.tipo === "hoje" && semData.length > 0 && !q && (
-                <Secao chave="pipeline" titulo="Vídeos na pipeline" itens={semData} />
-              )}
-              {vista.tipo !== "hoje" && vista.tipo !== "entrada" && semData.length > 0 && !q && (
-                <Secao chave="semdata" titulo="Sem data" itens={semData} />
-              )}
+              {atrasadas.length > 0 &&
+                renderSecao({
+                  chave: "atrasada",
+                  titulo: "Atrasada",
+                  itens: atrasadas,
+                  acao: <button type="button" onClick={reagendarAtrasadas} className="text-xs font-semibold text-red-500 hover:underline cursor-pointer">Reagendar</button>,
+                })}
+              {renderSecao({
+                chave: "principal",
+                titulo: vista.tipo === "hoje" ? cabecalhoDia(hoje, hoje) : vista.tipo === "entrada" ? "Entrada" : q ? "Resultados" : tituloVista,
+                itens: semAtraso,
+                children: !q && renderAdicionarRapido("principal", hoje),
+              })}
               {abertos.length === 0 && !q && (
                 <div className="text-center py-10">
                   <CheckCircle2 className="w-10 h-10 mx-auto text-green-500 mb-2" />
@@ -835,22 +829,30 @@ export default function TarefasPage() {
                   <button type="button" onClick={() => setMostrarConcluidas((v) => !v)} className="text-xs text-muted hover:text-primary cursor-pointer flex items-center gap-1">
                     {mostrarConcluidas ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />} {concluidos.length} concluída{concluidos.length > 1 ? "s" : ""}
                   </button>
-                  {mostrarConcluidas && concluidos.map((i) => <Linha key={i.id} i={i} />)}
+                  {mostrarConcluidas && concluidos.map((i) => <Fragment key={i.id}>{renderLinha(i)}</Fragment>)}
                 </div>
               )}
             </div>
           ) : (
             /* Em breve: Atrasada + um bloco por dia, 14 dias */
             <div className="space-y-6">
-              {atrasadas.length > 0 && (
-                <Secao chave="atrasada" titulo="Atrasada" itens={atrasadas} acao={<button type="button" onClick={reagendarAtrasadas} className="text-xs font-semibold text-red-500 hover:underline cursor-pointer">Reagendar</button>} />
-              )}
+              {atrasadas.length > 0 &&
+                renderSecao({
+                  chave: "atrasada",
+                  titulo: "Atrasada",
+                  itens: atrasadas,
+                  acao: <button type="button" onClick={reagendarAtrasadas} className="text-xs font-semibold text-red-500 hover:underline cursor-pointer">Reagendar</button>,
+                })}
               {diasEmBreve.map(({ data, itens: lista }) => (
-                <Secao key={diaStr(data)} chave={`dia-${diaStr(data)}`} titulo={cabecalhoDia(data, hoje)} itens={lista}>
-                  <AdicionarRapido chave={`dia-${diaStr(data)}`} prazoPadrao={data} />
-                </Secao>
+                <Fragment key={diaStr(data)}>
+                  {renderSecao({
+                    chave: `dia-${diaStr(data)}`,
+                    titulo: cabecalhoDia(data, hoje),
+                    itens: lista,
+                    children: renderAdicionarRapido(`dia-${diaStr(data)}`, data),
+                  })}
+                </Fragment>
               ))}
-              {semData.length > 0 && <Secao chave="semdata" titulo="Sem data" itens={semData} />}
             </div>
           )}
         </main>
